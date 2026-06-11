@@ -94,12 +94,7 @@ def extract_ocr_data(img):
     if cccd_match:
         data['CCCD'] = cccd_match.group(0)
         
-    # Extract dates: dd/mm/yyyy
-    dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
-    if len(dates) >= 1:
-        data['Ngày sinh'] = dates[0]
-    if len(dates) >= 2:
-        data['Ngày cấp CCCD'] = dates[1]
+    all_dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
         
     # Extract Gender
     if re.search(r'\bNam\b', text, re.IGNORECASE):
@@ -107,20 +102,59 @@ def extract_ocr_data(img):
     elif re.search(r'\bN[uưứữ][\s]*\b', text, re.IGNORECASE) or re.search(r'\bNữ\b', text, re.IGNORECASE):
         data['Giới tính'] = 'Nữ'
         
-    # Extract Name (Heuristics: UPPERCASE line after "Họ và tên")
     lines = [line.strip() for line in text.split('\n') if line.strip()]
+    
     for i, line in enumerate(lines):
-        if "Họ và tên" in line or "Họ chữ đệm và tên" in line or "Full name" in line:
+        line_lower = line.lower()
+        
+        # 1. Name
+        if "họ và tên" in line_lower or "họ chữ đệm và tên" in line_lower or "full name" in line_lower:
             if ":" in line:
                 name_part = line.split(":", 1)[1].strip()
                 if name_part.isupper() and len(name_part) > 3:
                     data['Họ tên'] = name_part
-                    break
-            if i + 1 < len(lines):
+            if not data['Họ tên'] and i + 1 < len(lines):
                 next_line = lines[i+1].replace('|', '').strip()
                 if next_line.isupper() and len(next_line) > 3:
                     data['Họ tên'] = next_line
+                    
+        # 2. DOB
+        if "sinh" in line_lower or "birth" in line_lower:
+            for j in range(i, min(i+2, len(lines))):
+                m = re.search(r'\b\d{2}/\d{2}/\d{4}\b', lines[j])
+                if m:
+                    data['Ngày sinh'] = m.group(0)
                     break
+                    
+        # 3. Address
+        if "nơi thường trú" in line_lower or "nơi cư trú" in line_lower or "residence" in line_lower:
+            addr_parts = []
+            if ":" in line:
+                addr_parts.append(line.split(":", 1)[1].strip())
+            if i + 1 < len(lines) and "giá trị đến" not in lines[i+1].lower() and "expiry" not in lines[i+1].lower():
+                addr_parts.append(lines[i+1].replace('|', '').strip())
+            if i + 2 < len(lines) and "giá trị đến" not in lines[i+2].lower() and "expiry" not in lines[i+2].lower():
+                next2 = lines[i+2].replace('|', '').strip()
+                if len(next2) > 5 and not re.search(r'\d{2}/\d{2}/\d{4}', next2):
+                    addr_parts.append(next2)
+            addr = ", ".join(filter(bool, addr_parts))
+            data['Nơi thường trú gốc'] = re.sub(r',\s*,', ',', addr).lstrip(', ')
+            
+        # 4. Issue Date (Back of card)
+        if "ngày, tháng, năm" in line_lower or "date, month, year" in line_lower or "date of issue" in line_lower:
+            for j in range(i, min(i+3, len(lines))):
+                m = re.search(r'\b\d{2}/\d{2}/\d{4}\b', lines[j])
+                if m:
+                    data['Ngày cấp CCCD'] = m.group(0)
+                    break
+
+    # Fallback DOB
+    if not data['Ngày sinh'] and all_dates:
+        first_date = all_dates[0]
+        try:
+            if int(first_date.split('/')[-1]) < 2020:
+                data['Ngày sinh'] = first_date
+        except: pass
 
     return data, "Lấy bằng OCR"
 
