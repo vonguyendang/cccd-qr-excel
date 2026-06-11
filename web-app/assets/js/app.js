@@ -451,12 +451,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             // 1. Extract Name
                             if (lineLower.includes("họ và tên") || lineLower.includes("họ chữ đệm") || lineLower.includes("họ, chữ đệm") || lineLower.includes("full name")) {
                                 if (line.includes(":")) {
-                                    const namePart = line.split(":")[1].replace(/[|]/g, '').trim();
+                                    let namePart = line.split(":")[1].replace(/[|]/g, '').trim();
+                                    namePart = namePart.replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' ').trim();
                                     if (namePart.length > 3) ocrData['Họ tên'] = namePart.toUpperCase();
                                 }
                                 if (!ocrData['Họ tên'] && i + 1 < lines.length) {
-                                    const nextLine = lines[i+1].replace(/\|/g, '').trim();
-                                    if (nextLine.length > 3 && !/\d/.test(nextLine) && !nextLine.toLowerCase().includes("ngày") && !nextLine.toLowerCase().includes("date")) {
+                                    let nextLine = lines[i+1].replace(/\|/g, '').trim();
+                                    nextLine = nextLine.replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' ').trim();
+                                    if (nextLine.length > 3 && !nextLine.toLowerCase().includes("ngày") && !nextLine.toLowerCase().includes("date")) {
                                         ocrData['Họ tên'] = nextLine.toUpperCase();
                                     }
                                 }
