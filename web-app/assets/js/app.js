@@ -435,64 +435,71 @@ document.addEventListener('DOMContentLoaded', () => {
                         const cccdMatch = text.match(/\b\d{12}\b/);
                         if (cccdMatch) ocrData['CCCD'] = cccdMatch[0];
                         
-                        if (/\bNam\b/i.test(text)) ocrData['Giới tính'] = 'Nam';
-                        else if (/\bN[uưứữ][\s]*\b/i.test(text) || /\bNữ\b/i.test(text)) ocrData['Giới tính'] = 'Nữ';
-                        
                         const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-                        const allDates = text.match(/\b\d{2}\/\d{2}\/\d{4}\b/g) || [];
+                        const allDates = text.match(/\b\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}\b/g) || [];
                         
                         for (let i = 0; i < lines.length; i++) {
                             const line = lines[i];
                             const lineLower = line.toLowerCase();
                             
+                            // Extract Gender strictly from Gender line
+                            if (lineLower.includes("giới tính") || lineLower.includes("sex") || lineLower.includes("gioi tinh")) {
+                                if (/\bNam\b/i.test(line)) ocrData['Giới tính'] = 'Nam';
+                                else if (/\bN[uưứữ][\s]*\b/i.test(line) || /\bNữ\b/i.test(line)) ocrData['Giới tính'] = 'Nữ';
+                            }
+                            
                             // 1. Extract Name
-                            if (line.includes("Họ và tên") || line.includes("Họ chữ đệm và tên") || line.includes("Full name")) {
+                            if (lineLower.includes("họ và tên") || lineLower.includes("họ chữ đệm") || lineLower.includes("họ, chữ đệm") || lineLower.includes("full name")) {
                                 if (line.includes(":")) {
-                                    const namePart = line.split(":")[1].trim();
-                                    if (namePart === namePart.toUpperCase() && namePart.length > 3) ocrData['Họ tên'] = namePart;
+                                    const namePart = line.split(":")[1].replace(/[|]/g, '').trim();
+                                    if (namePart.length > 3) ocrData['Họ tên'] = namePart.toUpperCase();
                                 }
                                 if (!ocrData['Họ tên'] && i + 1 < lines.length) {
                                     const nextLine = lines[i+1].replace(/\|/g, '').trim();
-                                    if (nextLine === nextLine.toUpperCase() && nextLine.length > 3) ocrData['Họ tên'] = nextLine;
+                                    if (nextLine.length > 3 && !/\d/.test(nextLine) && !nextLine.toLowerCase().includes("ngày") && !nextLine.toLowerCase().includes("date")) {
+                                        ocrData['Họ tên'] = nextLine.toUpperCase();
+                                    }
                                 }
                             }
                             
                             // 2. Extract DOB
                             if (lineLower.includes("sinh") || lineLower.includes("birth")) {
                                 for (let j = i; j <= i+1 && j < lines.length; j++) {
-                                    const m = lines[j].match(/\b\d{2}\/\d{2}\/\d{4}\b/);
-                                    if (m) { ocrData['Ngày sinh'] = m[0]; break; }
+                                    const m = lines[j].match(/\b\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}\b/);
+                                    if (m) { ocrData['Ngày sinh'] = m[0].replace(/\s/g, ''); break; }
                                 }
                             }
                             
                             // 3. Extract Address
-                            if (lineLower.includes("nơi thường trú") || lineLower.includes("nơi cư trú") || lineLower.includes("residence")) {
+                            if (lineLower.includes("nơi thường trú") || lineLower.includes("nơi cư trú") || lineLower.includes("residence") || lineLower.includes("cu tru") || lineLower.includes("thuong tru")) {
                                 let addrParts = [];
-                                if (line.includes(":")) addrParts.push(line.split(":")[1].trim());
+                                if (line.includes(":")) addrParts.push(line.split(":")[1].replace(/[|]/g, '').trim());
                                 if (i+1 < lines.length && !lines[i+1].toLowerCase().includes("giá trị đến") && !lines[i+1].toLowerCase().includes("expiry")) {
                                     addrParts.push(lines[i+1].replace(/\|/g, '').trim());
                                 }
                                 if (i+2 < lines.length && !lines[i+2].toLowerCase().includes("giá trị đến") && !lines[i+2].toLowerCase().includes("expiry")) {
                                     const next2 = lines[i+2].replace(/\|/g, '').trim();
-                                    if (next2.length > 5 && !next2.match(/\d{2}\/\d{2}\/\d{4}/)) addrParts.push(next2);
+                                    if (next2.length > 5 && !next2.match(/\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}/)) addrParts.push(next2);
                                 }
                                 ocrData['Nơi thường trú gốc'] = addrParts.filter(p => p).join(', ').replace(/,\s*,/g, ',').replace(/^,\s*/, '');
                             }
                             
                             // 4. Extract Issue Date (Back of card)
-                            if (lineLower.includes("ngày, tháng, năm") || lineLower.includes("date, month, year") || lineLower.includes("date of issue")) {
+                            if (lineLower.includes("ngày, tháng, năm") || lineLower.includes("date, month, year") || lineLower.includes("date of issue") || lineLower.includes("ngay, thang, nam")) {
                                 for (let j = i; j <= i+2 && j < lines.length; j++) {
-                                    const m = lines[j].match(/\b\d{2}\/\d{2}\/\d{4}\b/);
-                                    if (m) { ocrData['Ngày cấp CCCD'] = m[0]; break; }
+                                    const m = lines[j].match(/\b\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}\b/);
+                                    if (m) { ocrData['Ngày cấp CCCD'] = m[0].replace(/\s/g, ''); break; }
                                 }
                             }
                         }
                         
                         // Fallback DOB if keyword failed
                         if (!ocrData['Ngày sinh'] && allDates.length > 0) {
-                            const firstDate = allDates[0];
+                            const firstDate = allDates[0].replace(/\s/g, '');
                             if (parseInt(firstDate.split('/')[2]) < 2020) ocrData['Ngày sinh'] = firstDate;
                         }
+                            
+
                         
                         dataObj.ocrData = ocrData;
                         dataObj.fromOCR = true;
