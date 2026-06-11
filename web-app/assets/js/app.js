@@ -275,6 +275,11 @@ document.addEventListener('DOMContentLoaded', () => {
         playBeep('success');
         showToast('Đã quét thành công 1 thẻ!', 'success');
         addScannedItem(dataObj);
+        
+        // Auto-scroll to results on mobile
+        if (window.innerWidth < 1024) {
+            document.getElementById('scannedUlContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
 
         // Flash effect
         const reader = document.getElementById('reader');
@@ -292,9 +297,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function startCamera() {
         if (!html5QrcodeScanner) {
             html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-                fps: 10, 
-                qrbox: {width: 250, height: 250},
+                fps: 20, 
+                qrbox: function(viewfinderWidth, viewfinderHeight) {
+                    // Responsive qrbox based on screen size, CCCD QR is usually small
+                    let minEdgePercentage = 0.7; // 70% of min edge
+                    let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+                    let qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+                    return { width: qrboxSize, height: qrboxSize };
+                },
                 aspectRatio: 1.0,
+                formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ],
                 showTorchButtonIfSupported: true
             }, false);
             html5QrcodeScanner.render(onScanSuccess, onScanFailure);
