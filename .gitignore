@@ -27,6 +27,9 @@ ENV/
 web-app/vendor/
 composer.phar
 
+# PHP / Node_modules
+web-app/node_modules/
+
 # Generated Excel files
 *.xlsx
 *.xls
