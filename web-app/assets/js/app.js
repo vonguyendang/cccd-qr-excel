@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const scannedUl = document.getElementById('scannedUl');
     const scanCount = document.getElementById('scanCount');
     const btnProcessAll = document.getElementById('btnProcessAll');
+    const btnCancelImport = document.getElementById('btnCancelImport');
+    
+    let isImportCancelled = false;
     
     const serverSection = document.getElementById('serverSection');
     const serverStatusText = document.getElementById('serverStatusText');
@@ -54,8 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const parsed = JSON.parse(cachedData);
             if (Array.isArray(parsed) && parsed.length > 0) {
                 scannedResults = parsed;
-                scannedListSection.classList.remove('hidden');
                 scanCount.textContent = scannedResults.length;
+                document.getElementById('emptyState').classList.add('hidden');
+                btnProcessAll.disabled = false;
                 // render in reverse so they prepend in correct order or just append
                 parsed.forEach(item => {
                     renderScannedItemDOM(item);
@@ -166,6 +170,44 @@ document.addEventListener('DOMContentLoaded', () => {
         scannedUl.prepend(li);
     }
 
+    function isDuplicateCccd(dataObj) {
+        if (!dataObj) return false;
+        let newCccd = null;
+        let isNewQR = !!dataObj.qrData;
+
+        if (dataObj.qrData) {
+            newCccd = dataObj.qrData.split('|')[0];
+        } else if (dataObj.ocrData && dataObj.ocrData['CCCD']) {
+            newCccd = dataObj.ocrData['CCCD'];
+        }
+        if (!newCccd) return false;
+        
+        let dupIndex = scannedResults.findIndex(item => {
+            let existingCccd = null;
+            if (item.qrData) existingCccd = item.qrData.split('|')[0];
+            else if (item.ocrData && item.ocrData['CCCD']) existingCccd = item.ocrData['CCCD'];
+            return existingCccd === newCccd;
+        });
+
+        if (dupIndex !== -1) {
+            let existingItem = scannedResults[dupIndex];
+            let isExistingQR = !!existingItem.qrData;
+
+            // If new is QR and existing is OCR, we remove the OCR one to replace it with QR!
+            if (isNewQR && !isExistingQR) {
+                scannedResults.splice(dupIndex, 1);
+                // Re-render UI
+                const scannedUl = document.getElementById('scannedUl');
+                scannedUl.innerHTML = '';
+                const temp = [...scannedResults];
+                temp.reverse().forEach(item => renderScannedItemDOM(item));
+                return false; // Proceed to add the new QR item
+            }
+            return true; // Otherwise it's a true duplicate, skip it
+        }
+        return false;
+    }
+
     function addScannedItem(dataObj) {
         scannedResults.push(dataObj);
         scanCount.textContent = scannedResults.length;
@@ -209,16 +251,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        recentScans.add(decodedText);
-        playBeep('success');
-        showToast('Đã quét thành công 1 thẻ!', 'success');
-
-        addScannedItem({
+        const dataObj = {
             filename: 'Camera_Scan_' + Date.now() + '.jpg',
             qrData: decodedText,
             error: null,
             fromOCR: false
-        });
+        };
+
+        if (isDuplicateCccd(dataObj)) {
+            recentScans.add(decodedText);
+            showToast('Thẻ này đã được quét rồi!', 'warning');
+            setTimeout(() => recentScans.delete(decodedText), 3000);
+            return;
+        }
+
+        recentScans.add(decodedText);
+        playBeep('success');
+        showToast('Đã quét thành công 1 thẻ!', 'success');
+        addScannedItem(dataObj);
 
         // Flash effect
         const reader = document.getElementById('reader');
@@ -257,9 +307,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- File Upload Logic ---
+    if (btnCancelImport) {
+        btnCancelImport.addEventListener('click', () => {
+            isImportCancelled = true;
+            log(`[Hệ thống] Đang dừng lệnh quét file...`);
+            btnCancelImport.classList.add('hidden');
+        });
+    }
+
     fileInput.addEventListener('change', async (e) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        
+        isImportCancelled = false;
+        btnCancelImport.classList.remove('hidden');
 
         statusSection.classList.remove('hidden');
         logContainer.innerHTML = '';
@@ -292,84 +353,151 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        // Use ZXing from CDN directly if available, fallback to tesseract OCR
-        let codeReader = null;
-        if (typeof ZXing !== 'undefined') {
-            codeReader = new ZXing.BrowserQRCodeReader();
-        }
+        const resizeImage = (img, maxSize) => {
+            let width = img.width;
+            let height = img.height;
+            if (width > height && width > maxSize) {
+                height = Math.round(height * maxSize / width);
+                width = maxSize;
+            } else if (height > maxSize) {
+                width = Math.round(width * maxSize / height);
+                height = maxSize;
+            } else {
+                return img.src; // No resize needed
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        };
 
-        for (let i = 0; i < total; i++) {
-            const file = files[i];
-            log(`[${i+1}/${total}] Đang đọc: ${file.name}`);
-            
+        const processImage = async (file, index) => {
+            if (scannedResults.some(item => item.filename === file.name && !item.error)) {
+                log(`[${index+1}/${total}] Bỏ qua ${file.name}: Đã có trong bộ đệm (trùng tên file).`);
+                processedCount++;
+                progressText.textContent = `${processedCount}/${total}`;
+                progressFill.style.width = `${(processedCount / total) * 100}%`;
+                return;
+            }
+
+            log(`[${index+1}/${total}] Bắt đầu xử lý: ${file.name}`);
             let dataObj = { filename: file.name, qrData: null, error: null, fromOCR: false };
 
             try {
                 const img = await readFileAsImage(file);
+                // Resize image to max 1500px to drastically reduce payload size and OCR time
+                const optimizedBase64 = resizeImage(img, 1500); 
                 
                 let foundQR = false;
                 
-                // Bỏ qua ZXing trên trình duyệt cho file upload vì ảnh độ phân giải cao sẽ làm treo cứng giao diện.
-                // Chuyển thẳng xuống AI Backend xử lý.
                 if (!foundQR) {
-                    log(`-> Đang nhờ AI Backend (WeChat QR) xử lý ảnh khó...`);
                     try {
                         const response = await fetch('/api/scan_qr', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ imageBase64: img.src, filename: file.name })
+                            body: JSON.stringify({ imageBase64: optimizedBase64, filename: file.name })
                         });
                         const res = await response.json();
                         if (res.success && res.data) {
                             dataObj.qrData = res.data;
                             foundQR = true;
-                            log(`-> Tìm thấy mã QR bằng AI Backend.`);
+                            log(`[${index+1}/${total}] Tìm thấy QR bằng AI Backend.`);
                         }
                     } catch(e) {
-                        log(`-> AI Backend không thể đọc mã QR.`);
+                        log(`[${index+1}/${total}] Lỗi AI Backend.`);
                     }
                 }
                 
                 if (!foundQR) {
-                    log(`-> Đang thử OCR...`);
+                    log(`[${index+1}/${total}] Không tìm thấy QR, đang thử OCR...`);
                     try {
-                        const { data: { text } } = await Tesseract.recognize(img, 'vie');
+                        // OCR runs on the optimized image, much faster
+                        const { data: { text } } = await Tesseract.recognize(optimizedBase64, 'vie');
                         let ocrData = { 'CCCD': '', 'Họ tên': '', 'Ngày sinh': '', 'Giới tính': '', 'Ngày cấp CCCD': '' };
                         
                         const cccdMatch = text.match(/\b\d{12}\b/);
                         if (cccdMatch) ocrData['CCCD'] = cccdMatch[0];
                         
-                        // Heuristics mapping (simplified)
                         if (/\bNam\b/i.test(text)) ocrData['Giới tính'] = 'Nam';
                         else if (/\bN[uưứữ][\s]*\b/i.test(text) || /\bNữ\b/i.test(text)) ocrData['Giới tính'] = 'Nữ';
                         
+                        // Heuristic: Extract Name
+                        const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+                        for (let i = 0; i < lines.length; i++) {
+                            const line = lines[i];
+                            if (line.includes("Họ và tên") || line.includes("Họ chữ đệm và tên") || line.includes("Full name")) {
+                                if (line.includes(":")) {
+                                    const namePart = line.split(":")[1].trim();
+                                    if (namePart === namePart.toUpperCase() && namePart.length > 3) {
+                                        ocrData['Họ tên'] = namePart;
+                                        break;
+                                    }
+                                }
+                                if (i + 1 < lines.length) {
+                                    const nextLine = lines[i+1].replace(/\|/g, '').trim();
+                                    if (nextLine === nextLine.toUpperCase() && nextLine.length > 3) {
+                                        ocrData['Họ tên'] = nextLine;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        
                         dataObj.ocrData = ocrData;
                         dataObj.fromOCR = true;
-                        log(`-> Quét OCR hoàn tất.`);
+                        log(`[${index+1}/${total}] Quét OCR hoàn tất.`);
                     } catch (ocrErr) {
-                        dataObj.error = "Lỗi xử lý ảnh / Không tìm thấy QR";
+                        dataObj.error = "Không tìm thấy QR/Lỗi OCR";
                     }
                 }
             } catch (err) {
                 dataObj.error = "Lỗi đọc file: " + err.message;
             }
 
-            if (!dataObj.error) {
-                playBeep('success');
+            if (!dataObj.error && (dataObj.qrData || dataObj.ocrData['CCCD'])) {
+                if (isDuplicateCccd(dataObj)) {
+                    log(`[${index+1}/${total}] Bỏ qua ${file.name}: Dữ liệu CCCD bị trùng.`);
+                } else {
+                    playBeep('success');
+                    addScannedItem(dataObj);
+                }
             } else {
                 playBeep('error');
+                log(`[${index+1}/${total}] Thất bại ${file.name}: ${dataObj.error}`);
             }
-            addScannedItem(dataObj);
 
             processedCount++;
             progressText.textContent = `${processedCount}/${total}`;
             progressFill.style.width = `${(processedCount / total) * 100}%`;
-        }
+        };
 
-        log(`Hoàn tất đọc ${total} file.`);
-        showToast(`Đã tải lên và đọc xong ${total} file`, 'success');
+        // Run concurrently with a pool of 4 workers
+        const concurrencyLimit = 4;
+        let currentIndex = 0;
+        const workers = Array(concurrencyLimit).fill(Promise.resolve()).map(async () => {
+            while (currentIndex < total) {
+                if (isImportCancelled) {
+                    currentIndex = total; // Force break for other workers
+                    break;
+                }
+                const idx = currentIndex++;
+                await processImage(files[idx], idx);
+            }
+        });
+        
+        await Promise.all(workers);
+
+        btnCancelImport.classList.add('hidden');
+
+        if (isImportCancelled) {
+            log(`Đã hủy tiến trình, chỉ quét xong ${processedCount}/${total} file.`);
+            showToast(`Đã hủy! Quét được ${processedCount}/${total} file.`, 'error');
+        } else {
+            log(`Hoàn tất đọc ${total} file.`);
+            showToast(`Đã tải lên và đọc xong ${total} file`, 'success');
+        }
         
         // Reset input so same file can be selected again if needed
         fileInput.value = '';
@@ -420,7 +548,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 playBeep('success');
                 
                 // Clear state
-                clearCache();
                 scannedResults = [];
                 localStorage.removeItem('cccd_scanned_results');
                 scannedUl.innerHTML = '';
@@ -446,7 +573,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnClear) {
         btnClear.addEventListener('click', () => {
             if (confirm('Bạn có chắc muốn xóa toàn bộ danh sách kết quả?')) {
-                clearCache();
                 scannedResults = [];
                 localStorage.removeItem('cccd_scanned_results');
                 scannedUl.innerHTML = '';

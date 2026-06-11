@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CCCD QR Scanner Pro</title>
+    <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="assets/css/style.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -34,7 +35,7 @@
 </head>
 
 <body
-    class="bg-slate-900 text-slate-200 min-h-screen font-sans flex flex-col items-center py-12 relative overflow-x-hidden selection:bg-indigo-500/30">
+    class="bg-slate-900 text-slate-200 h-screen font-sans flex flex-col items-center p-4 md:p-6 relative overflow-hidden selection:bg-indigo-500/30">
 
     <!-- Ambient Animated Blobs -->
     <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none opacity-40">
@@ -49,7 +50,7 @@
         </div>
     </div>
 
-    <div class="container glass-panel p-10 w-full max-w-5xl relative z-10 mx-4">
+    <div class="glass-panel p-6 w-[98%] max-w-[1800px] flex-1 flex flex-col min-h-0 relative z-10 mx-auto">
 
         <!-- Header -->
         <div class="text-center mb-10">
@@ -84,10 +85,10 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
 
             <!-- Left Column: Input Methods -->
-            <div class="flex flex-col h-full">
+            <div class="flex flex-col h-full min-h-0">
                 <!-- Camera Section -->
                 <div id="cameraSection" class="tab-content block flex-1">
                     <div class="scanner-wrapper shadow-2xl bg-black/60 border border-slate-700/50 p-2 group">
@@ -105,33 +106,33 @@
                 </div>
 
                 <!-- File Upload Section -->
-                <div id="fileSection" class="tab-content hidden flex-1 flex flex-col justify-center">
+                <div id="fileSection" class="tab-content hidden flex-none flex-col justify-center">
                     <div
-                        class="upload-area group relative overflow-hidden rounded-3xl p-14 text-center transition-all bg-slate-800/30 border-2 border-dashed border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-900/10 h-full flex flex-col items-center justify-center">
-                        <input type="file" id="fileInput" multiple accept="image/*"
+                        class="upload-area group relative overflow-hidden rounded-3xl py-8 px-4 text-center transition-all bg-slate-800/30 border-2 border-dashed border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-900/10 h-48 flex flex-col items-center justify-center">
+                        <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.heic,image/jpeg,image/png,image/heic"
                             class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
                         <div
                             class="relative z-10 flex flex-col items-center justify-center pointer-events-none transform transition-transform duration-300 group-hover:-translate-y-2">
                             <div
-                                class="w-20 h-20 mb-6 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shadow-inner border border-white/5">
-                                <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor"
+                                class="w-14 h-14 mb-3 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shadow-inner border border-white/5">
+                                <svg class="w-7 h-7 text-indigo-400" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
                                     </path>
                                 </svg>
                             </div>
-                            <span class="text-2xl font-heading font-bold text-slate-200">Kéo thả hoặc Nhấn tải
+                            <span class="text-xl font-heading font-bold text-slate-200">Kéo thả hoặc Nhấn tải
                                 ảnh</span>
-                            <span class="text-indigo-400 font-medium mt-2">Hỗ trợ .jpg, .png, .heic</span>
-                            <small class="text-slate-500 mt-2 block">Có thể chọn nhiều file cùng lúc</small>
+                            <span class="text-indigo-400 text-sm font-medium mt-1">Hỗ trợ .jpg, .jpeg, .png, .heic</span>
+                            <span class="text-slate-500 text-xs mt-1 block">Có thể chọn nhiều file cùng lúc</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Processing Log (Console) -->
                 <div id="statusSection"
-                    class="mt-8 hidden bg-slate-900/80 rounded-2xl p-5 border border-slate-700/50 shadow-inner">
+                    class="mt-6 hidden flex flex-1 flex-col bg-slate-900/80 rounded-2xl p-5 border border-slate-700/50 shadow-inner">
                     <div class="flex justify-between items-center mb-3">
                         <h3
                             class="text-sm font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
@@ -143,19 +144,23 @@
                             </svg>
                             Đang xử lý: <span id="progressText" class="text-white font-bold ml-1">0/0</span>
                         </h3>
+                        <button id="btnCancelImport" class="hidden px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            Dừng quét
+                        </button>
                     </div>
                     <div class="w-full bg-slate-800 rounded-full h-1.5 mb-4 overflow-hidden">
                         <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full transition-all duration-300 ease-out"
                             id="progressFill" style="width: 0%"></div>
                     </div>
                     <div id="logContainer"
-                        class="h-28 overflow-y-auto bg-black/50 rounded-lg p-3 font-mono text-xs text-green-400/80 border border-black/50 leading-relaxed shadow-inner">
+                        class="flex-1 overflow-y-auto bg-black/50 rounded-lg p-3 font-mono text-xs text-green-400/80 border border-black/50 leading-relaxed shadow-inner">
                     </div>
                 </div>
             </div>
 
             <!-- Right Column: Results & Export -->
-            <div class="flex flex-col h-full bg-slate-800/20 rounded-3xl border border-slate-700/30 p-6 shadow-lg">
+            <div class="flex flex-col h-full bg-slate-800/20 rounded-3xl border border-slate-700/30 p-6 shadow-lg min-h-0">
 
                 <div class="flex justify-between items-center mb-6 border-b border-slate-700/50 pb-4">
                     <div>
@@ -181,7 +186,7 @@
                 </div>
 
                 <!-- Scanned Cards Container -->
-                <div class="flex-1 min-h-[300px] max-h-[500px] overflow-y-auto pr-2" id="scannedUlContainer">
+                <div class="flex-1 min-h-0 overflow-y-auto pr-2" id="scannedUlContainer">
                     <ul id="scannedUl" class="space-y-3">
                         <!-- Items injected here as modern cards -->
                     </ul>

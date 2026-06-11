@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
 import cv2
+from pyzbar.pyzbar import decode, ZBarSymbol
 import openpyxl
 from openpyxl.styles import Font
 
@@ -78,10 +79,33 @@ async def scan_qr(req: ScanQRRequest):
             print("-> Lỗi: Dữ liệu ảnh không hợp lệ.", flush=True)
             return {"success": False, "error": "Invalid image"}
             
-        res, _ = detector.detectAndDecode(img)
-        if res and len(res) > 0:
-            print(f"-> Quét thành công QR: {res[0][:50]}...", flush=True)
-            return {"success": True, "data": res[0]}
+        # 1. Try decoding directly with pyzbar
+        decoded_objects = decode(img, symbols=[ZBarSymbol.QRCODE])
+        
+        # 2. Try grayscale and thresholding for blurry/dark images
+        if not decoded_objects:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            decoded_objects = decode(gray, symbols=[ZBarSymbol.QRCODE])
+            
+            if not decoded_objects:
+                # Apply adaptive thresholding
+                thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+                decoded_objects = decode(thresh, symbols=[ZBarSymbol.QRCODE])
+                
+        if decoded_objects:
+            qr_data = decoded_objects[0].data.decode('utf-8')
+            if '|' in qr_data and len(qr_data.split('|')) >= 6:
+                print(f"-> Quét thành công QR (pyzbar): {qr_data[:50]}...", flush=True)
+                return {"success": True, "data": qr_data}
+            else:
+                print(f"-> pyzbar phát hiện QR rác (không phải CCCD), chuyển sang WeChat...", flush=True)
+            
+        # 3. Fallback to WeChat QRCode CNN detector
+        if detector:
+            res, _ = detector.detectAndDecode(img)
+            if res and len(res) > 0:
+                print(f"-> Quét thành công QR (WeChat): {res[0][:50]}...", flush=True)
+                return {"success": True, "data": res[0]}
             
         print("-> Không tìm thấy mã QR trong ảnh.", flush=True)
         return {"success": False, "error": "QR not found"}
@@ -165,6 +189,10 @@ class ExportRequest(BaseModel):
 @app.post("/api/export")
 async def export_excel(req: ExportRequest):
     items = req.data
+    
+    # Sort items: QR data first, then OCR, then errors. This ensures rich QR data isn't skipped if an OCR version exists.
+    items.sort(key=lambda x: 0 if x.qrData else (1 if x.fromOCR else 2))
+    
     print(f"\n[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Nhận yêu cầu xuất Excel cho {len(items)} bản ghi.", flush=True)
     processed_data = []
     seen_cccds = set()

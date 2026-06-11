@@ -75,27 +75,68 @@
     border-radius: 16px;
     overflow: hidden;
     background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 #reader video {
     object-fit: cover;
     border-radius: 16px;
 }
-#reader__dashboard_section_csr span {
-    color: #fff !important;
+#reader span, #reader div {
+    color: #cbd5e1 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 14px !important;
 }
-#reader__dashboard_section_csr button {
+#reader button {
     background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
     color: #fff !important;
-    border: none !important;
-    padding: 10px 20px !important;
-    border-radius: 8px !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    padding: 8px 20px !important;
+    border-radius: 12px !important;
     cursor: pointer !important;
     font-weight: 600 !important;
+    font-size: 14px !important;
+    transition: all 0.3s ease !important;
+    margin: 4px !important;
+    font-family: 'Inter', sans-serif !important;
+}
+#reader button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4) !important;
+}
+#reader select {
+    background-color: rgba(30, 41, 59, 0.9) !important;
+    color: #e2e8f0 !important;
+    border: 1px solid rgba(99, 102, 241, 0.5) !important;
+    padding: 8px 12px !important;
+    border-radius: 10px !important;
+    font-size: 14px !important;
+    outline: none !important;
+    cursor: pointer !important;
+    margin: 4px 8px !important;
+    font-family: 'Inter', sans-serif !important;
+}
+#reader select:focus {
+    border-color: #8b5cf6 !important;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2) !important;
+}
+#reader a {
+    color: #e2e8f0 !important;
+    background: rgba(30, 41, 59, 0.8) !important;
+    border: 1px solid rgba(99, 102, 241, 0.4) !important;
+    padding: 8px 16px !important;
+    border-radius: 10px !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+    display: inline-block !important;
+    margin-top: 12px !important;
     transition: all 0.3s ease !important;
 }
-#reader__dashboard_section_csr button:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+#reader a:hover {
+    background: rgba(99, 102, 241, 0.2) !important;
+    border-color: #8b5cf6 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2) !important;
 }
 
 /* Upload Area Hover */
