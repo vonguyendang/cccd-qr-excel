@@ -50,16 +50,31 @@ Hệ thống sẽ trả về một đường link ngẫu nhiên (Ví dụ: `http
 
 ---
 
-## Tùy chỉnh Tốc độ Quét (Số ảnh xử lý song song)
+## Tùy chỉnh Cấu hình Hệ thống (config.js)
 
-Mặc định hệ thống Web App sẽ xử lý **4 ảnh cùng lúc** (ở chế độ tải file) để cân bằng hiệu năng và tránh quá tải. Nếu máy tính bạn có cấu hình mạnh và muốn tăng tốc độ quét hàng loạt, bạn có thể tự tinh chỉnh giới hạn này.
+Để giúp việc tinh chỉnh trở nên dễ dàng và tập trung, hệ thống Web App đã được trang bị file cấu hình tổng. Bạn không cần phải tìm kiếm trong các file logic phức tạp nữa.
 
 **Cách thực hiện:**
-1. Mở file `web-app/assets/js/app.js`.
-2. Tìm dòng `const concurrencyLimit = 4;` (nằm ở khoảng dòng 440).
-3. Thay đổi số `4` thành `8` hoặc `12` tùy ý, sau đó F5 tải lại trang web.
+1. Mở file `web-app/assets/js/config.js`
+2. Tại đây, bạn có thể dễ dàng thay đổi các thông số (lưu file và F5 trang web để áp dụng):
 
-**Điều kiện & Lưu ý khi tăng luồng:**
-* **CPU (Chip xử lý):** Việc xử lý song song (đọc mã QR, nén ảnh, chạy nhận dạng OCR) tốn rất nhiều tài nguyên CPU cục bộ của máy tính. Bạn chỉ nên thiết lập mức cao (trên 6 luồng) nếu máy tính dùng chip đa nhân mạnh (ví dụ: Apple M1/M2/M3, hoặc Intel Core i7/i9). Tối ưu nhất là đặt số `concurrencyLimit` **nhỏ hơn hoặc bằng** số nhân CPU thực tế của máy bạn.
-* **Bộ nhớ RAM:** Mỗi luồng xử lý song song sẽ tiêu tốn thêm RAM để nạp dữ liệu ảnh gốc. Nếu bạn thiết lập mức quá cao (ví dụ: `20` hoặc `50`), tab trình duyệt có thể bị "Crash" (văng tab, Out of Memory) ngay lập tức do tràn bộ nhớ (đặc biệt khi tải lên toàn ảnh HEIC/PNG nặng 5-10MB).
-* **Quá tải Web Worker:** Thư viện Tesseract OCR chạy trong các Worker ẩn của trình duyệt. Việc sinh ra quá nhiều Worker cùng lúc có thể gây nghẽn cổ chai khiến ứng dụng bị đơ giật. Nếu bạn thấy máy báo quạt rú mạnh hoặc một số file liên tục báo lỗi "Lỗi AI Backend", hãy chủ động giảm số luồng xuống!
+```javascript
+const APP_CONFIG = {
+    // Tùy chỉnh hiệu năng
+    concurrencyLimit: 4,      // Số lượng ảnh được xử lý song song cùng lúc (Tăng lên nếu CPU/RAM mạnh)
+    maxImageSize: 1500,       // Kích thước tối đa (pixel) khi nén ảnh trước khi gửi. Giảm xuống để chạy nhanh hơn nhưng có thể giảm độ chính xác.
+    
+    // Tùy chỉnh API
+    apiScanQR: '/api/scan_qr',
+    apiExportExcel: '/api/export',
+
+    // Tùy chỉnh UI/UX
+    successBeepVolume: 1.0,   // Âm lượng tiếng bíp thành công (0.0 đến 1.0)
+    errorBeepVolume: 1.0      // Âm lượng tiếng bíp lỗi (0.0 đến 1.0)
+};
+```
+
+**Lưu ý khi tăng tốc độ quét (`concurrencyLimit`):**
+* **CPU (Chip xử lý):** Việc xử lý song song (đọc mã QR, nén ảnh, chạy nhận dạng OCR) tốn rất nhiều tài nguyên cục bộ. Chỉ nên thiết lập mức cao (trên 6 luồng) nếu máy tính dùng chip đa nhân mạnh (Apple M1+, Intel Core i7+). Tối ưu nhất là đặt số luồng **nhỏ hơn hoặc bằng** số nhân CPU thực tế.
+* **Bộ nhớ RAM:** Mỗi luồng xử lý song song sẽ tiêu tốn thêm RAM để nạp dữ liệu ảnh gốc. Nếu thiết lập mức quá cao (ví dụ: `20`), tab trình duyệt có thể bị "Crash" (Out of Memory) do tràn bộ nhớ (đặc biệt khi tải ảnh nặng 5-10MB).
+* **Nghẽn Web Worker:** Thư viện Tesseract OCR chạy trong các Worker ẩn của trình duyệt. Sinh ra quá nhiều Worker cùng lúc có thể gây nghẽn cổ chai khiến ứng dụng đơ giật. Nếu quạt rú mạnh hoặc liên tục báo lỗi, hãy chủ động giảm số luồng xuống!

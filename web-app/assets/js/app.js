@@ -7,6 +7,8 @@ const errorAudio = new Audio(ERROR_BEEP);
 // I will use short real beep sounds in the next step, for now placeholder
 successAudio.src = 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg';
 errorAudio.src = 'https://actions.google.com/sounds/v1/alarms/error_beep.ogg';
+successAudio.volume = APP_CONFIG.successBeepVolume;
+errorAudio.volume = APP_CONFIG.errorBeepVolume;
 
 document.addEventListener('DOMContentLoaded', () => {
     // UI Elements
@@ -387,14 +389,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const img = await readFileAsImage(file);
-                // Resize image to max 1500px to drastically reduce payload size and OCR time
-                const optimizedBase64 = resizeImage(img, 1500); 
+                // Resize image to max (from config) to drastically reduce payload size and OCR time
+                const optimizedBase64 = resizeImage(img, APP_CONFIG.maxImageSize); 
                 
                 let foundQR = false;
                 
                 if (!foundQR) {
                     try {
-                        const response = await fetch('/api/scan_qr', {
+                        const response = await fetch(APP_CONFIG.apiScanQR, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ imageBase64: optimizedBase64, filename: file.name })
@@ -473,8 +475,8 @@ document.addEventListener('DOMContentLoaded', () => {
             progressFill.style.width = `${(processedCount / total) * 100}%`;
         };
 
-        // Run concurrently with a pool of 4 workers
-        const concurrencyLimit = 4;
+        // Run concurrently with a pool of workers defined in config
+        const concurrencyLimit = APP_CONFIG.concurrencyLimit;
         let currentIndex = 0;
         const workers = Array(concurrencyLimit).fill(Promise.resolve()).map(async () => {
             while (currentIndex < total) {
@@ -516,7 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadArea.classList.add('hidden');
         
         try {
-            const response = await fetch('/api/export', {
+            const response = await fetch(APP_CONFIG.apiExportExcel, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: scannedResults })
