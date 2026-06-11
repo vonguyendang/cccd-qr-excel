@@ -13,6 +13,7 @@ Hệ thống được phát triển 100% bằng **Python** và cung cấp hai ph
 * Tự động loại bỏ CCCD trùng lặp, chỉ lấy 1 dòng dữ liệu cho mỗi người.
 * Kết nối API siêu tốc đa luồng (Multi-threading) để cập nhật và chuẩn hóa địa chỉ.
 * Chạy Web App trên máy tính cá nhân, chia sẻ qua mạng để quét QR bằng camera điện thoại cực nhanh.
+* **MỚI:** Tính năng Đồng bộ Đa thiết bị (Multi-device Sync) thông qua WebSocket, cho phép nhiều người cùng quét vào chung 1 phòng. Cơ chế "Backup Kép" (Dual Backup) tự động lưu trữ tiến trình làm việc ra file JSON, có thể khôi phục lại dễ dàng và tự động dọn dẹp (auto-cleanup) rác sau 10 ngày.
 
 ## 🛠 Hướng dẫn Cài đặt & Khởi động
 

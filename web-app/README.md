@@ -50,6 +50,15 @@ Hệ thống sẽ trả về một đường link ngẫu nhiên (Ví dụ: `http
 
 ---
 
+## Tính năng Đồng bộ Đa thiết bị & Khôi phục (MỚI)
+
+Ứng dụng hiện tại đã được nâng cấp kiến trúc "Phòng làm việc (Session)" và lưu trữ "Backup kép" (Dual Backup).
+1. **Làm việc nhóm (Multi-device Sync):** Nếu bạn có hàng nghìn ảnh cần quét, bạn có thể bấm **Tạo mã phiên mới** để lấy một Mã phiên (VD: `XYZ123`). Sau đó đưa mã này cho nhiều người khác cùng nhập vào ô **Vào phiên**. Lúc này, tất cả dữ liệu từ nhiều điện thoại/máy tính sẽ được đồng bộ ngay lập tức (thời gian thực qua WebSocket) về một danh sách duy nhất. Hệ thống sẽ kiểm tra chéo và tự động chặn thẻ trùng lặp giữa các máy với nhau!
+2. **Khôi phục dữ liệu (Dual Backup):** Kể cả khi bạn làm việc một mình, hệ thống cũng tự động cấp cho bạn một Mã Phiên. Dữ liệu quét của bạn được **lưu kép** cả ở trình duyệt (`localStorage`) và trên file `.json` riêng biệt tại Server. Kể cả khi bị mất mạng, lỡ tay tắt trình duyệt hay khởi động lại Server, bạn chỉ cần nhập lại Mã Phiên cũ là toàn bộ dữ liệu sẽ được khôi phục nguyên vẹn.
+> *Cơ chế lưu trữ tự động dọn dẹp rác (auto cleanup): Dữ liệu phiên sẽ tự động bị xóa sau 10 ngày nếu không có hoạt động mới.*
+
+---
+
 ## Tùy chỉnh Cấu hình Hệ thống (config.js)
 
 Để giúp việc tinh chỉnh trở nên dễ dàng và tập trung, hệ thống Web App đã được trang bị file cấu hình tổng. Bạn không cần phải tìm kiếm trong các file logic phức tạp nữa.
