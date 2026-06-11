@@ -1,42 +1,26 @@
-# CCCD QR Excel Project
+# Công Cụ Quét Mã QR CCCD Ra Excel Toàn Diện
 
-Repository này chứa 2 ứng dụng độc lập dùng để giải quyết bài toán:
-- Đọc mã QR từ ảnh CCCD (hỗ trợ hàng loạt 600+ ảnh).
-- Tách thông tin từ chuỗi dữ liệu mã QR.
-- Gọi API chuẩn hóa địa chỉ cũ sang địa chỉ mới theo lô (batch API).
-- Xuất dữ liệu theo cấu trúc Excel quy định chuẩn.
+Dự án này cung cấp một công cụ mạnh mẽ giúp bạn dễ dàng bóc tách thông tin từ mã QR trên Thẻ Căn cước công dân (CCCD) và xuất ra file Excel tự động. Hệ thống còn được tích hợp API (`tienich.vnhub.com`) để **chuẩn hóa địa chỉ thường trú gốc** sang tên đơn vị hành chính cấp xã/phường mới nhất.
 
-## Cấu trúc thư mục
+Hệ thống được phát triển 100% bằng **Python** và cung cấp hai phương thức hoạt động để phù hợp với mọi nhu cầu:
 
-```text
-cccd-qr-excel/
-├─ python-app/      # Ứng dụng Python (CLI) chạy cục bộ
-├─ web-app/         # Ứng dụng Web (PHP + JS) chạy cục bộ/intranet
-├─ docs/            # Thư mục chứa tài liệu chung
-├─ samples/         # Thư mục chứa các ảnh mẫu để test
-└─ README.md        # File giới thiệu tổng quan dự án
-```
+1. **Chế độ Web App (Giao diện Web Trực quan):** Giao diện đẹp mắt, hỗ trợ upload hàng loạt ảnh, tự động phân tích và xuất file Excel. Hỗ trợ tính năng **Quét QR Trực tiếp từ Camera** (Live Scanner) của máy tính hoặc điện thoại! Web App có tích hợp sẵn mô hình Trí tuệ Nhân tạo (WeChat QRCode) siêu nhạy, đọc được cả ảnh lóa, mờ.
+2. **Chế độ dòng lệnh CLI (Chạy ngầm):** Dành cho những ai muốn tự động hóa, chỉ cần gõ lệnh và cung cấp đường dẫn thư mục, công cụ sẽ âm thầm quét tất cả ảnh và tự động lưu ra file Excel.
 
-Cả 2 ứng dụng hoạt động **hoàn toàn độc lập** với nhau. Bạn có thể chọn sử dụng 1 trong 2 tùy thuộc vào môi trường và sở thích của mình.
+## 🌟 Tính năng nổi bật
+* Nhận diện mã QR chính xác tuyệt đối nhờ kết hợp các thư viện chuyên dụng (`pyzbar`, `ZXing`, `WeChatQRCode AI`).
+* Nếu mã QR hỏng nặng, tự động dự phòng sang chế độ quét chữ (OCR bằng Tesseract).
+* Tự động loại bỏ CCCD trùng lặp, chỉ lấy 1 dòng dữ liệu cho mỗi người.
+* Kết nối API siêu tốc đa luồng (Multi-threading) để cập nhật và chuẩn hóa địa chỉ.
+* Chạy Web App trên máy tính cá nhân, chia sẻ qua mạng để quét QR bằng camera điện thoại cực nhanh.
 
-## Cấu trúc dữ liệu Excel
+## 🛠 Hướng dẫn Cài đặt & Khởi động
 
-Cả 2 ứng dụng đều xuất ra file Excel với đúng 10 cột theo thứ tự bắt buộc:
+Xem hướng dẫn chi tiết cho từng chế độ tại các thư mục thành phần:
 
-| STT | Họ tên | CCCD | CMND | Giới tính | Ngày sinh | Nơi thường trú gốc | Địa chỉ chuẩn hóa mới | Ngày cấp CCCD | Ghi chú |
-|---|---|---|---|---|---|---|---|---|---|
+* 👉 **[Hướng dẫn sử dụng Web App (Giao diện trực quan & Camera Mobile)](./web-app/README.md)**
+* 👉 **[Hướng dẫn sử dụng Script CLI (Chạy bằng lệnh)](./python-app/README.md)**
 
-- **Ngày sinh, Ngày cấp CCCD**: Định dạng `dd/mm/yyyy`.
-- **Ghi chú**: Chứa lỗi ảnh không đọc được, dữ liệu trống, hoặc cảnh báo từ API (Ví dụ: "Không tìm thấy địa chỉ tương ứng trong dữ liệu", "Địa chỉ chuyển đổi chưa chắc chắn", "Ảnh mờ/lóa"). Các ghi chú được nối với nhau bằng dấu `; `.
-
-## Hướng dẫn sử dụng chi tiết
-
-Vui lòng xem `README.md` bên trong từng thư mục của ứng dụng để biết cách cài đặt và sử dụng:
-
-- [Python App README](python-app/README.md)
-- [Web App README](web-app/README.md)
-
-## API Chuẩn hóa địa chỉ
-
-Mặc định các ứng dụng đã thiết lập sẵn Mock (giả lập) việc gọi API để bạn có thể test ngay luồng hoạt động mà không cần API thật.
-Để thiết lập API thật, hãy truyền URL vào biến môi trường `ADDRESS_API_URL` khi chạy. Logic gọi API được thiết kế theo lô (batch) tối đa 100 địa chỉ một lần để tối ưu hiệu suất.
+## Yêu cầu Hệ thống
+* Máy tính đã cài đặt sẵn Python 3.10+
+* Nếu dùng OCR, yêu cầu cài đặt phần mềm [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) và gói ngôn ngữ tiếng Việt (`vie`).

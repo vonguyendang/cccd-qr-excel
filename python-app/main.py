@@ -169,10 +169,13 @@ def fetch_single_address(addr):
                 "converted": res_data['data'][0]['address']
             }
         else:
+            err_msg = "Không tìm thấy địa chỉ tương ứng"
+            if res_data.get('success') is False and res_data.get('error'):
+                err_msg = f"API bị lỗi: {res_data.get('error')}"
             return {
                 "original": addr,
                 "success": False,
-                "error": "Không tìm thấy địa chỉ tương ứng"
+                "error": err_msg
             }
     except Exception as e:
         return {
