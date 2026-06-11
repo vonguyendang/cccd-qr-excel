@@ -248,11 +248,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Debounce
         if (recentScans.has(decodedText)) return;
         
+        statusSection.classList.remove('hidden');
+        
         // Check if it looks like CCCD QR (usually contains |)
         if (!decodedText.includes('|')) {
             recentScans.add(decodedText);
             playBeep('error');
             showToast('Mã QR không hợp lệ!', 'error');
+            log(`[Camera] Phát hiện mã QR nhưng không đúng định dạng CCCD.`);
             setTimeout(() => recentScans.delete(decodedText), 3000);
             return;
         }
@@ -267,6 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isDuplicateCccd(dataObj)) {
             recentScans.add(decodedText);
             showToast('Thẻ này đã được quét rồi!', 'warning');
+            log(`[Camera] Bỏ qua thẻ trùng: CCCD ${dataObj.qrData.split('|')[0]}`);
             setTimeout(() => recentScans.delete(decodedText), 3000);
             return;
         }
@@ -274,6 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
         recentScans.add(decodedText);
         playBeep('success');
         showToast('Đã quét thành công 1 thẻ!', 'success');
+        log(`[Camera] Quét thành công CCCD: ${dataObj.qrData.split('|')[0]}`);
         addScannedItem(dataObj);
         
         // Auto-scroll to results on mobile
