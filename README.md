@@ -24,3 +24,40 @@ Xem hướng dẫn chi tiết cho từng chế độ tại các thư mục thàn
 ## Yêu cầu Hệ thống
 * Máy tính đã cài đặt sẵn Python 3.10+
 * Nếu dùng OCR, yêu cầu cài đặt phần mềm [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) và gói ngôn ngữ tiếng Việt (`vie`).
+
+## 🚀 Hướng dẫn Triển khai lên Hosting / VPS (Dành cho Production)
+
+Do hệ thống sử dụng các thư viện AI, Xử lý ảnh (OpenCV) và quét mã (ZBar), phương pháp triển khai tốt nhất là sử dụng một máy chủ **Linux VPS (Ubuntu)** hoặc thông qua **Docker**. Các nền tảng Serverless (như Vercel/Netlify) không phù hợp vì không thể cài đặt các thư viện lõi hệ điều hành (`libzbar0`).
+
+### Cách 1: Triển khai trực tiếp trên Ubuntu VPS
+1. **Cài đặt thư viện hệ điều hành lõi:**
+   ```bash
+   sudo apt update
+   sudo apt install -y python3-pip python3-venv libzbar0 tesseract-ocr tesseract-ocr-vie
+   ```
+2. **Clone mã nguồn và cài đặt thư viện Python:**
+   ```bash
+   git clone <đường_dẫn_repo_của_bạn> cccd-qr-excel
+   cd cccd-qr-excel
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   # Lưu ý: Trên server Linux (không có giao diện màn hình), nên dùng opencv-python-headless
+   pip uninstall opencv-python -y
+   pip install opencv-python-headless
+   ```
+3. **Chạy Server bằng Uvicorn/Gunicorn:**
+   - Để chạy nền liên tục, bạn có thể dùng `screen`, `tmux` hoặc cấu hình `systemd`.
+   - Lệnh khởi chạy:
+   ```bash
+   cd python-app
+   uvicorn server:app --host 0.0.0.0 --port 8000
+   ```
+4. Mở port `8000` trên Firewall và truy cập thông qua `http://<IP_VPS>:8000`. 
+   > **Lưu ý:** Để tính năng Camera quét QR hoạt động trên trình duyệt web, bắt buộc hệ thống phải chạy qua **HTTPS**. Bạn cần cấu hình thêm Nginx làm Reverse Proxy và lấy chứng chỉ SSL (Let's Encrypt).
+
+### Cách 2: Triển khai thông qua Docker (Khuyên dùng)
+Bạn có thể tự viết một file `Dockerfile` đơn giản với image base là `python:3.10-slim`.
+1. Trong Dockerfile, nhớ thêm lệnh cài đặt thư viện lõi: `RUN apt-get update && apt-get install -y libzbar0 tesseract-ocr tesseract-ocr-vie`
+2. Expose port `8000` và chạy CMD `uvicorn server:app --host 0.0.0.0 --port 8000`.
+3. Triển khai Docker container lên các nền tảng như **Render**, **Railway**, hoặc **DigitalOcean App Platform**.
