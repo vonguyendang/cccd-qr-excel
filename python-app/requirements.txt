@@ -5,3 +5,4 @@ requests
 openpyxl
 pillow-heif
 pytesseract
+opencv-contrib-python

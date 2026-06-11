@@ -57,6 +57,19 @@ def extract_qr_data(image_path):
                 decoded_objects = decode(thresh, symbols=[ZBarSymbol.QRCODE])
 
         if not decoded_objects:
+            # Fallback to WeChat QRCode CNN detector
+            model_paths = [
+                'models/detect.prototxt', 'models/detect.caffemodel',
+                'models/sr.prototxt', 'models/sr.caffemodel'
+            ]
+            if all(os.path.exists(p) for p in model_paths):
+                try:
+                    detector = cv2.wechat_qrcode_WeChatQRCode(*model_paths)
+                    res, _ = detector.detectAndDecode(img)
+                    if res and len(res) > 0:
+                        return res[0], None, img
+                except Exception as e:
+                    pass
             return None, "QR không đọc được", img
 
         # Assuming we just need the first QR code found
