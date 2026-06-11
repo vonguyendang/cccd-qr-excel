@@ -61,3 +61,31 @@ Bạn có thể tự viết một file `Dockerfile` đơn giản với image bas
 1. Trong Dockerfile, nhớ thêm lệnh cài đặt thư viện lõi: `RUN apt-get update && apt-get install -y libzbar0 tesseract-ocr tesseract-ocr-vie`
 2. Expose port `8000` và chạy CMD `uvicorn server:app --host 0.0.0.0 --port 8000`.
 3. Triển khai Docker container lên các nền tảng như **Render**, **Railway**, hoặc **DigitalOcean App Platform**.
+
+### Cách 3: Triển khai lên PythonAnywhere (Cần lưu ý)
+PythonAnywhere mặc định sử dụng WSGI, trong khi FastAPI là một framework ASGI. Để chạy được trên PythonAnywhere, bạn cần sử dụng bộ chuyển đổi `a2wsgi`.
+> **Cảnh báo quan trọng:** Môi trường PythonAnywhere bị khóa quyền `sudo`. Nếu tài khoản của bạn chưa được cài sẵn `libzbar0` và `tesseract-ocr` ở hệ điều hành, tính năng quét QR/OCR có thể sẽ bị lỗi. Lời khuyên là hãy gửi ticket cho support của PythonAnywhere nhờ họ cài đặt 2 thư viện này, hoặc mua gói trả phí hỗ trợ Custom Docker/Always-on tasks.
+
+1. **Cài đặt thư viện:** Bật Bash Console trên PythonAnywhere và gõ:
+   ```bash
+   pip install fastapi uvicorn a2wsgi opencv-python-headless pyzbar openpyxl httpx
+   ```
+2. **Cấu hình Web app:**
+   - Tạo một Web App mới trên PythonAnywhere, chọn **Manual configuration** (Python 3.10).
+   - Mở file WSGI configuration (`/var/www/yourusername_pythonanywhere_com_wsgi.py`) và sửa thành:
+   ```python
+   import sys
+   import os
+
+   # Trỏ đường dẫn tới thư mục python-app
+   path = '/home/yourusername/cccd-qr-excel/python-app'
+   if path not in sys.path:
+       sys.path.append(path)
+
+   # Chuyển đổi ASGI (FastAPI) sang WSGI
+   from server import app as fastapi_app
+   from a2wsgi import ASGIMiddleware
+
+   application = ASGIMiddleware(fastapi_app)
+   ```
+3. Lưu file WSGI và nhấn nút **Reload** ứng dụng. Lúc này FastAPI (Server) và giao diện Web App sẽ chạy thông qua tên miền HTTPS mặc định của PythonAnywhere.
