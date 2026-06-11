@@ -91,6 +91,15 @@ document.addEventListener('DOMContentLoaded', () => {
         div.textContent = `> ${message}`;
         logContainer.appendChild(div);
         logContainer.scrollTop = logContainer.scrollHeight;
+        
+        // Push Camera logs to Server Terminal
+        if (message.includes("[Camera]")) {
+            fetch(APP_CONFIG.apiUrl + '/api/log_camera', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            }).catch(e => console.log('Failed to send log to server:', e));
+        }
     }
 
     function saveToCache() {

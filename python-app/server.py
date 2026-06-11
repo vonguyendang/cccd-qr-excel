@@ -57,6 +57,14 @@ class ScanQRRequest(BaseModel):
     imageBase64: str
     filename: Optional[str] = None
 
+class LogCameraRequest(BaseModel):
+    message: str
+
+@app.post("/api/log_camera")
+async def log_camera(req: LogCameraRequest):
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {req.message}", flush=True)
+    return {"success": True}
+
 @app.post("/api/scan_qr")
 async def scan_qr(req: ScanQRRequest):
     fname = f"'{req.filename}'" if req.filename else "từ Live Camera"
