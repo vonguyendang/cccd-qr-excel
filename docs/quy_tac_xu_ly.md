@@ -5,7 +5,7 @@ Tài liệu này lưu trữ các quy định chung cho cả 2 ứng dụng Pytho
 ## Cấu trúc dữ liệu QR
 
 Mã QR trên thẻ Căn cước công dân chứa chuỗi ký tự phân tách bằng dấu `|`.
-Ví dụ: `093186002237|362499103|Nguyễn Thị Kim Thư|11011986|Nữ|56 Trần Hoàng Na, Kv6, An Khánh, Ninh Kiều, Cần Thơ|04102024||||`
+Ví dụ: `012345678912|123456789|Nguyễn Văn A|01011990|Nam|123 Đường Số 1, Phường 2, Quận 3, TP Hồ Chí Minh|01012022||||`
 
 Dữ liệu được map theo các index sau (từ 0):
 - `0`: Số CCCD
