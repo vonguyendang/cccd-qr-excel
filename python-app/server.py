@@ -9,7 +9,7 @@ import httpx
 from io import BytesIO
 import numpy as np
 
-from fastapi import FastAPI, UploadFile, File, Request, HTTPException
+from fastapi import FastAPI, UploadFile, File, Request, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,7 +36,12 @@ app.add_middleware(
 detector = None
 
 @app.on_event("startup")
+async def startup_event():
+    cleanup_old_sessions()
+    await load_models()
+
 async def load_models():
+
     global detector
     model_paths = [
         'models/detect.prototxt', 'models/detect.caffemodel',
@@ -52,6 +57,193 @@ async def load_models():
             print(f"Error loading detector: {e}")
     else:
         print("Model files not found.")
+
+# ---- Room & WebSocket Sync Manager ----
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, room_id: str):
+        await websocket.accept()
+        if room_id not in self.active_connections:
+            self.active_connections[room_id] = []
+        self.active_connections[room_id].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, room_id: str):
+        if room_id in self.active_connections:
+            if websocket in self.active_connections[room_id]:
+                self.active_connections[room_id].remove(websocket)
+            if not self.active_connections[room_id]:
+                del self.active_connections[room_id]
+
+    async def broadcast(self, message: dict, room_id: str):
+        if room_id in self.active_connections:
+            for connection in self.active_connections[room_id]:
+                try:
+                    await connection.send_json(message)
+                except Exception:
+                    pass
+
+manager = ConnectionManager()
+rooms: Dict[str, Dict[str, Any]] = {}
+import time
+import glob
+
+SESSIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sessions")
+os.makedirs(SESSIONS_DIR, exist_ok=True)
+
+def cleanup_old_sessions():
+    try:
+        now = time.time()
+        count = 0
+        for filepath in glob.glob(os.path.join(SESSIONS_DIR, "*.json")):
+            if os.path.isfile(filepath):
+                # Check file modified time or read JSON
+                # 10 days = 10 * 24 * 60 * 60 seconds = 864000
+                if now - os.path.getmtime(filepath) > 864000:
+                    os.remove(filepath)
+                    count += 1
+        if count > 0:
+            print(f"Cleaned up {count} old session(s) > 10 days.")
+    except Exception as e:
+        print(f"Error cleaning up old sessions: {e}")
+
+
+def save_room(room_id: str):
+    try:
+        if room_id in rooms:
+            filepath = os.path.join(SESSIONS_DIR, f"{room_id}.json")
+            data_to_save = {
+                "items": rooms[room_id]["items"],
+                "seen_cccds": list(rooms[room_id]["seen_cccds"])
+            }
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(data_to_save, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Error saving session {room_id}: {e}")
+
+ROOMS_BACKUP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rooms_backup.json")
+
+def cleanup_old_sessions():
+    global rooms
+    if os.path.exists(ROOMS_BACKUP_FILE):
+        try:
+            with open(ROOMS_BACKUP_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for room_id, room_data in data.items():
+                    rooms[room_id] = {
+                        "items": room_data.get("items", []),
+                        "seen_cccds": set(room_data.get("seen_cccds", []))
+                    }
+            print(f"Loaded {len(rooms)} rooms from backup.")
+        except Exception as e:
+            print(f"Error loading rooms backup: {e}")
+
+def save_room(room_id):
+    try:
+        data_to_save = {}
+        for room_id, room_data in rooms.items():
+            data_to_save[room_id] = {
+                "items": room_data["items"],
+                "seen_cccds": list(room_data["seen_cccds"])
+            }
+        with open(ROOMS_BACKUP_FILE, "w", encoding="utf-8") as f:
+            json.dump(data_to_save, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Error saving rooms backup: {e}")
+
+
+@app.websocket("/ws/room/{room_id}")
+async def websocket_endpoint(websocket: WebSocket, room_id: str):
+    await manager.connect(websocket, room_id)
+    try:
+        while True:
+            _ = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, room_id)
+
+class ExportItem(BaseModel):
+    filename: Optional[str] = None
+    qrData: Optional[str] = None
+    error: Optional[str] = None
+    fromOCR: Optional[bool] = False
+    ocrData: Optional[Dict[str, str]] = None
+
+class RoomAddRequest(BaseModel):
+    room_id: str
+    item: ExportItem
+
+@app.post("/api/room/add")
+async def room_add(req: RoomAddRequest):
+    room_id = req.room_id
+    item = req.item
+    room = get_room(room_id)
+    
+    cccd_num = None
+    if item.qrData:
+        parts = item.qrData.split('|')
+        cccd_num = parts[0] if parts else None
+    elif item.fromOCR and item.ocrData:
+        cccd_num = item.ocrData.get('CCCD')
+        
+    if cccd_num:
+        if cccd_num in room["seen_cccds"]:
+            # If an OCR is already there and we found a QR, we should replace it.
+            # But for simplicity, if it's in seen_cccds, we check if we need to upgrade from OCR to QR.
+            # In Python, we can find the index and replace.
+            existing_idx = next((i for i, v in enumerate(room["items"]) 
+                                 if (v.get("qrData") and v["qrData"].startswith(cccd_num)) or 
+                                    (v.get("ocrData") and v["ocrData"].get("CCCD") == cccd_num)), None)
+            
+            if existing_idx is not None:
+                existing_item = room["items"][existing_idx]
+                if not existing_item.get("qrData") and item.qrData:
+                    # Upgrade OCR to QR
+                    room["items"][existing_idx] = item.dict()
+                    await manager.broadcast({
+                        "type": "update_item",
+                        "items": room["items"],
+                        "total_count": len(room["items"])
+                    }, room_id)
+                    save_room(room_id)
+                    return {"success": True, "total_count": len(room["items"])}
+                else:
+                    return {"success": False, "error": "Duplicate CCCD"}
+        else:
+            room["seen_cccds"].add(cccd_num)
+            
+    item_dict = item.dict()
+    room["items"].append(item_dict)
+    
+    await manager.broadcast({
+        "type": "new_item",
+        "item": item_dict,
+        "total_count": len(room["items"])
+    }, room_id)
+    save_room(room_id)
+    return {"success": True, "total_count": len(room["items"])}
+
+@app.get("/api/room/state/{room_id}")
+async def room_state(room_id: str):
+    room = get_room(room_id)
+    return {"success": True, "items": room["items"], "total_count": len(room["items"])}
+
+class RoomClearRequest(BaseModel):
+    room_id: str
+
+@app.post("/api/room/clear")
+async def room_clear(req: RoomClearRequest):
+    room_id = req.room_id
+    if room_id in rooms:
+        rooms[room_id] = {"items": [], "seen_cccds": set()}
+        save_room(room_id)
+        await manager.broadcast({
+            "type": "clear",
+            "total_count": 0
+        }, room_id)
+    return {"success": True}
+
+# ---- End Room Manager ----
 
 class ScanQRRequest(BaseModel):
     imageBase64: str
@@ -184,21 +376,9 @@ async def fetch_single_address_async(client, addr):
             "error": f"Lỗi API: {str(e)}"
         }
 
-class ExportItem(BaseModel):
-    filename: Optional[str] = None
-    qrData: Optional[str] = None
-    error: Optional[str] = None
-    fromOCR: Optional[bool] = False
-    ocrData: Optional[Dict[str, str]] = None
 
-class ExportRequest(BaseModel):
-    data: List[ExportItem]
-
-@app.post("/api/export")
-async def export_excel(req: ExportRequest):
-    items = req.data
-    
-    # Sort items: QR data first, then OCR, then errors. This ensures rich QR data isn't skipped if an OCR version exists.
+async def generate_excel_for_items(items: List[ExportItem]):
+    # Sort items: QR data first, then OCR, then errors.
     items.sort(key=lambda x: 0 if x.qrData else (1 if x.fromOCR else 2))
     
     print(f"\n[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Nhận yêu cầu xuất Excel cho {len(items)} bản ghi.", flush=True)
@@ -321,11 +501,29 @@ async def export_excel(req: ExportRequest):
     stream.seek(0)
     
     # Return Excel file
-    headers = {
+    headers_dict = {
         'Content-Disposition': 'attachment; filename="ket_qua.xlsx"',
         'Access-Control-Expose-Headers': 'Content-Disposition'
     }
-    return StreamingResponse(iter([stream.getvalue()]), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
+    return StreamingResponse(iter([stream.getvalue()]), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers_dict)
+
+
+class ExportRequest(BaseModel):
+    data: List[ExportItem]
+
+@app.post("/api/export")
+async def export_excel(req: ExportRequest):
+    return await generate_excel_for_items(req.data)
+
+class RoomExportRequest(BaseModel):
+    room_id: str
+
+@app.post("/api/room/export")
+async def room_export(req: RoomExportRequest):
+    room_id = req.room_id
+    room = get_room(room_id)
+    items = [ExportItem(**i) for i in room["items"]]
+    return await generate_excel_for_items(items)
 
 # Mount web-app directory as root static files
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

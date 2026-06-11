@@ -43,9 +43,148 @@ document.addEventListener('DOMContentLoaded', () => {
     const toastContainer = document.getElementById('toastContainer');
 
     let html5QrcodeScanner = null;
-    let scannedResults = []; // Stores the final payload objects
+    let scannedResults = [];
+                    saveToCache(); // Stores the final payload objects
     let recentScans = new Set(); // Prevent duplicate scans in short timeframe
     
+
+    const roomJoinSection = document.getElementById('roomJoinSection');
+    const roomActiveSection = document.getElementById('roomActiveSection');
+    const roomCodeInput = document.getElementById('roomCodeInput');
+    const btnJoinRoom = document.getElementById('btnJoinRoom');
+    const btnCreateRoom = document.getElementById('btnCreateRoom');
+    const btnLeaveRoom = document.getElementById('btnLeaveRoom');
+    const activeRoomCode = document.getElementById('activeRoomCode');
+    
+    let currentRoomId = null;
+    let ws = null;
+
+    function saveToCache() {
+        localStorage.setItem('cccd_scanned_results', JSON.stringify(scannedResults));
+    }
+
+
+    function generateRoomCode() {
+        return Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    async function joinRoom(roomId) {
+        if (!roomId) return;
+        try {
+            const res = await fetch(`/api/room/state/${roomId}`);
+            const data = await res.json();
+            if (data.success) {
+                currentRoomId = roomId;
+                localStorage.setItem('cccd_room_id', roomId);
+                
+                roomJoinSection.classList.add('hidden');
+                roomActiveSection.classList.remove('hidden');
+                roomActiveSection.classList.add('flex');
+                activeRoomCode.textContent = roomId;
+                
+                scannedResults = data.items;
+                saveToCache();
+                scannedUl.innerHTML = '';
+                scanCount.textContent = scannedResults.length;
+                if (scannedResults.length > 0) {
+                    document.getElementById('emptyState').classList.add('hidden');
+                    btnProcessAll.disabled = false;
+                    const temp = [...scannedResults];
+                    temp.reverse().forEach(item => renderScannedItemDOM(item));
+                } else {
+                    document.getElementById('emptyState').classList.remove('hidden');
+                    btnProcessAll.disabled = true;
+                }
+                
+                showToast(`Mã Khôi phục của bạn là ${roomId}. Hãy lưu lại!`, 'success');
+                connectWebSocket(roomId);
+            }
+        } catch(e) {
+            showToast('Lỗi kết nối phòng', 'error');
+        }
+    }
+
+    function connectWebSocket(roomId) {
+        if (ws) ws.close();
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        ws = new WebSocket(`${protocol}//${window.location.host}/ws/room/${roomId}`);
+        
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'new_item') {
+                    scannedResults.push(data.item);
+                    saveToCache();
+                    scanCount.textContent = data.total_count;
+                    document.getElementById('emptyState').classList.add('hidden');
+                    btnProcessAll.disabled = false;
+                    renderScannedItemDOM(data.item);
+                } else if (data.type === 'update_item') {
+                    scannedResults = data.items;
+                saveToCache();
+                    scanCount.textContent = data.total_count;
+                    scannedUl.innerHTML = '';
+                    const temp = [...scannedResults];
+                    temp.reverse().forEach(item => renderScannedItemDOM(item));
+                } else if (data.type === 'clear') {
+                    scannedResults = [];
+                    saveToCache();
+                    scannedUl.innerHTML = '';
+                    scanCount.textContent = '0';
+                    document.getElementById('emptyState').classList.remove('hidden');
+                    btnProcessAll.disabled = true;
+                    showToast('Phòng đã được làm mới bởi một thành viên.', 'success');
+                }
+            } catch(e) {}
+        };
+        
+        ws.onclose = () => {
+            if (currentRoomId === roomId) {
+                setTimeout(() => connectWebSocket(roomId), 3000);
+            }
+        };
+    }
+
+    function leaveRoom() {
+        if (ws) ws.close();
+        ws = null;
+        currentRoomId = null;
+        localStorage.removeItem('cccd_room_id');
+        
+        roomJoinSection.classList.remove('hidden');
+        roomActiveSection.classList.add('hidden');
+        roomActiveSection.classList.remove('flex');
+        
+        scannedResults = [];
+                    saveToCache();
+        scannedUl.innerHTML = '';
+        scanCount.textContent = '0';
+        document.getElementById('emptyState').classList.remove('hidden');
+        btnProcessAll.disabled = true;
+    }
+
+    if (btnJoinRoom) {
+        btnJoinRoom.addEventListener('click', () => {
+            const code = roomCodeInput.value.trim().toUpperCase();
+            if (code) joinRoom(code);
+        });
+        
+        btnCreateRoom.addEventListener('click', () => {
+            joinRoom(generateRoomCode());
+        });
+        
+        btnLeaveRoom.addEventListener('click', () => {
+            leaveRoom();
+        });
+    }
+
+    const cachedRoom = localStorage.getItem('cccd_room_id');
+    if (cachedRoom) {
+        joinRoom(cachedRoom);
+    } else {
+        joinRoom(generateRoomCode());
+    }
+
     // Toast Notification
     function showToast(message, type = 'success') {
         const toast = document.createElement('div');
@@ -57,25 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Load from cache on startup
-    const cachedData = localStorage.getItem('cccd_scanned_results');
-    if (cachedData) {
-        try {
-            const parsed = JSON.parse(cachedData);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                scannedResults = parsed;
-                scanCount.textContent = scannedResults.length;
-                document.getElementById('emptyState').classList.add('hidden');
-                btnProcessAll.disabled = false;
-                // render in reverse so they prepend in correct order or just append
-                parsed.forEach(item => {
-                    renderScannedItemDOM(item);
-                });
-            }
-        } catch(e) {
-            console.error('Lỗi khi tải cache', e);
-        }
-    }
-
+    
     function playBeep(type) {
         if (type === 'success') {
             successAudio.currentTime = 0;
@@ -102,10 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function saveToCache() {
-        localStorage.setItem('cccd_scanned_results', JSON.stringify(scannedResults));
-    }
-
+    
     const formatDate = d => (d && d.length === 8) ? d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4,8) : d;
 
     function renderScannedItemDOM(dataObj) {
@@ -242,29 +360,48 @@ document.addEventListener('DOMContentLoaded', () => {
             let existingItem = scannedResults[dupIndex];
             let isExistingQR = !!existingItem.qrData;
 
-            // If new is QR and existing is OCR, we remove the OCR one to replace it with QR!
             if (isNewQR && !isExistingQR) {
-                scannedResults.splice(dupIndex, 1);
-                // Re-render UI
-                const scannedUl = document.getElementById('scannedUl');
-                scannedUl.innerHTML = '';
-                const temp = [...scannedResults];
-                temp.reverse().forEach(item => renderScannedItemDOM(item));
-                return false; // Proceed to add the new QR item
+                return false; // Server will handle replacement
             }
-            return true; // Otherwise it's a true duplicate, skip it
+            return true;
         }
         return false;
     }
 
-    function addScannedItem(dataObj) {
-        scannedResults.push(dataObj);
-        scanCount.textContent = scannedResults.length;
-        document.getElementById('emptyState').classList.add('hidden');
-        btnProcessAll.disabled = false;
-        renderScannedItemDOM(dataObj);
-        saveToCache();
+
+    async function addScannedItem(dataObj) {
+        if (!currentRoomId) {
+            showToast('Bạn chưa vào phòng nào!', 'error');
+            return;
+        }
+        try {
+            const res = await fetch('/api/room/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room_id: currentRoomId, item: dataObj })
+            });
+            const data = await res.json();
+            if (data.success) {
+                playBeep('success');
+                showToast('Đã quét thành công!', 'success');
+                if (dataObj.qrData) {
+                    log(`[Hệ thống] Đã đồng bộ CCCD: ${dataObj.qrData.split('|')[0]}`);
+                } else if (dataObj.ocrData) {
+                    log(`[Hệ thống] Đã đồng bộ CCCD (OCR): ${dataObj.ocrData['CCCD']}`);
+                }
+            } else {
+                if (data.error === "Duplicate CCCD") {
+                    showToast('Thẻ này đã có trong phòng!', 'warning');
+                } else {
+                    showToast('Lỗi khi thêm vào phòng: ' + data.error, 'error');
+                }
+                playBeep('error');
+            }
+        } catch(e) {
+            showToast('Lỗi kết nối đồng bộ', 'error');
+        }
     }
+
 
     // --- Tab Logic ---
     function switchTab(tab) {
@@ -319,8 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         recentScans.add(decodedText);
-        playBeep('success');
-        showToast('Đã quét thành công 1 thẻ!', 'success');
+        
         log(`[Camera] Quét thành công CCCD: ${dataObj.qrData.split('|')[0]}`);
         addScannedItem(dataObj);
         
@@ -593,7 +729,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isDuplicateCccd(dataObj)) {
                     log(`[${index+1}/${totalFilesInQueue}] Bỏ qua ${file.name}: Dữ liệu CCCD bị trùng.`);
                 } else {
-                    playBeep('success');
                     addScannedItem(dataObj);
                 }
             } else {
@@ -653,10 +788,10 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadArea.classList.add('hidden');
         
         try {
-            const response = await fetch(APP_CONFIG.apiExportExcel, {
+            const response = await fetch('/api/room/export', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: scannedResults })
+                body: JSON.stringify({ room_id: currentRoomId })
             });
 
             serverSpinner.classList.add('hidden');
@@ -686,7 +821,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Clear state
                 scannedResults = [];
-                localStorage.removeItem('cccd_scanned_results');
+                    saveToCache();
+                
                 scannedUl.innerHTML = '';
                 scanCount.textContent = '0';
                 document.getElementById('emptyState').classList.remove('hidden');
@@ -708,15 +844,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnClear = document.getElementById('btnClear');
     if (btnClear) {
-        btnClear.addEventListener('click', () => {
-            if (confirm('Bạn có chắc muốn xóa toàn bộ danh sách kết quả?')) {
-                scannedResults = [];
-                localStorage.removeItem('cccd_scanned_results');
-                scannedUl.innerHTML = '';
-                scanCount.textContent = '0';
-                document.getElementById('emptyState').classList.remove('hidden');
-                btnProcessAll.disabled = true;
-                showToast('Đã làm mới dữ liệu.', 'success');
+        btnClear.addEventListener('click', async () => {
+            if (confirm('Bạn có chắc muốn xóa toàn bộ danh sách kết quả TRONG PHÒNG NÀY?')) {
+                if (currentRoomId) {
+                    await fetch('/api/room/clear', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ room_id: currentRoomId })
+                    });
+                }
             }
         });
     }
