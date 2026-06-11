@@ -31,14 +31,23 @@ File Excel bắt buộc phải có đủ 10 cột theo đúng thứ tự sau:
 9. **Ngày cấp CCCD**: Định dạng `dd/mm/yyyy` (chuyển từ `ddmmyyyy`)
 10. **Ghi chú**: Chứa lỗi ảnh không đọc được, dữ liệu trống, hoặc cảnh báo từ API. Các ghi chú nối với nhau bằng dấu `; `.
 
-## Quy tắc gọi API chuẩn hóa
+## Quy tắc gọi API chuẩn hóa Địa chỉ
 
-Hệ thống kết nối đến hệ thống chuẩn hóa qua endpoint: `https://diachi.io/api/convert-batch`
+Hệ thống kết nối đến API VNHub qua endpoint: `https://tienich.vnhub.com/api/wards`
 
-- Gọi API theo từng lô (batch), tối đa **100 địa chỉ / lần**.
-- Trả về `success = true` và có `converted` → điền vào `Địa chỉ chuẩn hóa mới`.
-- Trả về `notSure = true` → điền vào `Địa chỉ chuẩn hóa mới`, đồng thời thêm `Địa chỉ chuyển đổi chưa chắc chắn` vào cột `Ghi chú`.
-- Trả về `success = false` → bỏ trống cột chuẩn hóa, thêm câu báo lỗi vào cột `Ghi chú` (VD: `Không tìm thấy địa chỉ tương ứng trong dữ liệu`).
+- API được gọi theo phương thức `POST` bất đồng bộ (async) cho từng địa chỉ **độc nhất** (unique_addresses) xuất hiện trong lô thẻ để tăng tốc độ xử lý.
+- Payload: `{"address": "chuỗi_địa_chỉ"}` với header xác thực `x-kas`.
+- Trả về `success = true` và `data` hợp lệ → lấy kết quả ở `data[0].address` điền vào `Địa chỉ chuẩn hóa mới`.
+- Trả về lỗi, rỗng hoặc `success = false` → bỏ trống cột chuẩn hóa, thêm lý do (VD: `Lỗi API...` hoặc `Không tìm thấy địa chỉ tương ứng`) vào cột `Ghi chú`.
+
+## Quy tắc Trích xuất bằng AI (OCR)
+
+Khi mã QR không thể đọc được, Web App sử dụng Tesseract.js chạy trong Web Worker để đọc chữ (OCR) với ngôn ngữ `vie`.
+
+- **Số CCCD:** Tìm chuỗi chính xác 12 chữ số liền nhau (`\b\d{12}\b`).
+- **Ngày sinh/Ngày cấp:** Tìm theo định dạng `dd/mm/yyyy` (cho phép khoảng trắng).
+- **Giới tính:** Đếm số lần xuất hiện chữ `nam`. Hệ thống có cơ chế trừ hao các cụm từ chứa chữ "nam" nhưng là địa danh (như `việt nam`, `hà nam`, `quảng nam`, `hải nam`) để xác định chính xác giới tính.
+- Dữ liệu OCR luôn có mức ưu tiên thấp hơn QR. Trong file Excel, các dòng OCR sẽ bị đẩy xuống dưới cùng và luôn có `Ghi chú: Lấy bằng OCR`.
 
 ## Quy tắc Lưu trữ & Đồng bộ (Cập nhật Mới)
 
