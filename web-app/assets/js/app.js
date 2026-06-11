@@ -444,8 +444,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             
                             // Extract Gender strictly from Gender line
                             if (lineLower.includes("giới tính") || lineLower.includes("sex") || lineLower.includes("gioi tinh") || lineLower.includes("gidi")) {
-                                if (/(?<!việt\s)nam\b/i.test(lineLower)) ocrData['Giới tính'] = 'Nam';
-                                else if (/\bn[uưứữ][\s]*\b/i.test(lineLower) || /\bnữ\b/i.test(lineLower)) ocrData['Giới tính'] = 'Nữ';
+                                if (lineLower.includes("nữ") || lineLower.includes("nu ") || lineLower.includes("nư")) ocrData['Giới tính'] = 'Nữ';
+                                else if (lineLower.includes("nam")) ocrData['Giới tính'] = 'Nam';
                             }
                             
                             // 1. Extract Name
@@ -502,12 +502,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         
                         // Fallback Gender if keyword failed but Nữ is found anywhere
-                        if (!ocrData['Giới tính'] && /\bnữ\b/i.test(text)) {
+                        if (!ocrData['Giới tính'] && (text.toLowerCase().includes("nữ") || text.toLowerCase().includes("nư "))) {
                             ocrData['Giới tính'] = 'Nữ';
                         }
                         // Fallback Gender: Nam (if not Việt Nam or other common Nam)
-                        if (!ocrData['Giới tính'] && /(?<!việt\s|\b[hà|quảng]\s)nam\b/i.test(text)) {
-                            ocrData['Giới tính'] = 'Nam';
+                        if (!ocrData['Giới tính']) {
+                            const textLower = text.toLowerCase();
+                            // Count occurrences of "nam"
+                            const namCount = (textLower.match(/\bnam\b/g) || []).length;
+                            const vietNamCount = (textLower.match(/việt nam|viet nam|hà nam|quảng nam|hải nam/g) || []).length;
+                            if (namCount > vietNamCount) {
+                                ocrData['Giới tính'] = 'Nam';
+                            }
                         }
                             
 
