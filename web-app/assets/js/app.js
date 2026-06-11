@@ -172,16 +172,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         li.innerHTML = `
-            <div class="flex justify-between items-start">
+            <div class="flex justify-between items-start w-full">
                 <div class="flex items-center space-x-4">
                     ${icon}
                     <div>
                         ${headerLabel}
                     </div>
                 </div>
+                <button class="btn-copy text-slate-400 hover:text-indigo-400 p-2 rounded-lg hover:bg-indigo-500/10 transition-colors flex-shrink-0" title="Copy dữ liệu">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                </button>
             </div>
             ${detailsHtml}
         `;
+        
+        const btnCopy = li.querySelector('.btn-copy');
+        if (btnCopy) {
+            btnCopy.addEventListener('click', () => {
+                let copyText = '';
+                if (dataObj.qrData && dataObj.qrData.split('|').length >= 7) {
+                    const p = dataObj.qrData.split('|');
+                    copyText = `Họ tên: ${p[2]}\nCCCD: ${p[0]}\nCMND: ${p[1] || ''}\nGiới tính: ${p[4]}\nNgày sinh: ${formatDate(p[3])}\nNgày cấp: ${formatDate(p[6])}\nNơi thường trú: ${p[5]}`;
+                } else if (dataObj.ocrData && dataObj.ocrData['CCCD']) {
+                    const o = dataObj.ocrData;
+                    copyText = `Họ tên: ${o['Họ tên'] || ''}\nCCCD: ${o['CCCD'] || ''}\nCMND: ${o['CMND'] || ''}\nGiới tính: ${o['Giới tính'] || ''}\nNgày sinh: ${o['Ngày sinh'] || ''}\nNgày cấp: ${o['Ngày cấp CCCD'] || ''}\nNơi thường trú: ${o['Nơi thường trú gốc'] || ''}`;
+                } else if (dataObj.qrData) {
+                    copyText = `QR Raw: ${dataObj.qrData}`;
+                }
+                
+                navigator.clipboard.writeText(copyText).then(() => {
+                    showToast('Đã copy dữ liệu!', 'success');
+                    const svg = btnCopy.querySelector('svg');
+                    const oldPath = svg.innerHTML;
+                    svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>';
+                    svg.classList.add('text-emerald-400');
+                    setTimeout(() => {
+                        svg.innerHTML = oldPath;
+                        svg.classList.remove('text-emerald-400');
+                    }, 2000);
+                }).catch(err => {
+                    showToast('Lỗi copy: ' + err, 'error');
+                });
+            });
+        }
+        
         scannedUl.prepend(li);
     }
 
