@@ -1,0 +1,41 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+python-app/venv/
+venv/
+env/
+ENV/
+.env
+
+# PHP / Composer
+web-app/vendor/
+composer.phar
+
+# Generated Excel files
+*.xlsx
+*.xls
+*.csv
+
+# Web App Exports
+web-app/exports/*
+!web-app/exports/.gitkeep
+
+# Samples
+samples/*
+!samples/.gitkeep

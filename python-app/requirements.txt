@@ -1,0 +1,7 @@
+pyzbar
+Pillow
+opencv-python
+requests
+openpyxl
+pillow-heif
+pytesseract

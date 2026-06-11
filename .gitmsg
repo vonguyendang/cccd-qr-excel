@@ -1,0 +1,9 @@
+feat: Major upgrade - HEIC support, OCR fallback, API fixes, and deduplication
+
+- feat: Hỗ trợ đọc ảnh định dạng HEIC (Apple) bằng pillow-heif (Python) và heic2any (Web App).
+- feat: Tích hợp OCR quét vớt vát dữ liệu (Tesseract.js cho Web và pytesseract cho Python) khi không đọc được mã QR.
+- feat: Chống trùng lặp dữ liệu CCCD. Hệ thống tự nhận biết và loại bỏ CCCD bị trùng, chỉ lấy 1 bản ghi duy nhất.
+- fix: Khắc phục lỗi API 403 Forbidden bằng cách giả lập HTTP Headers (Origin, Referer) lách bộ lọc CORS.
+- perf: Tối ưu hoá gọi API chuẩn hoá địa chỉ, gộp các địa chỉ giống nhau giúp giảm số lượng request gửi đi.
+- chore: Bổ sung .gitignore và quy hoạch đầu ra Excel vào thư mục `exports/`.
+- docs: Cập nhật hướng dẫn sử dụng, fix lỗi IDE và ghi chú đầy đủ vào README.md.

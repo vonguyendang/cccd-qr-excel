@@ -1,0 +1,7 @@
+{
+    "name": "cccd-qr-excel/web-app",
+    "description": "Web app for CCCD QR code extraction and address standardization",
+    "require": {
+        "phpoffice/phpspreadsheet": "^1.29"
+    }
+}
