@@ -443,9 +443,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             const lineLower = line.toLowerCase();
                             
                             // Extract Gender strictly from Gender line
-                            if (lineLower.includes("giới tính") || lineLower.includes("sex") || lineLower.includes("gioi tinh")) {
-                                if (/\bNam\b/i.test(line)) ocrData['Giới tính'] = 'Nam';
-                                else if (/\bN[uưứữ][\s]*\b/i.test(line) || /\bNữ\b/i.test(line)) ocrData['Giới tính'] = 'Nữ';
+                            if (lineLower.includes("giới tính") || lineLower.includes("sex") || lineLower.includes("gioi tinh") || lineLower.includes("gidi")) {
+                                if (/(?<!việt\s)nam\b/i.test(lineLower)) ocrData['Giới tính'] = 'Nam';
+                                else if (/\bn[uưứữ][\s]*\b/i.test(lineLower) || /\bnữ\b/i.test(lineLower)) ocrData['Giới tính'] = 'Nữ';
                             }
                             
                             // 1. Extract Name
@@ -473,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                             
                             // 3. Extract Address
-                            if (lineLower.includes("nơi thường trú") || lineLower.includes("nơi cư trú") || lineLower.includes("residence") || lineLower.includes("cu tru") || lineLower.includes("thuong tru")) {
+                            if (lineLower.includes("thường trú") || lineLower.includes("cư trú") || lineLower.includes("residence") || lineLower.includes("cu tru") || lineLower.includes("thuong tru") || lineLower.includes("trú /") || lineLower.includes("tru /")) {
                                 let addrParts = [];
                                 if (line.includes(":")) addrParts.push(line.split(":")[1].replace(/[|]/g, '').trim());
                                 if (i+1 < lines.length && !lines[i+1].toLowerCase().includes("giá trị đến") && !lines[i+1].toLowerCase().includes("expiry")) {
@@ -499,6 +499,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!ocrData['Ngày sinh'] && allDates.length > 0) {
                             const firstDate = allDates[0].replace(/\s/g, '');
                             if (parseInt(firstDate.split('/')[2]) < 2020) ocrData['Ngày sinh'] = firstDate;
+                        }
+                        
+                        // Fallback Gender if keyword failed but Nữ is found anywhere
+                        if (!ocrData['Giới tính'] && /\bnữ\b/i.test(text)) {
+                            ocrData['Giới tính'] = 'Nữ';
+                        }
+                        // Fallback Gender: Nam (if not Việt Nam or other common Nam)
+                        if (!ocrData['Giới tính'] && /(?<!việt\s|\b[hà|quảng]\s)nam\b/i.test(text)) {
+                            ocrData['Giới tính'] = 'Nam';
                         }
                             
 
