@@ -208,7 +208,31 @@ async def room_add(req: RoomAddRequest):
                     save_room(room_id)
                     return {"success": True, "total_count": len(room["items"])}
                 else:
-                    return {"success": False, "error": "Duplicate CCCD"}
+                    # Both are OCR or both are QR, check which has more info
+                    def count_info(d):
+                        if not d: return 0
+                        keys = ['Họ tên', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD']
+                        return sum(1 for k in keys if d.get(k))
+                    
+                    old_count = 0
+                    new_count = 0
+                    
+                    # For OCR, compare ocrData
+                    if not existing_item.get("qrData") and not item.qrData:
+                        old_count = count_info(existing_item.get("ocrData"))
+                        new_count = count_info(item.ocrData)
+                    
+                    if new_count > old_count:
+                        room["items"][existing_idx] = item.dict()
+                        await manager.broadcast({
+                            "type": "update_item",
+                            "items": room["items"],
+                            "total_count": len(room["items"])
+                        }, room_id)
+                        save_room(room_id)
+                        return {"success": True, "total_count": len(room["items"])}
+                    else:
+                        return {"success": False, "error": "Duplicate CCCD"}
         else:
             room["seen_cccds"].add(cccd_num)
             
@@ -499,6 +523,18 @@ async def generate_excel_for_items(items: List[ExportItem]):
     stream = BytesIO()
     wb.save(stream)
     stream.seek(0)
+    
+    # Backup 1 bản lưu vào web-app/exports
+    try:
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        exports_dir = os.path.join(project_dir, 'web-app', 'exports')
+        os.makedirs(exports_dir, exist_ok=True)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_filepath = os.path.join(exports_dir, f"backup_ket_qua_{timestamp}.xlsx")
+        wb.save(backup_filepath)
+        print(f"-> Đã tự động backup file Excel tại: {backup_filepath}", flush=True)
+    except Exception as e:
+        print(f"-> Lỗi khi lưu backup file Excel: {e}", flush=True)
     
     # Return Excel file
     headers_dict = {

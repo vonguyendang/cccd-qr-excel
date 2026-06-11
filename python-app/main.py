@@ -218,12 +218,12 @@ def fetch_single_address(addr):
             "error": f"Lỗi API: {str(e)}"
         }
 
-def call_address_api(address_list):
+def call_address_api(address_list, max_workers=20):
     if not address_list:
         return []
         
     results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(fetch_single_address, addr): addr for addr in address_list}
         for future in concurrent.futures.as_completed(futures):
             results.append(future.result())
@@ -263,9 +263,24 @@ def main():
 
     print(f"\n✅ Đã quét thư mục và tìm thấy tổng cộng {len(image_paths)} file ảnh.")
     
+    # Cấu hình luồng xử lý
+    num_threads_input = input("\nNhập số luồng xử lý ảnh song song (Enter để mặc định là 4): ").strip()
+    try:
+        num_threads = int(num_threads_input) if num_threads_input else 4
+    except ValueError:
+        print("⚠️ Giá trị không hợp lệ, sử dụng mặc định: 4 luồng.")
+        num_threads = 4
+
+    api_threads_input = input("Nhập số luồng gọi API địa chỉ song song (Enter để mặc định là 20): ").strip()
+    try:
+        api_threads = int(api_threads_input) if api_threads_input else 20
+    except ValueError:
+        print("⚠️ Giá trị không hợp lệ, sử dụng mặc định: 20 luồng.")
+        api_threads = 20
+
     # Wizard confirmation
     while True:
-        confirm = input("Bạn có muốn bắt đầu xử lý ngay bây giờ không? (y/n): ").strip().lower()
+        confirm = input("\nBạn có muốn bắt đầu xử lý ngay bây giờ không? (y/n): ").strip().lower()
         if confirm == 'y' or confirm == '':
             break
         elif confirm == 'n':
@@ -275,15 +290,14 @@ def main():
             print("Vui lòng nhập 'y' (có) hoặc 'n' (không).")
 
     print("\n" + "-"*40)
-    print("🚀 BẮT ĐẦU XỬ LÝ ẢNH...")
+    print(f"🚀 BẮT ĐẦU XỬ LÝ {len(image_paths)} ẢNH VỚI {num_threads} LUỒNG...")
     print("-" * 40)
 
     processed_data = []
-    all_addresses = []
     seen_cccds = set()
     
-    for idx, img_path in enumerate(image_paths):
-        print(f"[{idx+1}/{len(image_paths)}] Đang đọc {os.path.basename(img_path)}...")
+    def process_single_image(img_path, idx, total):
+        print(f"[{idx+1}/{total}] Đang đọc {os.path.basename(img_path)}...")
         qr_string, err, img = extract_qr_data(img_path)
         
         row_data = {
@@ -304,21 +318,55 @@ def main():
             
             # Fallback to OCR
             if img is not None:
-                print("   -> Không đọc được QR, đang thử quét OCR...")
+                print(f"   -> [{os.path.basename(img_path)}] Không đọc được QR, đang thử quét OCR...")
                 ocr_data, ocr_note = extract_ocr_data(img)
                 row_data.update(ocr_data)
                 notes.append(ocr_note)
-            
-        # Deduplication
-        cccd_num = row_data['CCCD']
-        if cccd_num:
-            if cccd_num in seen_cccds:
-                print(f"   -> Bỏ qua vì đã xử lý CCCD {cccd_num} trước đó.")
-                continue
-            seen_cccds.add(cccd_num)
-            
+                
         row_data['Ghi chú'] = '; '.join(notes)
-        processed_data.append(row_data)
+        return row_data
+
+    # Chạy song song với ThreadPoolExecutor
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+        future_to_img = {executor.submit(process_single_image, path, idx, len(image_paths)): path for idx, path in enumerate(image_paths)}
+        
+        for future in concurrent.futures.as_completed(future_to_img):
+            img_path = future_to_img[future]
+            try:
+                row_data = future.result()
+                
+                # Deduplication thông minh (Giống Server)
+                cccd_num = row_data['CCCD']
+                if cccd_num:
+                    if cccd_num in seen_cccds:
+                        is_qr = bool(row_data.get('QR Raw'))
+                        existing_idx = next((i for i, v in enumerate(processed_data) if v.get('CCCD') == cccd_num), None)
+                        
+                        if existing_idx is not None:
+                            existing_is_qr = bool(processed_data[existing_idx].get('QR Raw'))
+                            
+                            def count_info(d):
+                                keys = ['Họ tên', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD']
+                                return sum(1 for k in keys if d.get(k))
+
+                            if not existing_is_qr and is_qr:
+                                print(f"   -> 🔄 Cập nhật CCCD {cccd_num}: Ghi đè bản OCR cũ bằng bản quét QR chính xác hơn.")
+                                processed_data[existing_idx] = row_data
+                            else:
+                                old_count = count_info(processed_data[existing_idx])
+                                new_count = count_info(row_data)
+                                if new_count > old_count:
+                                    print(f"   -> 🔄 Cập nhật CCCD {cccd_num}: Ghi đè bằng bản quét mới có nhiều thông tin hơn ({new_count} > {old_count}).")
+                                    processed_data[existing_idx] = row_data
+                                else:
+                                    print(f"   -> ⚠️ Bỏ qua vì đã xử lý CCCD {cccd_num} trước đó (Trùng lặp).")
+                        continue
+                    else:
+                        seen_cccds.add(cccd_num)
+                    
+                processed_data.append(row_data)
+            except Exception as exc:
+                print(f"❌ Lỗi khi xử lý ảnh {os.path.basename(img_path)}: {exc}")
     # Lấy danh sách địa chỉ duy nhất
     print("Đang chuẩn bị gửi dữ liệu lên API...")
     unique_addresses = list(set([item['Nơi thường trú gốc'] for item in processed_data if item.get('Nơi thường trú gốc')]))
@@ -326,11 +374,11 @@ def main():
 
     # Gọi API chuẩn hóa địa chỉ theo batch
     if unique_addresses:
-        print(f"Đang gọi API chuẩn hóa cho {len(unique_addresses)} địa chỉ duy nhất...")
+        print(f"Đang gọi API chuẩn hóa cho {len(unique_addresses)} địa chỉ duy nhất (với {api_threads} luồng)...")
         batch_size = 100
         for i in range(0, len(unique_addresses), batch_size):
             batch = unique_addresses[i:i+batch_size]
-            api_results = call_address_api(batch)
+            api_results = call_address_api(batch, max_workers=api_threads)
             
             for j, result in enumerate(api_results):
                 if j < len(batch):
