@@ -30,6 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCancelImport = document.getElementById('btnCancelImport');
     
     let isImportCancelled = false;
+    let fileQueue = [];
+    let isProcessingQueue = false;
+    let totalFilesInQueue = 0;
+    let processedCountInQueue = 0;
     
     const serverSection = document.getElementById('serverSection');
     const serverStatusText = document.getElementById('serverStatusText');
@@ -321,16 +325,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
         
+        fileQueue.push(...files);
+        totalFilesInQueue += files.length;
+        
+        if (isProcessingQueue) {
+            log(`[Hệ thống] Đã thêm ${files.length} file vào hàng chờ (Đang đợi: ${fileQueue.length} file)...`);
+            // Update progress bar max
+            progressText.textContent = `${processedCountInQueue}/${totalFilesInQueue}`;
+            progressFill.style.width = `${(processedCountInQueue / totalFilesInQueue) * 100}%`;
+            fileInput.value = ''; // Reset
+            return;
+        }
+        
+        isProcessingQueue = true;
         isImportCancelled = false;
         btnCancelImport.classList.remove('hidden');
 
         statusSection.classList.remove('hidden');
         logContainer.innerHTML = '';
         
-        const total = files.length;
-        let processedCount = 0;
-
-        log(`Bắt đầu xử lý ${total} file...`);
+        log(`Bắt đầu xử lý hàng chờ gồm ${totalFilesInQueue} file...`);
 
         const readFileAsImage = async (file) => {
             if (file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic') {
@@ -377,14 +391,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const processImage = async (file, index) => {
             if (scannedResults.some(item => item.filename === file.name && !item.error)) {
-                log(`[${index+1}/${total}] Bỏ qua ${file.name}: Đã có trong bộ đệm (trùng tên file).`);
-                processedCount++;
-                progressText.textContent = `${processedCount}/${total}`;
-                progressFill.style.width = `${(processedCount / total) * 100}%`;
+                log(`[${index+1}/${totalFilesInQueue}] Bỏ qua ${file.name}: Đã có trong bộ đệm (trùng tên file).`);
+                processedCountInQueue++;
+                progressText.textContent = `${processedCountInQueue}/${totalFilesInQueue}`;
+                progressFill.style.width = `${(processedCountInQueue / totalFilesInQueue) * 100}%`;
                 return;
             }
 
-            log(`[${index+1}/${total}] Bắt đầu xử lý: ${file.name}`);
+            log(`[${index+1}/${totalFilesInQueue}] Bắt đầu xử lý: ${file.name}`);
             let dataObj = { filename: file.name, qrData: null, error: null, fromOCR: false };
 
             try {
@@ -405,15 +419,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (res.success && res.data) {
                             dataObj.qrData = res.data;
                             foundQR = true;
-                            log(`[${index+1}/${total}] Tìm thấy QR bằng AI Backend.`);
+                            log(`[${index+1}/${totalFilesInQueue}] Tìm thấy QR bằng AI Backend.`);
                         }
                     } catch(e) {
-                        log(`[${index+1}/${total}] Lỗi AI Backend.`);
+                        log(`[${index+1}/${totalFilesInQueue}] Lỗi AI Backend.`);
                     }
                 }
                 
                 if (!foundQR) {
-                    log(`[${index+1}/${total}] Không tìm thấy QR, đang thử OCR...`);
+                    log(`[${index+1}/${totalFilesInQueue}] Không tìm thấy QR, đang thử OCR...`);
                     try {
                         // OCR runs on the optimized image, much faster
                         const { data: { text } } = await Tesseract.recognize(optimizedBase64, 'vie');
@@ -482,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         dataObj.ocrData = ocrData;
                         dataObj.fromOCR = true;
-                        log(`[${index+1}/${total}] Quét OCR hoàn tất.`);
+                        log(`[${index+1}/${totalFilesInQueue}] Quét OCR hoàn tất.`);
                     } catch (ocrErr) {
                         dataObj.error = "Không tìm thấy QR/Lỗi OCR";
                     }
@@ -493,46 +507,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!dataObj.error && (dataObj.qrData || dataObj.ocrData['CCCD'])) {
                 if (isDuplicateCccd(dataObj)) {
-                    log(`[${index+1}/${total}] Bỏ qua ${file.name}: Dữ liệu CCCD bị trùng.`);
+                    log(`[${index+1}/${totalFilesInQueue}] Bỏ qua ${file.name}: Dữ liệu CCCD bị trùng.`);
                 } else {
                     playBeep('success');
                     addScannedItem(dataObj);
                 }
             } else {
                 playBeep('error');
-                log(`[${index+1}/${total}] Thất bại ${file.name}: ${dataObj.error}`);
+                log(`[${index+1}/${totalFilesInQueue}] Thất bại ${file.name}: ${dataObj.error}`);
             }
 
-            processedCount++;
-            progressText.textContent = `${processedCount}/${total}`;
-            progressFill.style.width = `${(processedCount / total) * 100}%`;
+            processedCountInQueue++;
+            progressText.textContent = `${processedCountInQueue}/${totalFilesInQueue}`;
+            progressFill.style.width = `${(processedCountInQueue / totalFilesInQueue) * 100}%`;
         };
 
         // Run concurrently with a pool of workers defined in config
         const concurrencyLimit = APP_CONFIG.concurrencyLimit;
-        let currentIndex = 0;
         const workers = Array(concurrencyLimit).fill(Promise.resolve()).map(async () => {
-            while (currentIndex < total) {
+            while (fileQueue.length > 0) {
                 if (isImportCancelled) {
-                    currentIndex = total; // Force break for other workers
+                    fileQueue = []; // Empty queue
                     break;
                 }
-                const idx = currentIndex++;
-                await processImage(files[idx], idx);
+                const file = fileQueue.shift();
+                await processImage(file, processedCountInQueue); // Pass current index just for logging
             }
         });
         
         await Promise.all(workers);
 
         btnCancelImport.classList.add('hidden');
+        isProcessingQueue = false;
 
         if (isImportCancelled) {
-            log(`Đã hủy tiến trình, chỉ quét xong ${processedCount}/${total} file.`);
-            showToast(`Đã hủy! Quét được ${processedCount}/${total} file.`, 'error');
+            log(`Đã hủy tiến trình, chỉ quét xong ${processedCountInQueue}/${totalFilesInQueue} file.`);
+            showToast(`Đã hủy! Quét được ${processedCountInQueue}/${totalFilesInQueue} file.`, 'error');
         } else {
-            log(`Hoàn tất đọc ${total} file.`);
-            showToast(`Đã tải lên và đọc xong ${total} file`, 'success');
+            log(`Hoàn tất đọc ${totalFilesInQueue} file.`);
+            showToast(`Đã tải lên và đọc xong toàn bộ hàng chờ.`, 'success');
         }
+        
+        // Reset queue counters
+        totalFilesInQueue = 0;
+        processedCountInQueue = 0;
         
         // Reset input so same file can be selected again if needed
         fileInput.value = '';
