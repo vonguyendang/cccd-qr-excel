@@ -1,128 +1,76 @@
-:root {
-    --primary-color: #4361ee;
-    --success-color: #2ecc71;
-    --error-color: #e74c3c;
-    --bg-color: #f8f9fa;
-    --text-color: #333;
-    --border-color: #dee2e6;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.5);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.8);
 }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    line-height: 1.6;
-    margin: 0;
-    padding: 20px;
+.glass-panel {
+    background: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
 }
 
-.container {
-    max-width: 800px;
-    margin: 0 auto;
-    background: #fff;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+.tab-btn {
+    color: #9ca3af;
+    border: 2px solid transparent;
+}
+.tab-btn:hover {
+    color: #e5e7eb;
+}
+.tab-btn.active {
+    color: #fff;
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
 }
 
-h1 {
-    text-align: center;
-    color: var(--primary-color);
-    margin-bottom: 5px;
-}
-
-p {
-    text-align: center;
-    color: #666;
-    margin-bottom: 30px;
-}
-
-.upload-area {
-    border: 2px dashed var(--primary-color);
-    border-radius: 8px;
-    padding: 40px 20px;
-    text-align: center;
-    background-color: rgba(67, 97, 238, 0.05);
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.upload-area:hover {
-    background-color: rgba(67, 97, 238, 0.1);
-}
-
-.file-input {
-    display: none;
-}
-
-.upload-label {
-    cursor: pointer;
-    display: block;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--primary-color);
-}
-
-.hidden {
-    display: none;
-}
-
-.status-section {
-    margin-top: 30px;
-}
-
-.progress-bar {
-    width: 100%;
-    height: 20px;
-    background-color: var(--border-color);
-    border-radius: 10px;
+/* Scanner Customizations */
+#reader {
+    border-radius: 12px;
     overflow: hidden;
-    margin-bottom: 15px;
+}
+#reader video {
+    object-fit: cover;
+    border-radius: 12px;
+}
+#reader__dashboard_section_csr span {
+    color: #fff !important;
+}
+#reader__dashboard_section_csr button {
+    background-color: #3b82f6 !important;
+    color: #fff !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
 }
 
-.progress-fill {
-    height: 100%;
-    background-color: var(--primary-color);
-    width: 0%;
-    transition: width 0.3s ease;
+.toast {
+    animation: slideIn 0.3s ease forwards, fadeOut 0.5s ease 2.5s forwards;
 }
 
-.log-container {
-    height: 200px;
-    overflow-y: auto;
-    background: #282c34;
-    color: #abb2bf;
-    padding: 10px;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 13px;
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
 
-.log-container div {
-    margin-bottom: 5px;
-    border-bottom: 1px solid #3e4451;
-    padding-bottom: 2px;
-}
-
-.server-section {
-    margin-top: 30px;
-    text-align: center;
-    padding: 20px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-}
-
-.btn-download {
-    display: inline-block;
-    padding: 10px 20px;
-    background-color: var(--success-color);
-    color: white;
-    text-decoration: none;
-    border-radius: 4px;
-    font-weight: bold;
-    transition: background 0.3s ease;
-}
-
-.btn-download:hover {
-    background-color: #27ae60;
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; display: none; }
 }

@@ -14,6 +14,39 @@ header('Content-Type: application/json');
 $json = file_get_contents('php://input');
 $requestData = json_decode($json, true);
 
+// Handle python AI QR scanning via AJAX
+if (isset($_GET['action']) && $_GET['action'] === 'scan_qr') {
+    if (!isset($requestData['imageBase64'])) {
+        echo json_encode(['success' => false, 'error' => 'No image data']);
+        exit;
+    }
+    
+    // Convert base64 to temp image
+    $base64 = $requestData['imageBase64'];
+    $parts = explode(',', $base64);
+    $data = isset($parts[1]) ? base64_decode($parts[1]) : base64_decode($base64);
+    
+    $tmpFilePath = sys_get_temp_dir() . '/' . uniqid('cccd_') . '.jpg';
+    file_put_contents($tmpFilePath, $data);
+    
+    // Execute python script
+    $pythonCmd = escapeshellarg(__DIR__ . '/../python-app/venv/bin/python');
+    $scriptPath = escapeshellarg(__DIR__ . '/../python-app/scan.py');
+    $imgArg = escapeshellarg($tmpFilePath);
+    
+    $output = shell_exec("$pythonCmd $scriptPath $imgArg 2>&1");
+    unlink($tmpFilePath);
+    
+    // Check output
+    $decoded = json_decode($output, true);
+    if (is_array($decoded)) {
+        echo json_encode($decoded);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Python execution error', 'raw' => $output]);
+    }
+    exit;
+}
+
 if (!isset($requestData['data']) || !is_array($requestData['data'])) {
     echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ']);
     exit;
@@ -49,48 +82,66 @@ function processQRString(string $qrString): array {
 }
 
 function callAddressAPI(array $addressList, string $apiUrl): array {
-    if (empty($apiUrl)) {
-        // Mock API
-        $results = [];
-        foreach ($addressList as $addr) {
-            if (strpos($addr, 'Không tìm thấy') !== false) {
-                $results[] = ["original" => $addr, "success" => false, "error" => "Không tìm thấy địa chỉ tương ứng trong dữ liệu."];
-            } else if (strpos($addr, 'Cũ') !== false) {
-                $results[] = ["original" => $addr, "converted" => $addr . " (Mới)", "success" => true, "notSure" => true];
+    if (empty($addressList)) return [];
+
+    $mh = curl_multi_init();
+    $curlArray = [];
+    
+    $headers = [
+        'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:151.0) Gecko/20100101 Firefox/151.0',
+        'Accept: application/json, text/plain, */*',
+        'Content-Type: application/json',
+        'x-kas: 89232422',
+        'Origin: https://tienich.vnhub.com',
+        'Referer: https://tienich.vnhub.com/'
+    ];
+
+    foreach ($addressList as $i => $addr) {
+        $ch = curl_init('https://tienich.vnhub.com/api/wards');
+        $payload = json_encode(['address' => $addr]);
+        
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        
+        $curlArray[$i] = $ch;
+        curl_multi_add_handle($mh, $ch);
+    }
+    
+    // Execute all queries simultaneously
+    $running = null;
+    do {
+        curl_multi_exec($mh, $running);
+        curl_multi_select($mh);
+    } while ($running > 0);
+    
+    $results = [];
+    foreach ($addressList as $i => $addr) {
+        $response = curl_multi_getcontent($curlArray[$i]);
+        $error = curl_error($curlArray[$i]);
+        curl_multi_remove_handle($mh, $curlArray[$i]);
+        
+        if ($error || !$response) {
+            $results[] = ["original" => $addr, "success" => false, "error" => "Lỗi kết nối API: " . ($error ? $error : "Empty response")];
+        } else {
+            $resData = json_decode($response, true);
+            if (isset($resData['success']) && $resData['success'] === true && !empty($resData['data'][0]['address'])) {
+                $converted = $resData['data'][0]['address'];
+                $results[] = [
+                    "original" => $addr, 
+                    "success" => true, 
+                    "converted" => $converted
+                ];
             } else {
-                $results[] = ["original" => $addr, "converted" => $addr . " (Đã chuẩn hóa)", "success" => true];
+                $results[] = ["original" => $addr, "success" => false, "error" => "Không tìm thấy địa chỉ tương ứng"];
             }
         }
-        return $results;
     }
-
-    // Call real API
-    $ch = curl_init($apiUrl);
-    $payload = json_encode(['addresses' => $addressList]);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Content-Length: ' . strlen($payload),
-        'Origin: https://diachi.io',
-        'Referer: https://diachi.io'
-    ]);
     
-    $response = curl_exec($ch);
-    $error = curl_error($ch);
-
-    if ($error) {
-        // fallback on error
-        $results = [];
-        foreach ($addressList as $addr) {
-            $results[] = ["original" => $addr, "success" => false, "error" => "Lỗi API: " . $error];
-        }
-        return $results;
-    }
-
-    $resData = json_decode($response, true);
-    return $resData['data'] ?? [];
+    curl_multi_close($mh);
+    return $results;
 }
 
 $processedData = [];
@@ -101,13 +152,14 @@ foreach ($items as $idx => $item) {
     $rowData = [
         'Họ tên' => '', 'CCCD' => '', 'CMND' => '', 'Giới tính' => '',
         'Ngày sinh' => '', 'Nơi thường trú gốc' => '', 'Địa chỉ chuẩn hóa mới' => '',
-        'Ngày cấp CCCD' => '', 'Ghi chú' => ''
+        'Ngày cấp CCCD' => '', 'Ghi chú' => '', 'QR Raw' => ''
     ];
     $notes = [];
 
     if (!empty($item['error'])) {
         $notes[] = $item['error'];
     } else if (!empty($item['qrData'])) {
+        $rowData['QR Raw'] = $item['qrData'];
         list($extracted, $validationNotes) = processQRString($item['qrData']);
         
         // Deduplication logic
@@ -193,7 +245,7 @@ $sheet->setTitle('Data');
 
 $headers = [
     "STT", "Họ tên", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
-    "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Ghi chú"
+    "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Ghi chú", "QR Raw"
 ];
 
 // Write headers
@@ -218,11 +270,12 @@ foreach ($processedData as $data) {
     $sheet->setCellValue('H' . $rowNum, $data['Địa chỉ chuẩn hóa mới']);
     $sheet->setCellValue('I' . $rowNum, $data['Ngày cấp CCCD']);
     $sheet->setCellValue('J' . $rowNum, $data['Ghi chú']);
+    $sheet->setCellValue('K' . $rowNum, $data['QR Raw']);
     $rowNum++;
 }
 
 // Auto size columns (optional, but good for UX)
-foreach (range('A', 'J') as $col) {
+foreach (range('A', 'K') as $col) {
     $sheet->getColumnDimension($col)->setAutoSize(true);
 }
 

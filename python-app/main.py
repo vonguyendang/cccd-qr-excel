@@ -13,9 +13,8 @@ import numpy as np
 from PIL import Image
 import pytesseract
 import re
+import concurrent.futures
 
-# API Chuẩn hóa địa chỉ
-API_URL = os.environ.get("ADDRESS_API_URL", "https://diachi.io/api/convert-batch")
 
 def format_date(date_str):
     if not date_str or len(date_str) != 8:
@@ -145,42 +144,54 @@ def process_qr_string(qr_string):
         
     return data, notes
 
-def call_address_api(address_list):
-    """
-    Mock implementation of the batch API.
-    Replace with actual HTTP call.
-    """
-    if not API_URL:
-        # Mock behavior
-        results = []
-        for addr in address_list:
-            if "Không tìm thấy" in addr:
-                results.append({"original": addr, "success": False, "error": "Không tìm thấy địa chỉ tương ứng trong dữ liệu."})
-            elif "Cũ" in addr:
-                results.append({"original": addr, "converted": addr + " (Mới)", "success": True, "notSure": True})
-            else:
-                results.append({"original": addr, "converted": addr + " (Đã chuẩn hóa)", "success": True})
-        return results
-    
-    # Real API call (adjust payload format as needed based on actual API)
+def fetch_single_address(addr):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:151.0) Gecko/20100101 Firefox/151.0',
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        'x-kas': '89232422',
+        'Origin': 'https://tienich.vnhub.com',
+        'Referer': 'https://tienich.vnhub.com/'
+    }
     try:
-        headers = {
-            'Content-Type': 'application/json',
-            'Origin': 'https://diachi.io',
-            'Referer': 'https://diachi.io'
-        }
         response = requests.post(
-            API_URL, 
-            json={"addresses": address_list},
+            'https://tienich.vnhub.com/api/wards', 
+            json={"address": addr},
             headers=headers,
-            timeout=10
+            timeout=15
         )
         response.raise_for_status()
-        return response.json().get('data', []) # Adjust based on actual response structure
+        res_data = response.json()
+        if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
+            return {
+                "original": addr,
+                "success": True,
+                "converted": res_data['data'][0]['address']
+            }
+        else:
+            return {
+                "original": addr,
+                "success": False,
+                "error": "Không tìm thấy địa chỉ tương ứng"
+            }
     except Exception as e:
-        print(f"Lỗi gọi API: {e}")
-        # Fallback to errors
-        return [{"original": addr, "success": False, "error": f"Lỗi API: {str(e)}"} for addr in address_list]
+        return {
+            "original": addr,
+            "success": False,
+            "error": f"Lỗi API: {str(e)}"
+        }
+
+def call_address_api(address_list):
+    if not address_list:
+        return []
+        
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(fetch_single_address, addr): addr for addr in address_list}
+        for future in concurrent.futures.as_completed(futures):
+            results.append(future.result())
+            
+    return results
 
 def main():
     print("="*60)
@@ -241,11 +252,12 @@ def main():
         row_data = {
             'Họ tên': '', 'CCCD': '', 'CMND': '', 'Giới tính': '',
             'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': '',
-            'Ngày cấp CCCD': '', 'Ghi chú': ''
+            'Ngày cấp CCCD': '', 'Ghi chú': '', 'QR Raw': ''
         }
         notes = []
 
         if qr_string:
+            row_data['QR Raw'] = qr_string
             extracted, validation_notes = process_qr_string(qr_string)
             row_data.update(extracted)
             notes.extend(validation_notes)
