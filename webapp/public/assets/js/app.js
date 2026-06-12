@@ -440,8 +440,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const now = new Date();
+        const ts = String(now.getDate()).padStart(2, '0') + '/' + 
+                   String(now.getMonth() + 1).padStart(2, '0') + '/' + 
+                   now.getFullYear() + ' ' + 
+                   String(now.getHours()).padStart(2, '0') + ':' + 
+                   String(now.getMinutes()).padStart(2, '0') + ':' + 
+                   String(now.getSeconds()).padStart(2, '0');
+                   
         const dataObj = {
-            filename: 'Camera_Scan_' + Date.now() + '.jpg',
+            filename: 'Live ' + ts + '.jpg',
             qrData: decodedText,
             error: null,
             fromOCR: false
@@ -595,12 +603,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             log(`[${index+1}/${totalFilesInQueue}] Bắt đầu xử lý: ${file.name}`);
-            let dataObj = { filename: file.name, qrData: null, error: null, fromOCR: false };
+            let dataObj = { filename: file.name, qrData: null, error: null, fromOCR: false, imageBase64: null };
 
             try {
                 const img = await readFileAsImage(file);
                 // Resize image to max (from config) to drastically reduce payload size and OCR time
                 const optimizedBase64 = resizeImage(img, APP_CONFIG.maxImageSize); 
+                dataObj.imageBase64 = optimizedBase64;
                 
                 let foundQR = false;
                 
@@ -728,6 +737,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!dataObj.error && (dataObj.qrData || dataObj.ocrData['CCCD'])) {
                 if (isDuplicateCccd(dataObj)) {
                     log(`[${index+1}/${totalFilesInQueue}] Bỏ qua ${file.name}: Dữ liệu CCCD bị trùng.`);
+                    dataObj.isDuplicate = true;
+                    addScannedItem(dataObj);
                 } else {
                     addScannedItem(dataObj);
                 }
@@ -801,7 +812,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const url = window.URL.createObjectURL(blob);
                 
                 // Trích xuất filename từ header Content-Disposition nếu có
-                let filename = "ket_qua.xlsx";
+                let filename = "ket_qua.zip";
                 const disposition = response.headers.get('content-disposition');
                 if (disposition && disposition.indexOf('attachment') !== -1) {
                     var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
@@ -811,7 +822,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                serverStatusText.textContent = 'Xử lý thành công! File Excel đã sẵn sàng.';
+                serverStatusText.textContent = 'Xử lý thành công! File ZIP đã sẵn sàng.';
                 serverStatusText.classList.replace('text-blue-300', 'text-green-400');
                 downloadArea.classList.remove('hidden');
                 downloadLink.href = url;

@@ -14,6 +14,7 @@ from PIL import Image
 import pytesseract
 import re
 import concurrent.futures
+import zipfile
 
 
 def format_date(date_str):
@@ -303,11 +304,15 @@ def main():
         row_data = {
             'Họ tên': '', 'CCCD': '', 'CMND': '', 'Giới tính': '',
             'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': '',
-            'Ngày cấp CCCD': '', 'Ghi chú': '', 'QR Raw': ''
+            'Ngày cấp CCCD': '', 'Ghi chú': '', 'QR Raw': '',
+            'Image Path': os.path.basename(img_path),
+            'Full Image Path': img_path,
+            'Scan Type': 'error'
         }
         notes = []
 
         if qr_string:
+            row_data['Scan Type'] = 'QR_scanned'
             row_data['QR Raw'] = qr_string
             extracted, validation_notes = process_qr_string(qr_string)
             row_data.update(extracted)
@@ -320,12 +325,15 @@ def main():
             if img is not None:
                 print(f"   -> [{os.path.basename(img_path)}] Không đọc được QR, đang thử quét OCR...")
                 ocr_data, ocr_note = extract_ocr_data(img)
+                if ocr_data.get('CCCD'):
+                    row_data['Scan Type'] = 'OCR_scanned'
                 row_data.update(ocr_data)
                 notes.append(ocr_note)
                 
         row_data['Ghi chú'] = '; '.join(notes)
         return row_data
 
+    duplicate_files = []
     # Chạy song song với ThreadPoolExecutor
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
         future_to_img = {executor.submit(process_single_image, path, idx, len(image_paths)): path for idx, path in enumerate(image_paths)}
@@ -351,15 +359,18 @@ def main():
 
                             if not existing_is_qr and is_qr:
                                 print(f"   -> 🔄 Cập nhật CCCD {cccd_num}: Ghi đè bản OCR cũ bằng bản quét QR chính xác hơn.")
+                                duplicate_files.append(processed_data[existing_idx]['Full Image Path'])
                                 processed_data[existing_idx] = row_data
                             else:
                                 old_count = count_info(processed_data[existing_idx])
                                 new_count = count_info(row_data)
                                 if new_count > old_count:
                                     print(f"   -> 🔄 Cập nhật CCCD {cccd_num}: Ghi đè bằng bản quét mới có nhiều thông tin hơn ({new_count} > {old_count}).")
+                                    duplicate_files.append(processed_data[existing_idx]['Full Image Path'])
                                     processed_data[existing_idx] = row_data
                                 else:
                                     print(f"   -> ⚠️ Bỏ qua vì đã xử lý CCCD {cccd_num} trước đó (Trùng lặp).")
+                                    duplicate_files.append(row_data['Full Image Path'])
                         continue
                     else:
                         seen_cccds.add(cccd_num)
@@ -411,7 +422,7 @@ def main():
 
     headers = [
         "STT", "Họ tên", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
-        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Ghi chú"
+        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Ghi chú", "Ảnh tham chiếu"
     ]
     
     ws.append(headers)
@@ -429,7 +440,8 @@ def main():
             row_data['Nơi thường trú gốc'],
             row_data['Địa chỉ chuẩn hóa mới'],
             row_data['Ngày cấp CCCD'],
-            row_data['Ghi chú']
+            row_data['Ghi chú'],
+            row_data.get('Image Path', '')
         ]
         ws.append(row)
 
@@ -465,7 +477,42 @@ def main():
             custom_name += '.xlsx'
         output_filename = os.path.join(exports_dir, custom_name)
 
+    # Thêm các sheet phụ
+    qr_files = [row['Full Image Path'] for row in processed_data if row.get('Scan Type') == 'QR_scanned']
+    ocr_files = [row['Full Image Path'] for row in processed_data if row.get('Scan Type') == 'OCR_scanned']
+    
+    ws_qr = wb.create_sheet(title="QR_scanned")
+    ws_qr.append(["STT", "Tên file"])
+    for i, path in enumerate(qr_files, 1):
+        ws_qr.append([i, os.path.basename(path)])
+        
+    ws_ocr = wb.create_sheet(title="OCR_scanned")
+    ws_ocr.append(["STT", "Tên file"])
+    for i, path in enumerate(ocr_files, 1):
+        ws_ocr.append([i, os.path.basename(path)])
+        
+    ws_dup = wb.create_sheet(title="duplicate")
+    ws_dup.append(["STT", "Tên file"])
+    for i, path in enumerate(duplicate_files, 1):
+        ws_dup.append([i, os.path.basename(path)])
+
     wb.save(output_filename)
+    
+    print("\nĐang tạo các file nén zip...")
+    
+    def create_zip(zip_name, file_paths):
+        if not file_paths:
+            return
+        zip_path = os.path.join(exports_dir, zip_name)
+        with zipfile.ZipFile(zip_path, 'w') as zf:
+            for fpath in file_paths:
+                if os.path.exists(fpath):
+                    zf.write(fpath, os.path.basename(fpath))
+        print(f" -> Đã tạo {zip_name} với {len(file_paths)} file.")
+
+    create_zip('QR_scanned.zip', qr_files)
+    create_zip('OCR_scanned.zip', ocr_files)
+    create_zip('duplicate.zip', duplicate_files)
     
     print("\n" + "🎉"*15)
     print(f"ĐÃ HOÀN TẤT THÀNH CÔNG!")

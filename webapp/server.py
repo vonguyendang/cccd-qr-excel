@@ -115,7 +115,8 @@ def save_room(room_id: str):
             filepath = os.path.join(SESSIONS_DIR, f"{room_id}.json")
             data_to_save = {
                 "items": rooms[room_id]["items"],
-                "seen_cccds": list(rooms[room_id]["seen_cccds"])
+                "seen_cccds": list(rooms[room_id]["seen_cccds"]),
+                "duplicate_files": rooms[room_id].get("duplicate_files", [])
             }
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(data_to_save, f, ensure_ascii=False, indent=2)
@@ -133,7 +134,8 @@ def cleanup_old_sessions():
                 for room_id, room_data in data.items():
                     rooms[room_id] = {
                         "items": room_data.get("items", []),
-                        "seen_cccds": set(room_data.get("seen_cccds", []))
+                        "seen_cccds": set(room_data.get("seen_cccds", [])),
+                        "duplicate_files": room_data.get("duplicate_files", [])
                     }
             print(f"Loaded {len(rooms)} rooms from backup.")
         except Exception as e:
@@ -145,12 +147,22 @@ def save_room(room_id):
         for room_id, room_data in rooms.items():
             data_to_save[room_id] = {
                 "items": room_data["items"],
-                "seen_cccds": list(room_data["seen_cccds"])
+                "seen_cccds": list(room_data["seen_cccds"]),
+                "duplicate_files": room_data.get("duplicate_files", [])
             }
         with open(ROOMS_BACKUP_FILE, "w", encoding="utf-8") as f:
             json.dump(data_to_save, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"Error saving rooms backup: {e}")
+
+def get_room(room_id: str):
+    if room_id not in rooms:
+        rooms[room_id] = {
+            "items": [],
+            "seen_cccds": set(),
+            "duplicate_files": []
+        }
+    return rooms[room_id]
 
 
 @app.websocket("/ws/room/{room_id}")
@@ -168,6 +180,8 @@ class ExportItem(BaseModel):
     error: Optional[str] = None
     fromOCR: Optional[bool] = False
     ocrData: Optional[Dict[str, str]] = None
+    imageBase64: Optional[str] = None
+    isDuplicate: Optional[bool] = False
 
 class RoomAddRequest(BaseModel):
     room_id: str
@@ -178,6 +192,32 @@ async def room_add(req: RoomAddRequest):
     room_id = req.room_id
     item = req.item
     room = get_room(room_id)
+    
+    if "duplicate_files" not in room:
+        room["duplicate_files"] = []
+        
+    if item.imageBase64 and item.filename:
+        room_img_dir = os.path.join(SESSIONS_DIR, room_id, "images")
+        os.makedirs(room_img_dir, exist_ok=True)
+        img_path = os.path.join(room_img_dir, item.filename)
+        base64_str = item.imageBase64
+        if "," in base64_str:
+            base64_str = base64_str.split(",")[1]
+        try:
+            img_data = base64.b64decode(base64_str)
+            with open(img_path, "wb") as f:
+                f.write(img_data)
+        except Exception as e:
+            print(f"Error saving image: {e}")
+            
+    # Remove imageBase64 from item before broadcasting to save bandwidth
+    item.imageBase64 = None
+    
+    if item.isDuplicate:
+        if item.filename:
+            room["duplicate_files"].append(item.filename)
+        save_room(room_id)
+        return {"success": True, "total_count": len(room["items"])}
     
     cccd_num = None
     if item.qrData:
@@ -199,6 +239,9 @@ async def room_add(req: RoomAddRequest):
                 existing_item = room["items"][existing_idx]
                 if not existing_item.get("qrData") and item.qrData:
                     # Upgrade OCR to QR
+                    old_filename = existing_item.get("filename")
+                    if old_filename:
+                        room["duplicate_files"].append(old_filename)
                     room["items"][existing_idx] = item.dict()
                     await manager.broadcast({
                         "type": "update_item",
@@ -223,6 +266,9 @@ async def room_add(req: RoomAddRequest):
                         new_count = count_info(item.ocrData)
                     
                     if new_count > old_count:
+                        old_filename = existing_item.get("filename")
+                        if old_filename:
+                            room["duplicate_files"].append(old_filename)
                         room["items"][existing_idx] = item.dict()
                         await manager.broadcast({
                             "type": "update_item",
@@ -259,7 +305,7 @@ class RoomClearRequest(BaseModel):
 async def room_clear(req: RoomClearRequest):
     room_id = req.room_id
     if room_id in rooms:
-        rooms[room_id] = {"items": [], "seen_cccds": set()}
+        rooms[room_id] = {"items": [], "seen_cccds": set(), "duplicate_files": []}
         save_room(room_id)
         await manager.broadcast({
             "type": "clear",
@@ -401,43 +447,59 @@ async def fetch_single_address_async(client, addr):
         }
 
 
-async def generate_excel_for_items(items: List[ExportItem]):
+async def generate_excel_for_items(items: List[ExportItem], room_id: str = None, duplicate_files: List[str] = None):
     # Sort items: QR data first, then OCR, then errors.
     items.sort(key=lambda x: 0 if x.qrData else (1 if x.fromOCR else 2))
     
     print(f"\n[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Nhận yêu cầu xuất Excel cho {len(items)} bản ghi.", flush=True)
     processed_data = []
     seen_cccds = set()
+    qr_files = []
+    ocr_files = []
+    if not duplicate_files:
+        duplicate_files = []
     
     for item in items:
         row = {
             'Họ tên': '', 'CCCD': '', 'CMND': '', 'Giới tính': '',
             'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': '',
-            'Ngày cấp CCCD': '', 'Ghi chú': '', 'QR Raw': ''
+            'Ngày cấp CCCD': '', 'Ghi chú': '', 'QR Raw': '',
+            'Image Path': item.filename or '',
+            'Scan Type': 'error'
         }
         notes = []
         
         if item.error:
             notes.append(item.error)
         elif item.qrData:
+            row['Scan Type'] = 'QR_scanned'
+            if item.filename:
+                qr_files.append(item.filename)
             row['QR Raw'] = item.qrData
             extracted, v_notes = process_qr_string(item.qrData)
             
             cccd_num = extracted.get('CCCD', '')
             if cccd_num:
                 if cccd_num in seen_cccds:
+                    if item.filename:
+                        duplicate_files.append(item.filename)
                     continue
                 seen_cccds.add(cccd_num)
                 
             row.update(extracted)
             notes.extend(v_notes)
         elif item.fromOCR and item.ocrData:
+            row['Scan Type'] = 'OCR_scanned'
+            if item.filename:
+                ocr_files.append(item.filename)
             extracted = item.ocrData
             notes.append("Lấy bằng OCR")
             
             cccd_num = extracted.get('CCCD', '')
             if cccd_num:
                 if cccd_num in seen_cccds:
+                    if item.filename:
+                        duplicate_files.append(item.filename)
                     continue
                 seen_cccds.add(cccd_num)
                 
@@ -484,7 +546,7 @@ async def generate_excel_for_items(items: List[ExportItem]):
     
     headers = [
         "STT", "Họ tên", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
-        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Ghi chú", "QR Raw"
+        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Ghi chú", "Ảnh tham chiếu", "QR Raw"
     ]
     
     for col_idx, header in enumerate(headers, 1):
@@ -506,7 +568,8 @@ async def generate_excel_for_items(items: List[ExportItem]):
         ws.cell(row=row_idx, column=8, value=data.get('Địa chỉ chuẩn hóa mới', ''))
         ws.cell(row=row_idx, column=9, value=data.get('Ngày cấp CCCD', ''))
         ws.cell(row=row_idx, column=10, value=data.get('Ghi chú', ''))
-        ws.cell(row=row_idx, column=11, value=data.get('QR Raw', ''))
+        ws.cell(row=row_idx, column=11, value=data.get('Image Path', ''))
+        ws.cell(row=row_idx, column=12, value=data.get('QR Raw', ''))
         
     for col in ws.columns:
         max_length = 0
@@ -520,14 +583,30 @@ async def generate_excel_for_items(items: List[ExportItem]):
         adjusted_width = (max_length + 2)
         ws.column_dimensions[column].width = adjusted_width
         
+    # Add extra sheets
+    ws_qr = wb.create_sheet(title="QR_scanned")
+    ws_qr.append(["STT", "Tên file"])
+    for i, path in enumerate(qr_files, 1):
+        ws_qr.append([i, path])
+        
+    ws_ocr = wb.create_sheet(title="OCR_scanned")
+    ws_ocr.append(["STT", "Tên file"])
+    for i, path in enumerate(ocr_files, 1):
+        ws_ocr.append([i, path])
+        
+    ws_dup = wb.create_sheet(title="duplicate")
+    ws_dup.append(["STT", "Tên file"])
+    for i, path in enumerate(duplicate_files, 1):
+        ws_dup.append([i, path])
+        
     stream = BytesIO()
     wb.save(stream)
     stream.seek(0)
     
-    # Backup 1 bản lưu vào web-app/exports
+    # Backup 1 bản lưu vào exports
     try:
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        exports_dir = os.path.join(project_dir, 'web-app', 'exports')
+        exports_dir = os.path.join(project_dir, 'webapp', 'exports')
         os.makedirs(exports_dir, exist_ok=True)
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_filepath = os.path.join(exports_dir, f"backup_ket_qua_{timestamp}.xlsx")
@@ -536,12 +615,38 @@ async def generate_excel_for_items(items: List[ExportItem]):
     except Exception as e:
         print(f"-> Lỗi khi lưu backup file Excel: {e}", flush=True)
     
-    # Return Excel file
+    # Create a zip containing the excel and 3 sub zips
+    import zipfile
+    
+    zip_stream = BytesIO()
+    with zipfile.ZipFile(zip_stream, 'w') as main_zip:
+        main_zip.writestr('ket_qua.xlsx', stream.getvalue())
+        
+        # Helper to create sub zips
+        def add_sub_zip(zip_name, filenames):
+            if not filenames or not room_id:
+                return
+            sub_zip_stream = BytesIO()
+            room_img_dir = os.path.join(SESSIONS_DIR, room_id, "images")
+            with zipfile.ZipFile(sub_zip_stream, 'w') as sub_zip:
+                for fname in filenames:
+                    img_path = os.path.join(room_img_dir, fname)
+                    if os.path.exists(img_path):
+                        sub_zip.write(img_path, fname)
+            main_zip.writestr(zip_name, sub_zip_stream.getvalue())
+            
+        add_sub_zip('QR_scanned.zip', qr_files)
+        add_sub_zip('OCR_scanned.zip', ocr_files)
+        add_sub_zip('duplicate.zip', duplicate_files)
+        
+    zip_stream.seek(0)
+    
+    # Return ZIP file
     headers_dict = {
-        'Content-Disposition': 'attachment; filename="ket_qua.xlsx"',
+        'Content-Disposition': 'attachment; filename="result.zip"',
         'Access-Control-Expose-Headers': 'Content-Disposition'
     }
-    return StreamingResponse(iter([stream.getvalue()]), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers_dict)
+    return StreamingResponse(iter([zip_stream.getvalue()]), media_type="application/zip", headers=headers_dict)
 
 
 class ExportRequest(BaseModel):
@@ -559,9 +664,10 @@ async def room_export(req: RoomExportRequest):
     room_id = req.room_id
     room = get_room(room_id)
     items = [ExportItem(**i) for i in room["items"]]
-    return await generate_excel_for_items(items)
+    duplicate_files = room.get("duplicate_files", [])
+    return await generate_excel_for_items(items, room_id, duplicate_files)
 
-# Mount web-app directory as root static files
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-web_app_dir = os.path.join(base_dir, 'web-app')
-app.mount("/", StaticFiles(directory=web_app_dir, html=True), name="static")
+# Mount public directory as root static files
+base_dir = os.path.dirname(os.path.abspath(__file__))
+public_dir = os.path.join(base_dir, 'public')
+app.mount("/", StaticFiles(directory=public_dir, html=True), name="static")

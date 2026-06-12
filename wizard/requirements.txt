@@ -1,0 +1,12 @@
+pyzbar
+Pillow
+opencv-python
+requests
+openpyxl
+pillow-heif
+pytesseract
+opencv-contrib-python
+fastapi
+uvicorn
+python-multipart
+httpx
