@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCreateRoom = document.getElementById('btnCreateRoom');
     const btnLeaveRoom = document.getElementById('btnLeaveRoom');
     const activeRoomCode = document.getElementById('activeRoomCode');
+    const btnCopyRoomCode = document.getElementById('btnCopyRoomCode');
     
     let currentRoomId = null;
     let ws = null;
@@ -178,6 +179,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (btnCopyRoomCode) {
+        btnCopyRoomCode.addEventListener('click', () => {
+            if (!currentRoomId) return;
+            const expireDate = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+            const formattedDate = String(expireDate.getDate()).padStart(2, '0') + '/' + 
+                                  String(expireDate.getMonth() + 1).padStart(2, '0') + '/' + 
+                                  expireDate.getFullYear();
+            const hostUrl = window.location.origin;
+            const copyText = `Bạn đã được chia sẻ 1 mã khôi phục/phòng ${currentRoomId}, hãy thực hiện quét mã QR từ hệ thống ${hostUrl}, Dữ liệu được lưu trữ tối đa 10 ngày, ngày hết hạn là ${formattedDate}`;
+            
+            navigator.clipboard.writeText(copyText).then(() => {
+                showToast('Đã copy thông tin phòng!', 'success');
+            }).catch(err => {
+                showToast('Lỗi copy: ' + err, 'error');
+            });
+        });
+    }
+
     const cachedRoom = localStorage.getItem('cccd_room_id');
     if (cachedRoom) {
         joinRoom(cachedRoom);
@@ -226,6 +245,42 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const formatDate = d => (d && d.length === 8) ? d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4,8) : d;
 
+    function calculateExpiryDate(dobStr) {
+        if (!dobStr || dobStr.length !== 10) return '-';
+        try {
+            const parts = dobStr.split('/');
+            if (parts.length !== 3) return '-';
+            const year = parseInt(parts[2], 10);
+            const currentYear = new Date().getFullYear();
+            const ages = [14, 25, 40, 60];
+            for (let age of ages) {
+                const expiryYear = year + age;
+                if (expiryYear > currentYear) {
+                    return `${parts[0]}/${parts[1]}/${expiryYear}`;
+                }
+            }
+            return 'Không thời hạn';
+        } catch (e) {
+            return '-';
+        }
+    }
+
+    function getPlaceOfIssue(qrData) {
+        if (!qrData) return '-';
+        const fields = qrData.split('|');
+        if (fields.length === 7) return 'CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI';
+        if (fields.length >= 10) return 'BỘ CÔNG AN';
+        return 'CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI';
+    }
+
+    function getCardType(qrData) {
+        if (!qrData) return '-';
+        const fields = qrData.split('|');
+        if (fields.length === 7) return 'Căn cước công dân';
+        if (fields.length >= 10) return 'Căn cước';
+        return 'Không xác định';
+    }
+
     function renderScannedItemDOM(dataObj) {
         const li = document.createElement('li');
         li.className = 'result-card p-4 rounded-xl flex flex-col gap-3';
@@ -251,6 +306,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div><span class="text-slate-500">Giới tính:</span> <span class="text-slate-300">${parts[4] || '-'}</span></div>
                         <div><span class="text-slate-500">Ngày sinh:</span> <span class="text-slate-300">${formatDate(parts[3]) || '-'}</span></div>
                         <div><span class="text-slate-500">Ngày cấp:</span> <span class="text-slate-300">${formatDate(parts[6]) || '-'}</span></div>
+                        <div><span class="text-slate-500">Ngày hết hạn:</span> <span class="text-slate-300">${calculateExpiryDate(formatDate(parts[3]))}</span></div>
+                        <div><span class="text-slate-500">Phân loại:</span> <span class="text-slate-300">${getCardType(dataObj.qrData)}</span></div>
+                        <div class="col-span-1 md:col-span-2"><span class="text-slate-500">Nơi cấp:</span> <span class="text-slate-300 leading-snug">${getPlaceOfIssue(dataObj.qrData)}</span></div>
                         <div class="col-span-1 md:col-span-2"><span class="text-slate-500">Thường trú gốc:</span> <span class="text-slate-300 leading-snug">${parts[5] || '-'}</span></div>
                         
                         <div class="col-span-1 md:col-span-2 border-t border-slate-700/30 pt-2 mt-1"></div>
@@ -279,6 +337,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div><span class="text-slate-500">Giới tính:</span> <span class="text-slate-300">${ocr['Giới tính'] || '-'}</span></div>
                     <div><span class="text-slate-500">Ngày sinh:</span> <span class="text-slate-300">${ocr['Ngày sinh'] || '-'}</span></div>
                     <div><span class="text-slate-500">Ngày cấp:</span> <span class="text-slate-300">${ocr['Ngày cấp CCCD'] || '-'}</span></div>
+                    <div><span class="text-slate-500">Ngày hết hạn:</span> <span class="text-slate-300">${calculateExpiryDate(ocr['Ngày sinh'])}</span></div>
+                    <div><span class="text-slate-500">Phân loại:</span> <span class="text-slate-300">${getCardType(dataObj.qrData)}</span></div>
+                    <div class="col-span-1 md:col-span-2"><span class="text-slate-500">Nơi cấp:</span> <span class="text-slate-300 leading-snug">${getPlaceOfIssue(dataObj.qrData)}</span></div>
                     <div class="col-span-1 md:col-span-2"><span class="text-slate-500">Thường trú gốc:</span> <span class="text-slate-300 leading-snug">${ocr['Nơi thường trú gốc'] || '-'}</span></div>
                     
                     <div class="col-span-1 md:col-span-2 border-t border-slate-700/30 pt-2 mt-1"></div>
@@ -310,10 +371,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 let copyText = '';
                 if (dataObj.qrData && dataObj.qrData.split('|').length >= 7) {
                     const p = dataObj.qrData.split('|');
-                    copyText = `Họ tên: ${p[2]}\nCCCD: ${p[0]}\nCMND: ${p[1] || ''}\nGiới tính: ${p[4]}\nNgày sinh: ${formatDate(p[3])}\nNgày cấp: ${formatDate(p[6])}\nNơi thường trú: ${p[5]}`;
+                    copyText = `Họ tên: ${p[2]}\nCCCD: ${p[0]}\nCMND: ${p[1] || ''}\nGiới tính: ${p[4]}\nNgày sinh: ${formatDate(p[3])}\nNgày cấp: ${formatDate(p[6])}\nNgày hết hạn: ${calculateExpiryDate(formatDate(p[3]))}\nPhân loại: ${getCardType(dataObj.qrData)}\nNơi cấp: ${getPlaceOfIssue(dataObj.qrData)}\nNơi thường trú: ${p[5]}`;
                 } else if (dataObj.ocrData && dataObj.ocrData['CCCD']) {
                     const o = dataObj.ocrData;
-                    copyText = `Họ tên: ${o['Họ tên'] || ''}\nCCCD: ${o['CCCD'] || ''}\nCMND: ${o['CMND'] || ''}\nGiới tính: ${o['Giới tính'] || ''}\nNgày sinh: ${o['Ngày sinh'] || ''}\nNgày cấp: ${o['Ngày cấp CCCD'] || ''}\nNơi thường trú: ${o['Nơi thường trú gốc'] || ''}`;
+                    copyText = `Họ tên: ${o['Họ tên'] || ''}\nCCCD: ${o['CCCD'] || ''}\nCMND: ${o['CMND'] || ''}\nGiới tính: ${o['Giới tính'] || ''}\nNgày sinh: ${o['Ngày sinh'] || ''}\nNgày cấp: ${o['Ngày cấp CCCD'] || ''}\nNgày hết hạn: ${calculateExpiryDate(o['Ngày sinh'])}\nPhân loại: ${getCardType(dataObj.qrData)}\nNơi cấp: ${getPlaceOfIssue(dataObj.qrData)}\nNơi thường trú: ${o['Nơi thường trú gốc'] || ''}`;
                 } else if (dataObj.qrData) {
                     copyText = `QR Raw: ${dataObj.qrData}`;
                 }
@@ -554,7 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic') {
                 log(`   -> Chuyển đổi định dạng HEIC...`);
                 try {
-                    const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 });
+                    const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.95 });
                     file = Array.isArray(blob) ? blob[0] : blob;
                 } catch (err) {
                     throw new Error(`Lỗi chuyển đổi HEIC: ${err.message}`);
@@ -590,7 +651,7 @@ document.addEventListener('DOMContentLoaded', () => {
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            return canvas.toDataURL('image/jpeg', 0.8);
+            return canvas.toDataURL('image/jpeg', 0.95);
         };
 
         const processImage = async (file, index) => {
@@ -634,12 +695,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!foundQR) {
                     log(`[${index+1}/${totalFilesInQueue}] Không tìm thấy QR, đang thử OCR...`);
                     try {
-                        // OCR runs on the optimized image, much faster
-                        const { data: { text } } = await Tesseract.recognize(optimizedBase64, 'vie');
-                        let ocrData = { 'CCCD': '', 'Họ tên': '', 'Ngày sinh': '', 'Giới tính': '', 'Ngày cấp CCCD': '', 'Nơi thường trú gốc': '' };
-                        const cccdMatch = text.match(/\b\d{12}\b/);
-                        if (cccdMatch) ocrData['CCCD'] = cccdMatch[0];
+                        // Gọi API Backend chạy Deepdoc OCR thay vì Tesseract ở frontend
+                        const ocrRes = await fetch('/api/ocr', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ imageBase64: optimizedBase64 })
+                        });
+                        const ocrJson = await ocrRes.json();
+                        if (!ocrJson.success) throw new Error(ocrJson.error || "Lỗi AI OCR");
+                        const text = ocrJson.text || "";
+                        let ocrData = { 'CCCD': '', 'Họ tên': '', 'Ngày sinh': '', 'Giới tính': '', 'Ngày cấp CCCD': '', 'Nơi thường trú gốc': '', 'OCR Side': '' };
                         
+                        const textUpper = text.toUpperCase();
+                        
+                        // ---------------------------------------------------------
+                        // 1. NHẬN DIỆN MẶT THẺ (FRONT / BACK)
+                        // Bắt các từ khóa đặc thù để dán nhãn mặt thẻ
+                        // ---------------------------------------------------------
+                        if (textUpper.includes("<<") || textUpper.includes("IDVNM") || textUpper.includes("ĐẶC ĐIỂM NHẬN DẠNG") || textUpper.includes("NGÓN TRỎ") || textUpper.includes("CỤC TRƯỞNG")) {
+                            ocrData['OCR Side'] = 'Back';
+                        } else if (textUpper.includes("CĂN CƯỚC") || textUpper.includes("CẦN CƯỚC") || textUpper.includes("CÔNG DÂN") || textUpper.includes("ĐỘC LẬP") || textUpper.includes("TỰ DO") || textUpper.includes("HỌ VÀ TÊN")) {
+                            ocrData['OCR Side'] = 'Front';
+                        }
+                        
+                        // ---------------------------------------------------------
+                        // 2. TRÍCH XUẤT SỐ CCCD
+                        // ---------------------------------------------------------
+                        const cccdMatch = text.match(/\\b(0\\d{11})\\b/);
+                        if (cccdMatch) {
+                            ocrData['CCCD'] = cccdMatch[1];
+                        } else {
+                            // Trích xuất từ mã MRZ ở mặt sau thẻ (Chuẩn ICAO của Việt Nam)
+                            // Chuỗi VNM0960051566086... -> 096005156 (9 số cuối) + 6 + 086 (3 số đầu)
+                            const textMrz = textUpper.replace(/O/g, '0'); // Fix lỗi OCR đọc nhầm số 0 thành chữ O
+                            const mrzMatch = textMrz.match(/VNM(\\d{9})\\d(\\d{3})/);
+                            if (mrzMatch) {
+                                ocrData['CCCD'] = mrzMatch[2] + mrzMatch[1];
+                            } else {
+                                // Quét rà soát fallback
+                                const fallbackMatch = text.match(/(0\\d{11})/);
+                                if (fallbackMatch) ocrData['CCCD'] = fallbackMatch[1];
+                            }
+                        }
                         const lines = text.split('\n').map(l => l.trim()).filter(l => l);
                         const allDates = text.match(/\b\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}\b/g) || [];
                         
@@ -681,21 +778,27 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (lineLower.includes("thường trú") || lineLower.includes("cư trú") || lineLower.includes("residence") || lineLower.includes("cu tru") || lineLower.includes("thuong tru") || lineLower.includes("trú /") || lineLower.includes("tru /")) {
                                 let addrParts = [];
                                 if (line.includes(":")) addrParts.push(line.split(":")[1].replace(/[|]/g, '').trim());
-                                if (i+1 < lines.length && !lines[i+1].toLowerCase().includes("giá trị đến") && !lines[i+1].toLowerCase().includes("expiry")) {
-                                    addrParts.push(lines[i+1].replace(/\|/g, '').trim());
+                                
+                                // Quét các dòng tiếp theo, bỏ qua các dòng rác
+                                for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+                                    let nextLine = lines[j].replace(/\|/g, '').trim();
+                                    let nextLower = nextLine.toLowerCase();
+                                    if (nextLower.includes("giá trị đến") || nextLower.includes("expiry") || nextLower.includes("date")) continue;
+                                    if (nextLower.includes("khai sinh") || nextLower.includes("birth") || nextLower.includes("nơi cấp") || nextLower.includes("bộ công an") || nextLower.includes("cục cảnh sát")) break;
+                                    if (nextLine.match(/\\b\\d{2}\\s*\\/\\s*\\d{2}\\s*\\/\\s*\\d{4}\\b/)) continue;
+                                    if (nextLine.length > 3) addrParts.push(nextLine);
                                 }
-                                if (i+2 < lines.length && !lines[i+2].toLowerCase().includes("giá trị đến") && !lines[i+2].toLowerCase().includes("expiry")) {
-                                    const next2 = lines[i+2].replace(/\|/g, '').trim();
-                                    if (next2.length > 5 && !next2.match(/\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}/)) addrParts.push(next2);
-                                }
-                                ocrData['Nơi thường trú gốc'] = addrParts.filter(p => p).join(', ').replace(/,\s*,/g, ',').replace(/^,\s*/, '');
+                                
+                                ocrData['Nơi thường trú gốc'] = addrParts.filter(p => p).join(', ').replace(/,\\s*,/g, ',').replace(/^,\\s*/, '');
                             }
                             
-                            // 4. Extract Issue Date (Back of card)
-                            if (lineLower.includes("ngày, tháng, năm") || lineLower.includes("date, month, year") || lineLower.includes("date of issue") || lineLower.includes("ngay, thang, nam")) {
+                            // --- BƯỚC 3.4: TRÍCH XUẤT NGÀY CẤP (Dành cho mặt sau thẻ cũ hoặc mặt trước thẻ mới) ---
+                            // Bắt buộc có chữ "ngày, tháng, năm" hoặc "cấp" 
+                            // PHẢI LOẠI TRỪ các từ "sinh", "hết hạn", "expiry" để không bắt nhầm ngày sinh hoặc ngày hết hạn (Thẻ mới bị dính lỗi này)
+                            if ((lineLower.includes("ngày, tháng, năm") || lineLower.includes("date, month, year") || lineLower.includes("date of issue") || lineLower.includes("ngay, thang, nam") || lineLower.includes("cấp")) && !lineLower.includes("sinh") && !lineLower.includes("hết hạn") && !lineLower.includes("expiry") && !lineLower.includes("birth")) {
                                 for (let j = i; j <= i+2 && j < lines.length; j++) {
-                                    const m = lines[j].match(/\b\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}\b/);
-                                    if (m) { ocrData['Ngày cấp CCCD'] = m[0].replace(/\s/g, ''); break; }
+                                    const m = lines[j].match(/\\b\\d{2}\\s*\\/\\s*\\d{2}\\s*\\/\\s*\\d{4}\\b/);
+                                    if (m) { ocrData['Ngày cấp CCCD'] = m[0].replace(/\\s/g, ''); break; }
                                 }
                             }
                         }
@@ -710,11 +813,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!ocrData['Giới tính'] && (text.toLowerCase().includes("nữ") || text.toLowerCase().includes("nư "))) {
                             ocrData['Giới tính'] = 'Nữ';
                         }
-                        // Fallback Gender: Nam (if not Việt Nam or other common Nam)
-                        if (!ocrData['Giới tính']) {
+                        // Fallback Gender: Nam (if not Việt Nam or other common Nam, and only if Front side)
+                        if (!ocrData['Giới tính'] && ocrData['OCR Side'] !== 'Back') {
                             const textLower = text.toLowerCase();
                             // Count occurrences of "nam"
-                            const namCount = (textLower.match(/\bnam\b/g) || []).length;
+                            const namCount = (textLower.match(/\\bnam\\b/g) || []).length;
                             const vietNamCount = (textLower.match(/việt nam|viet nam|hà nam|quảng nam|hải nam/g) || []).length;
                             if (namCount > vietNamCount) {
                                 ocrData['Giới tính'] = 'Nam';

@@ -2,7 +2,7 @@
 const APP_CONFIG = {
     // Tùy chỉnh hiệu năng
     concurrencyLimit: 4,      // Số lượng ảnh được xử lý song song cùng lúc (Tăng lên nếu CPU/RAM mạnh)
-    maxImageSize: 1500,       // Kích thước tối đa (pixel) khi nén ảnh trước khi gửi. Giảm xuống để chạy nhanh hơn nhưng có thể giảm độ chính xác.
+    maxImageSize: 2500,       // Tăng kích thước ảnh để không làm mờ mã QR
     
     // Tùy chỉnh API
     apiScanQR: '/api/scan_qr',

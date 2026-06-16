@@ -1,12 +1,22 @@
 pyzbar
-Pillow
-opencv-python
+Pillow==10.2.0
+opencv-contrib-python-headless==4.10.0.84
 requests
 openpyxl
 pillow-heif
-pytesseract
-opencv-contrib-python
 fastapi
 uvicorn
 python-multipart
 httpx
+websockets
+
+# AI OCR Dependencies (Deepdoc VietOCR)
+torch
+torchvision
+numpy<2.0.0
+strenum
+vietocr
+pycryptodomex
+setuptools<70
+pdfplumber
+onnxruntime

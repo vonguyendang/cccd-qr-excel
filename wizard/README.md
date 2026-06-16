@@ -3,23 +3,16 @@
 Công cụ dòng lệnh phù hợp khi bạn có một thư mục chứa rất nhiều file ảnh CCCD và muốn phần mềm chạy nền tự động xử lý một lần, không cần thao tác bấm từng file trên giao diện Web.
 
 Chương trình sẽ tự động quét toàn bộ các file ảnh trong thư mục (bao gồm cả ảnh `.HEIC` từ iPhone), phân tích mã QR, chuẩn hóa địa chỉ thông qua API `tienich.vnhub.com`, lọc trùng lặp và lưu tất cả kết quả vào một file `.xlsx`.
+Đồng thời, tự động đổi tên toàn bộ ảnh (theo định dạng `{Họ tên}_{CCCD/CMND}_Mặt trước/sau`) và nén thành 2 file `original.zip` và `rename.zip`.
 
 ## Cài đặt Môi trường
 
-Mở Terminal / Command Prompt tại thư mục gốc của dự án (`cccd-qr-excel`) và chạy các lệnh sau:
-
 ```bash
-# Bước 1: Di chuyển vào thư mục python cho công cụ dòng lệnh
+# Bước 1: Di chuyển vào thư mục wizard
 cd wizard
 
-# Bước 2: Tạo môi trường ảo
-python3 -m venv venv
-
-# Bước 3: Kích hoạt môi trường ảo
-source venv/bin/activate
-
-# Bước 4: Cài đặt toàn bộ thư viện cần thiết
-pip3 install -r requirements.txt
+# Bước 2: Kích hoạt môi trường ảo chung (nơi đã cài sẵn AI Model)
+source ../webapp/venv/bin/activate
 ```
 
 ## Cách Chạy Quét Hàng Loạt
@@ -69,10 +62,7 @@ File Excel kết quả sẽ được tạo tự động với cấu trúc tên `
   5. Cửa sổ chọn file hiện ra, bạn hãy duyệt tìm đến thư mục chứa phần mềm này (`wizard`), mở tiếp thư mục `venv`, mở tiếp thư mục `bin` (hoặc `Scripts` trên Windows), và chọn file có tên là `python` (hoặc `python.exe`). Nhấn OK.
   6. Các vạch đỏ sẽ tự động biến mất!
 
-**4. Lỗi không nhận diện được Tesseract OCR**
+**4. Lần chạy đầu tiên bị chậm / Có thông báo tải file**
 
-- **Nguyên nhân:** Máy tính chưa cài đặt phần mềm Tesseract ở cấp hệ điều hành.
-- **Cách sửa:** Chạy lệnh sau trên máy Mac để cài đặt Tesseract kèm theo gói ngôn ngữ tiếng Việt:
-  ```bash
-  brew install tesseract tesseract-lang
-  ```
+- **Nguyên nhân:** Chương trình tích hợp trí tuệ nhân tạo (WeChat QRCode và Deepdoc VietOCR) nên ở lần chạy đầu tiên, mã nguồn sẽ tự động kết nối với máy chủ AI để tải mô hình chuẩn (nặng vài chục MB) vào bộ đệm cache.
+- **Cách xử lý:** Đảm bảo có mạng và chờ vài phút. Lần chạy thứ 2 trở đi sẽ diễn ra siêu tốc!

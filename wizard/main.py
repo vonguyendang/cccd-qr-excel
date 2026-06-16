@@ -11,16 +11,72 @@ import datetime
 import pillow_heif
 import numpy as np
 from PIL import Image
-import pytesseract
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from vietocr_engine import extract_text_from_image
 import re
 import concurrent.futures
 import zipfile
 
+# Global AI Models
+detector = None
 
+def init_models():
+    global detector
+    model_paths = [
+        'models/detect.prototxt', 'models/detect.caffemodel',
+        'models/sr.prototxt', 'models/sr.caffemodel'
+    ]
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    abs_paths = [os.path.join(base_dir, p) for p in model_paths]
+    
+    if all(os.path.exists(p) for p in abs_paths):
+        try:
+            detector = cv2.wechat_qrcode_WeChatQRCode(*abs_paths)
+            print("Đã tải thành công mô hình WeChat QRCode siêu cấp.")
+        except Exception as e:
+            print(f"Lỗi khởi tạo WeChat QRCode: {e}")
+    else:
+        print("Cảnh báo: Không tìm thấy file model WeChat QRCode. Khả năng quét ảnh mờ sẽ bị giảm.")
 def format_date(date_str):
     if not date_str or len(date_str) != 8:
         return date_str
     return f"{date_str[0:2]}/{date_str[2:4]}/{date_str[4:8]}"
+
+def get_place_of_issue(qr_data):
+    if not qr_data:
+        return ""
+    fields = qr_data.split('|')
+    if len(fields) == 7:
+        return "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI"
+    elif len(fields) >= 10:
+        return "BỘ CÔNG AN"
+    return "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI"
+
+def get_card_type(qr_data):
+    if not qr_data:
+        return ""
+    fields = qr_data.split('|')
+    if len(fields) == 7:
+        return "Căn cước công dân"
+    elif len(fields) >= 10:
+        return "Căn cước"
+    return "Không xác định"
+
+def calculate_expiry_date(dob_str):
+    if not dob_str or len(dob_str) != 10:
+        return ""
+    try:
+        day, month, year = dob_str.split('/')
+        year = int(year)
+        current_year = datetime.datetime.now().year
+        for age in [14, 25, 40, 60]:
+            expiry_year = year + age
+            if expiry_year > current_year:
+                return f"{day}/{month}/{expiry_year}"
+        return "Không thời hạn"
+    except:
+        return ""
 
 def extract_qr_data(image_path):
     try:
@@ -58,13 +114,9 @@ def extract_qr_data(image_path):
 
         if not decoded_objects:
             # Fallback to WeChat QRCode CNN detector
-            model_paths = [
-                'models/detect.prototxt', 'models/detect.caffemodel',
-                'models/sr.prototxt', 'models/sr.caffemodel'
-            ]
-            if all(os.path.exists(p) for p in model_paths):
+            global detector
+            if detector:
                 try:
-                    detector = cv2.wechat_qrcode_WeChatQRCode(*model_paths)
                     res, _ = detector.detectAndDecode(img)
                     if res and len(res) > 0:
                         return res[0], None, img
@@ -79,32 +131,85 @@ def extract_qr_data(image_path):
     except Exception as e:
         return None, f"Lỗi xử lý ảnh: {str(e)}", None
 
-def extract_ocr_data(img):
+def extract_ocr_data(image_path_or_cv2img):
+    """
+    Hàm xử lý OCR (Trích xuất văn bản từ ảnh) bằng AI Deepdoc_VietOCR.
+    Nhận vào đường dẫn ảnh hoặc object ảnh cv2.
+    Trả về một tuple: (dictionary chứa dữ liệu trích xuất, chuỗi ghi chú)
+    """
     try:
-        text = pytesseract.image_to_string(img, lang='vie')
+        # img is a numpy array (cv2 image BGR) or PIL Image
+        text = extract_text_from_image(image_path_or_cv2img)
     except Exception as e:
         return {}, f"Lỗi thư viện OCR: {str(e)}"
         
     data = {
         'CCCD': '', 'CMND': '', 'Họ tên': '', 'Ngày sinh': '',
-        'Giới tính': '', 'Nơi thường trú gốc': '', 'Ngày cấp CCCD': ''
+        'Giới tính': '', 'Nơi thường trú gốc': '', 'Ngày cấp CCCD': '',
+        'OCR Side': ''
     }
     
-    # Extract CCCD: 12 digits
-    cccd_match = re.search(r'\b\d{12}\b', text)
+    if not text.strip():
+        return data, "Ảnh không thể nhận diện được chữ"
+    
+    text_upper = text.upper()
+    
+    # ---------------------------------------------------------
+    # 1. NHẬN DIỆN MẶT THẺ (FRONT / BACK)
+    # Dựa vào các từ khóa đặc trưng xuất hiện trên từng mặt thẻ
+    # ---------------------------------------------------------
+    if "<<" in text_upper or "IDVNM" in text_upper or "ĐẶC ĐIỂM NHẬN DẠNG" in text_upper or "NGÓN TRỎ" in text_upper or "CỤC TRƯỞNG" in text_upper:
+        data['OCR Side'] = 'Back'
+    # Các từ khóa đặc trưng của Mặt Trước
+    elif "CĂN CƯỚC" in text_upper or "CẦN CƯỚC" in text_upper or "CÔNG DÂN" in text_upper or "ĐỘC LẬP" in text_upper or "TỰ DO" in text_upper or "HỌ VÀ TÊN" in text_upper:
+        data['OCR Side'] = 'Front'
+    
+    # ---------------------------------------------------------
+    # 2. TRÍCH XUẤT SỐ CCCD
+    # ---------------------------------------------------------
+    # Bước 2.1: Ưu tiên tìm chuỗi 12 số đứng độc lập bắt đầu bằng số 0 (thường là ở mặt trước thẻ cũ)
+    cccd_match = re.search(r'\b(0\d{11})\b', text)
     if cccd_match:
-        data['CCCD'] = cccd_match.group(0)
-        
+        data['CCCD'] = cccd_match.group(1)
+    else:
+        # Bước 2.2: Lấy từ mã MRZ ở mặt sau (Mã MRZ là chuỗi ký tự ở đáy mặt sau thẻ)
+        # Tại Việt Nam, thẻ CCCD áp dụng chuẩn ICAO chia số CCCD thành 2 đoạn trong mã MRZ:
+        # Ví dụ MRZ có chuỗi: VNM0960051566086... 
+        # -> Phân tích: 096005156 (9 số cuối của CCCD) + 6 (Mã kiểm tra) + 086 (3 số đầu của CCCD)
+        # Sửa lỗi OCR: Chữ 'O' thường bị AI đọc nhầm thay vì số '0' -> replace 'O' bằng '0'
+        text_mrz = text_upper.replace('O', '0') 
+        mrz_match = re.search(r'VNM(\d{9})\d(\d{3})', text_mrz)
+        if mrz_match:
+            # Lắp ráp lại thành CCCD hoàn chỉnh (3 số đầu + 9 số cuối)
+            data['CCCD'] = mrz_match.group(2) + mrz_match.group(1)
+        else:
+            # Bước 2.3: Chặn bắt cuối cùng (Fallback), quét tìm chuỗi 12 số liền nhau bắt đầu bằng số 0
+            fallback_match = re.search(r'(0\d{11})', text)
+            if fallback_match:
+                data['CCCD'] = fallback_match.group(1)
     all_dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
         
-    # Extract Gender
-    if re.search(r'\bNam\b', text, re.IGNORECASE):
-        data['Giới tính'] = 'Nam'
-    elif re.search(r'\bN[uưứữ][\s]*\b', text, re.IGNORECASE) or re.search(r'\bNữ\b', text, re.IGNORECASE):
-        data['Giới tính'] = 'Nữ'
-        
+    # ---------------------------------------------------------
+    # 3. TRÍCH XUẤT GIỚI TÍNH (Thuật toán Fallback toàn cục)
+    # Lưu ý: Sẽ bị ghi đè nếu lát nữa vòng lặp đọc được dòng chứa chữ "Giới tính" rõ ràng.
+    # Logic: Đếm số từ 'nam' trong toàn văn bản, sau đó trừ đi chữ 'Việt Nam' (Quốc tịch)
+    # ---------------------------------------------------------
+    text_lower = text.lower()
+    # Chỉ đếm giới tính rải rác nếu không phải mặt sau (vì mặt sau không có thông tin giới tính)
+    if data['OCR Side'] != 'Back':
+        nam_count = len(re.findall(r'\bnam\b', text_lower))
+        vietnam_count = len(re.findall(r'việt nam|viet nam|hà nam|quảng nam|hải nam', text_lower))
+        if nam_count > vietnam_count:
+            data['Giới tính'] = 'Nam'
+        elif re.search(r'\bn[uưứữ][\s]*\b', text_lower) or re.search(r'\bnữ\b', text_lower):
+            data['Giới tính'] = 'Nữ'
+            
     lines = [line.strip() for line in text.split('\n') if line.strip()]
     
+    # ---------------------------------------------------------
+    # 4. DUYỆT TỪNG DÒNG (VÉT THÔNG TIN: TÊN, ĐỊA CHỈ, NGÀY THÁNG)
+    # OCR đọc ảnh từ trên xuống dưới, nên ta duyệt từng dòng để bắt từ khóa
+    # ---------------------------------------------------------
     for i, line in enumerate(lines):
         line_lower = line.lower()
         
@@ -127,29 +232,51 @@ def extract_ocr_data(img):
                     data['Ngày sinh'] = m.group(0)
                     break
                     
-        # 3. Address
+        # --- BƯỚC 4.3: TRÍCH XUẤT ĐỊA CHỈ (NƠI THƯỜNG TRÚ/CƯ TRÚ) ---
         if "nơi thường trú" in line_lower or "nơi cư trú" in line_lower or "residence" in line_lower:
             addr_parts = []
             if ":" in line:
                 addr_parts.append(line.split(":", 1)[1].strip())
-            if i + 1 < len(lines) and "giá trị đến" not in lines[i+1].lower() and "expiry" not in lines[i+1].lower():
-                addr_parts.append(lines[i+1].replace('|', '').strip())
-            if i + 2 < len(lines) and "giá trị đến" not in lines[i+2].lower() and "expiry" not in lines[i+2].lower():
-                next2 = lines[i+2].replace('|', '').strip()
-                if len(next2) > 5 and not re.search(r'\d{2}/\d{2}/\d{4}', next2):
-                    addr_parts.append(next2)
+            
+            # Quét các dòng tiếp theo để nối đuôi địa chỉ do địa chỉ thường rất dài và bị rớt dòng.
+            # Bỏ qua các dòng rác bị AI đọc đan xen vào (như 'giá trị đến', 'date') do layout 2 cột của thẻ.
+            # Ngắt ngay (break) nếu gặp 'nơi đăng ký khai sinh' (tránh gộp quê quán vào nơi ở của thẻ mới).
+            for j in range(i + 1, min(i + 5, len(lines))):
+                next_line = lines[j].replace('|', '').strip()
+                next_lower = next_line.lower()
+                if "giá trị đến" in next_lower or "expiry" in next_lower or "date" in next_lower:
+                    continue
+                if "khai sinh" in next_lower or "birth" in next_lower or "nơi cấp" in next_lower or "bộ công an" in next_lower or "cục cảnh sát" in next_lower:
+                    break
+                if re.search(r'\b\d{2}/\d{2}/\d{4}\b', next_line):
+                    continue
+                if len(next_line) > 3:
+                    addr_parts.append(next_line)
+                    
             addr = ", ".join(filter(bool, addr_parts))
             data['Nơi thường trú gốc'] = re.sub(r',\s*,', ',', addr).lstrip(', ')
             
-        # 4. Issue Date (Back of card)
-        if "ngày, tháng, năm" in line_lower or "date, month, year" in line_lower or "date of issue" in line_lower:
+        # --- BƯỚC 4.4: TRÍCH XUẤT GIỚI TÍNH (Chính xác từ dòng ghi Giới tính) ---
+        if "giới tính" in line_lower or "sex" in line_lower:
+            if "nữ" in line_lower or "nư" in line_lower or "nu " in line_lower:
+                data['Giới tính'] = 'Nữ'
+            elif "nam" in line_lower:
+                data['Giới tính'] = 'Nam'
+            
+        # --- BƯỚC 4.5: TRÍCH XUẤT NGÀY CẤP ---
+        # Chỉ quét tìm Ngày cấp khi có từ khóa.
+        # Phải lọc bỏ 'sinh', 'hết hạn' để tránh bắt nhầm Ngày sinh (ở thẻ mới) hoặc Ngày hết hạn (ở thẻ cũ)
+        if ("ngày, tháng, năm" in line_lower or "date, month, year" in line_lower or "date of issue" in line_lower or "cấp" in line_lower) and "sinh" not in line_lower and "hết hạn" not in line_lower and "expiry" not in line_lower and "birth" not in line_lower:
             for j in range(i, min(i+3, len(lines))):
                 m = re.search(r'\b\d{2}/\d{2}/\d{4}\b', lines[j])
                 if m:
                     data['Ngày cấp CCCD'] = m.group(0)
                     break
-
-    # Fallback DOB
+                    
+    # ---------------------------------------------------------
+    # 5. FALLBACK CHO NGÀY SINH (Nếu thuật toán từ khóa thất bại)
+    # Lấy mốc thời gian < 2020 để làm ngày sinh dự phòng
+    # ---------------------------------------------------------
     if not data['Ngày sinh'] and all_dates:
         first_date = all_dates[0]
         try:
@@ -241,8 +368,10 @@ def main():
         input_dir = sys.argv[1]
     else:
         print("\n[Hướng dẫn]: Kéo thả thư mục chứa ảnh vào cửa sổ này,")
-        print("hoặc copy đường dẫn thư mục và dán vào đây.")
+        print("hoặc copy đường dẫn thư mục và dán vào đây.\n")
         input_dir = input("\nNhập đường dẫn thư mục chứa ảnh CCCD: ").strip()
+    
+    init_models()
 
     # Xóa dấu nháy đơn/kép nếu người dùng kéo thả thư mục vào terminal có sinh ra
     input_dir = input_dir.strip('\'"')
@@ -304,7 +433,7 @@ def main():
         row_data = {
             'Họ tên': '', 'CCCD': '', 'CMND': '', 'Giới tính': '',
             'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': '',
-            'Ngày cấp CCCD': '', 'Ghi chú': '', 'QR Raw': '',
+            'Ngày cấp CCCD': '', 'Nơi cấp': '', 'Ngày hết hạn': '', 'Phân loại': '', 'Ghi chú': '', 'QR Raw': '',
             'Image Path': os.path.basename(img_path),
             'Full Image Path': img_path,
             'Scan Type': 'error'
@@ -330,54 +459,129 @@ def main():
                 row_data.update(ocr_data)
                 notes.append(ocr_note)
                 
+        row_data['Nơi cấp'] = get_place_of_issue(row_data.get('QR Raw', ''))
+        row_data['Ngày hết hạn'] = calculate_expiry_date(row_data.get('Ngày sinh', ''))
+        row_data['Phân loại'] = get_card_type(row_data.get('QR Raw', ''))
         row_data['Ghi chú'] = '; '.join(notes)
         return row_data
 
-    duplicate_files = []
-    # Chạy song song với ThreadPoolExecutor
+    import re
+    # Grouping and Merging Logic
+    records = {} # mapping CCCD -> record
+    
+    # Process images in parallel and collect all returned raw data
+    extracted_items = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
         future_to_img = {executor.submit(process_single_image, path, idx, len(image_paths)): path for idx, path in enumerate(image_paths)}
-        
         for future in concurrent.futures.as_completed(future_to_img):
-            img_path = future_to_img[future]
             try:
-                row_data = future.result()
-                
-                # Deduplication thông minh (Giống Server)
-                cccd_num = row_data['CCCD']
-                if cccd_num:
-                    if cccd_num in seen_cccds:
-                        is_qr = bool(row_data.get('QR Raw'))
-                        existing_idx = next((i for i, v in enumerate(processed_data) if v.get('CCCD') == cccd_num), None)
-                        
-                        if existing_idx is not None:
-                            existing_is_qr = bool(processed_data[existing_idx].get('QR Raw'))
-                            
-                            def count_info(d):
-                                keys = ['Họ tên', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD']
-                                return sum(1 for k in keys if d.get(k))
-
-                            if not existing_is_qr and is_qr:
-                                print(f"   -> 🔄 Cập nhật CCCD {cccd_num}: Ghi đè bản OCR cũ bằng bản quét QR chính xác hơn.")
-                                duplicate_files.append(processed_data[existing_idx]['Full Image Path'])
-                                processed_data[existing_idx] = row_data
-                            else:
-                                old_count = count_info(processed_data[existing_idx])
-                                new_count = count_info(row_data)
-                                if new_count > old_count:
-                                    print(f"   -> 🔄 Cập nhật CCCD {cccd_num}: Ghi đè bằng bản quét mới có nhiều thông tin hơn ({new_count} > {old_count}).")
-                                    duplicate_files.append(processed_data[existing_idx]['Full Image Path'])
-                                    processed_data[existing_idx] = row_data
-                                else:
-                                    print(f"   -> ⚠️ Bỏ qua vì đã xử lý CCCD {cccd_num} trước đó (Trùng lặp).")
-                                    duplicate_files.append(row_data['Full Image Path'])
-                        continue
-                    else:
-                        seen_cccds.add(cccd_num)
-                    
-                processed_data.append(row_data)
+                extracted_items.append(future.result())
             except Exception as exc:
-                print(f"❌ Lỗi khi xử lý ảnh {os.path.basename(img_path)}: {exc}")
+                print(f"❌ Lỗi khi xử lý ảnh {os.path.basename(future_to_img[future])}: {exc}")
+                
+    # Pass 1 & 2: Merge logic based on CCCD
+    for item in extracted_items:
+        cccd = item.get('CCCD')
+        if not cccd: continue
+        
+        if cccd not in records:
+            records[cccd] = {
+                'Họ tên': '', 'CCCD': cccd, 'CMND': '', 'Giới tính': '',
+                'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': '',
+                'Ngày cấp CCCD': '', 'Nơi cấp': '', 'Ngày hết hạn': '', 'Phân loại': '', 'Ghi chú': [], 'QR Raw': '',
+                'Ảnh mặt trước CCCD/CC': '',
+                'Ảnh mặt sau CCCD/CC': '',
+                'Đổi tên Ảnh mặt trước CCCD/CC': '',
+                'Đổi tên Ảnh mặt sau CCCD/CC': '',
+                'Full Image Path Front': '',
+                'Full Image Path Back': '',
+                'OCR Image Path Front': '',
+                'Full OCR Image Path Front': '',
+                'OCR Image Path Back': '',
+                'Full OCR Image Path Back': '',
+                'OCR Image Path Unknown': '',
+                'Full OCR Image Path Unknown': ''
+            }
+        
+        record = records[cccd]
+        
+        is_qr = bool(item.get('QR Raw'))
+        if is_qr:
+            # Overwrite text fields with QR accuracy
+            for k in ['Họ tên', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD', 'Nơi cấp', 'Ngày hết hạn', 'Phân loại', 'QR Raw']:
+                if item.get(k): record[k] = item[k]
+            
+            # Determine card type and side
+            fields = item['QR Raw'].split('|')
+            if len(fields) == 7:
+                record['Ảnh mặt trước CCCD/CC'] = item['Image Path']
+                record['Full Image Path Front'] = item['Full Image Path']
+            elif len(fields) >= 10:
+                record['Ảnh mặt sau CCCD/CC'] = item['Image Path']
+                record['Full Image Path Back'] = item['Full Image Path']
+            
+            if item.get('Ghi chú'):
+                record['Ghi chú'].append(item['Ghi chú'])
+        else: # OCR
+            # Fill empty text fields
+            for k in ['Họ tên', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD']:
+                if item.get(k) and not record.get(k): record[k] = item[k]
+                
+            if item.get('OCR Side') == 'Front':
+                record['OCR Image Path Front'] = item['Image Path']
+                record['Full OCR Image Path Front'] = item['Full Image Path']
+            elif item.get('OCR Side') == 'Back':
+                record['OCR Image Path Back'] = item['Image Path']
+                record['Full OCR Image Path Back'] = item['Full Image Path']
+            else:
+                record['OCR Image Path Unknown'] = item['Image Path']
+                record['Full OCR Image Path Unknown'] = item['Full Image Path']
+            
+            if item.get('Ghi chú'):
+                record['Ghi chú'].append(item['Ghi chú'])
+
+    # Pass 3: Assign OCR images to empty slots and Rename logic
+    for cccd, record in records.items():
+        # Assign Front
+        if not record['Ảnh mặt trước CCCD/CC']:
+            if record.get('OCR Image Path Front'):
+                record['Ảnh mặt trước CCCD/CC'] = record.pop('OCR Image Path Front')
+                record['Full Image Path Front'] = record.pop('Full OCR Image Path Front')
+            elif record.get('OCR Image Path Unknown') and record['Ảnh mặt sau CCCD/CC']:
+                record['Ảnh mặt trước CCCD/CC'] = record['OCR Image Path Unknown']
+                record['Full Image Path Front'] = record['Full OCR Image Path Unknown']
+                record['OCR Image Path Unknown'] = ''
+                
+        # Assign Back
+        if not record['Ảnh mặt sau CCCD/CC']:
+            if record.get('OCR Image Path Back'):
+                record['Ảnh mặt sau CCCD/CC'] = record.pop('OCR Image Path Back')
+                record['Full Image Path Back'] = record.pop('Full OCR Image Path Back')
+            elif record.get('OCR Image Path Unknown') and record['Ảnh mặt trước CCCD/CC']:
+                record['Ảnh mặt sau CCCD/CC'] = record['OCR Image Path Unknown']
+                record['Full Image Path Back'] = record['Full OCR Image Path Unknown']
+                record['OCR Image Path Unknown'] = ''
+
+        if not record['Ảnh mặt trước CCCD/CC'] and not record['Ảnh mặt sau CCCD/CC']:
+            if record.get('OCR Image Path Unknown'):
+                record['Ghi chú'].append('Không thể phân biệt được ảnh này là mặt trước hay mặt sau do mờ và không chứa mã QR')
+
+        hoten = record['Họ tên'] or 'KhongTen'
+        cmnd = record['CMND']
+        hoten_clean = hoten # keep space as user requested: Nguyễn Văn A_012_Mặt trước.jpg
+        # Only remove illegal characters for filename
+        hoten_clean = re.sub(r'[\\/*?:"<>|]', '', hoten_clean)
+        cmnd_str = f"_{cmnd}" if cmnd else ""
+        
+        if record['Ảnh mặt trước CCCD/CC']:
+            ext = os.path.splitext(record['Ảnh mặt trước CCCD/CC'])[1]
+            record['Đổi tên Ảnh mặt trước CCCD/CC'] = f"{hoten_clean}_{cccd}{cmnd_str}_Mặt trước{ext}"
+            
+        if record['Ảnh mặt sau CCCD/CC']:
+            ext = os.path.splitext(record['Ảnh mặt sau CCCD/CC'])[1]
+            record['Đổi tên Ảnh mặt sau CCCD/CC'] = f"{hoten_clean}_{cccd}{cmnd_str}_Mặt sau{ext}"
+
+    processed_data = list(records.values())
     # Lấy danh sách địa chỉ duy nhất
     print("Đang chuẩn bị gửi dữ liệu lên API...")
     unique_addresses = list(set([item['Nơi thường trú gốc'] for item in processed_data if item.get('Nơi thường trú gốc')]))
@@ -402,7 +606,7 @@ def main():
             result = address_map[addr]
             new_notes = []
             if row['Ghi chú']:
-                new_notes.append(row['Ghi chú'])
+                new_notes.extend(row['Ghi chú'] if isinstance(row['Ghi chú'], list) else [row['Ghi chú']])
             
             if result.get('success'):
                 row['Địa chỉ chuẩn hóa mới'] = result.get('converted', '')
@@ -413,6 +617,11 @@ def main():
                 new_notes.append(err_msg)
             
             row['Ghi chú'] = '; '.join(new_notes)
+            
+    # Fix note formatting for those not processed by API
+    for row in processed_data:
+        if isinstance(row['Ghi chú'], list):
+            row['Ghi chú'] = '; '.join(row['Ghi chú'])
 
     # Export to Excel
     print("Đang xuất file Excel...")
@@ -422,7 +631,8 @@ def main():
 
     headers = [
         "STT", "Họ tên", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
-        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Ghi chú", "Ảnh tham chiếu"
+        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", 
+        "Ảnh mặt trước CCCD/CC", "Ảnh mặt sau CCCD/CC", "Đổi tên Ảnh mặt trước CCCD/CC", "Đổi tên Ảnh mặt sau CCCD/CC"
     ]
     
     ws.append(headers)
@@ -440,8 +650,14 @@ def main():
             row_data['Nơi thường trú gốc'],
             row_data['Địa chỉ chuẩn hóa mới'],
             row_data['Ngày cấp CCCD'],
+            row_data['Nơi cấp'],
+            row_data['Ngày hết hạn'],
+            row_data['Phân loại'],
             row_data['Ghi chú'],
-            row_data.get('Image Path', '')
+            row_data.get('Ảnh mặt trước CCCD/CC', ''),
+            row_data.get('Ảnh mặt sau CCCD/CC', ''),
+            row_data.get('Đổi tên Ảnh mặt trước CCCD/CC', ''),
+            row_data.get('Đổi tên Ảnh mặt sau CCCD/CC', '')
         ]
         ws.append(row)
 
@@ -477,30 +693,70 @@ def main():
             custom_name += '.xlsx'
         output_filename = os.path.join(exports_dir, custom_name)
 
-    # Thêm các sheet phụ
-    qr_files = [row['Full Image Path'] for row in processed_data if row.get('Scan Type') == 'QR_scanned']
-    ocr_files = [row['Full Image Path'] for row in processed_data if row.get('Scan Type') == 'OCR_scanned']
-    
+    # Khôi phục các sheet phụ theo yêu cầu
     ws_qr = wb.create_sheet(title="QR_scanned")
     ws_qr.append(["STT", "Tên file"])
-    for i, path in enumerate(qr_files, 1):
-        ws_qr.append([i, os.path.basename(path)])
-        
+    qr_idx = 1
+    for item in extracted_items:
+        if item.get('Scan Type') == 'QR_scanned':
+            ws_qr.append([qr_idx, item['Image Path']])
+            qr_idx += 1
+            
     ws_ocr = wb.create_sheet(title="OCR_scanned")
     ws_ocr.append(["STT", "Tên file"])
-    for i, path in enumerate(ocr_files, 1):
-        ws_ocr.append([i, os.path.basename(path)])
+    ocr_idx = 1
+    for item in extracted_items:
+        if item.get('Scan Type') == 'OCR_scanned':
+            ws_ocr.append([ocr_idx, item['Image Path']])
+            ocr_idx += 1
+            
+    # Xác định các file bị trùng lặp hoặc không được sử dụng
+    used_images = set()
+    for row in processed_data:
+        if row.get('Full Image Path Front'): used_images.add(row['Full Image Path Front'])
+        if row.get('Full Image Path Back'): used_images.add(row['Full Image Path Back'])
         
+    duplicate_files = [item for item in extracted_items if item['Full Image Path'] not in used_images]
     ws_dup = wb.create_sheet(title="duplicate")
     ws_dup.append(["STT", "Tên file"])
-    for i, path in enumerate(duplicate_files, 1):
-        ws_dup.append([i, os.path.basename(path)])
-
+    for i, item in enumerate(duplicate_files, 1):
+        ws_dup.append([i, item['Image Path']])
+    
     wb.save(output_filename)
     
     print("\nĐang tạo các file nén zip...")
     
-    def create_zip(zip_name, file_paths):
+    import shutil
+    
+    # 1. original.zip
+    original_zip_path = os.path.join(exports_dir, 'original.zip')
+    with zipfile.ZipFile(original_zip_path, 'w') as zf:
+        for path in image_paths:
+            if os.path.exists(path):
+                zf.write(path, os.path.basename(path))
+    print(f" -> Đã tạo original.zip với {len(image_paths)} file.")
+    
+    # 2. rename.zip
+    rename_zip_path = os.path.join(exports_dir, 'rename.zip')
+    with zipfile.ZipFile(rename_zip_path, 'w') as zf:
+        count_rename = 0
+        for row in processed_data:
+            folder = "CCCD" if row.get("Phân loại") == "Căn cước công dân" else "CC"
+            
+            front_path = row.get('Full Image Path Front')
+            if front_path and os.path.exists(front_path) and row.get('Đổi tên Ảnh mặt trước CCCD/CC'):
+                zf.write(front_path, f"{folder}/{row['Đổi tên Ảnh mặt trước CCCD/CC']}")
+                count_rename += 1
+                
+            back_path = row.get('Full Image Path Back')
+            if back_path and os.path.exists(back_path) and row.get('Đổi tên Ảnh mặt sau CCCD/CC'):
+                zf.write(back_path, f"{folder}/{row['Đổi tên Ảnh mặt sau CCCD/CC']}")
+                count_rename += 1
+                
+    print(f" -> Đã tạo rename.zip với {count_rename} file đã được đổi tên (trong CC và CCCD).")
+    
+    # 3. Khôi phục lại các file nén phân loại cũ
+    def create_zip_helper(zip_name, file_paths):
         if not file_paths:
             return
         zip_path = os.path.join(exports_dir, zip_name)
@@ -510,9 +766,13 @@ def main():
                     zf.write(fpath, os.path.basename(fpath))
         print(f" -> Đã tạo {zip_name} với {len(file_paths)} file.")
 
-    create_zip('QR_scanned.zip', qr_files)
-    create_zip('OCR_scanned.zip', ocr_files)
-    create_zip('duplicate.zip', duplicate_files)
+    qr_files = [item['Full Image Path'] for item in extracted_items if item.get('Scan Type') == 'QR_scanned']
+    ocr_files = [item['Full Image Path'] for item in extracted_items if item.get('Scan Type') == 'OCR_scanned']
+    dup_files = [item['Full Image Path'] for item in duplicate_files]
+    
+    create_zip_helper('QR_scanned.zip', qr_files)
+    create_zip_helper('OCR_scanned.zip', ocr_files)
+    create_zip_helper('duplicate.zip', dup_files)
     
     print("\n" + "🎉"*15)
     print(f"ĐÃ HOÀN TẤT THÀNH CÔNG!")

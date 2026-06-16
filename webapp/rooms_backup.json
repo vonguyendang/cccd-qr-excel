@@ -1,0 +1,19 @@
+{
+  "OM4LC9": {
+    "items": [
+      {
+        "filename": "image(2).jpg",
+        "qrData": "086196005585|331762316|Phạm Vy Thảo|19091996|Nữ|Tổ 11, Ấp An Thành, Tân An Thạnh, Bình Tân, Vĩnh Long|15022022",
+        "error": null,
+        "fromOCR": false,
+        "ocrData": null,
+        "imageBase64": null,
+        "isDuplicate": false
+      }
+    ],
+    "seen_cccds": [
+      "086196005585"
+    ],
+    "duplicate_files": []
+  }
+}
