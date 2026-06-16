@@ -1,45 +1,44 @@
-# Hướng dẫn Khởi chạy Web App & Live Scanner Camera
+# Hướng dẫn Khởi chạy Web App & Quét Camera Trực tiếp
 
-Hệ thống Web App cung cấp cho bạn một giao diện vô cùng thân thiện và tiện lợi, hỗ trợ hai chế độ làm việc:
+Hệ thống Web App cung cấp giao diện trực quan, hỗ trợ upload hàng loạt ảnh hoặc quét mã bằng Camera trên điện thoại. 
+Lưu ý: Bạn **không cần phải khởi chạy riêng rẽ** mô hình `deepdoc_vietocr`. Toàn bộ AI OCR và WeChat QRCode đã được tích hợp sâu vào bên trong code Python, nó sẽ **tự động khởi chạy** cùng với máy chủ Web App!
 
-1. **Upload File:** Chọn hàng loạt file ảnh lưu sẵn trên máy tính để đọc. Nếu có ảnh khó, Web App sẽ tự động đẩy xuống lõi Trí tuệ Nhân tạo (WeChat QRCode) của Python để bóc tách.
-2. **Camera Scanner:** Truy cập trực tiếp Camera trên máy tính hoặc điện thoại di động để quét Live mã QR trên CCCD nhựa cứng một cách vô cùng nhanh nhạy và phát ra âm thanh báo hiệu.
+## 🚀 Bước 1: Khởi động Máy chủ FastAPI (Backend)
 
-Dữ liệu sau khi quét sẽ được gom vào bảng, tự động chuẩn hóa địa chỉ tại hệ thống VNHub. 
-Khi bạn nhấn **Xuất Excel ngay**, file Excel xuất ra sẽ được bổ sung tự động tính năng:
-- Gom và phân loại "Ảnh mặt trước" và "Ảnh mặt sau" dựa trên nội dung OCR hoặc QR.
-- Đổi tên file ảnh chuẩn mực theo định dạng `{Họ tên}_{CCCD/CMND}_Mặt trước/Mặt sau.jpg`.
-- Nén tự động toàn bộ ảnh vào 2 file `original.zip` và `rename.zip`.
-
----
-
-## Bước 1: Khởi động Máy chủ FastAPI (Backend & Web)
-
-Toàn bộ hệ thống Web App và AI nay đã được hợp nhất thành một máy chủ **FastAPI (Python)** mạnh mẽ. Bạn cần mở Terminal ở thư mục gốc của dự án (`cccd-qr-excel`) và nhập lệnh:
+Bạn cần mở Terminal ở thư mục gốc của dự án (`cccd-qr-excel`) và lần lượt làm theo các bước sau:
 
 ```bash
+# 1. Di chuyển vào thư mục webapp
 cd webapp
+
+# 2. Tạo môi trường ảo riêng biệt (để cài đặt các thư viện AI không bị xung đột)
 python3 -m venv venv
+
+# 3. Kích hoạt môi trường ảo
+# Trên Mac/Linux:
 source venv/bin/activate
-#Cài đặt toàn bộ thư viện cần thiết
-pip3 install -r requirements.txt
-# Lệnh dưới đây giúp tự động dọn dẹp cổng 8000 nếu đang bị kẹt (Dành cho máy Mac/Linux)
+# Trên Windows:
+# .\venv\Scripts\activate
+
+# 4. Cài đặt toàn bộ thư viện cần thiết (Bao gồm cả Numpy, Torch cho Deepdoc_VietOCR)
+pip install -r requirements.txt
+
+# 5. Dọn dẹp cổng 8000 nếu đang bị kẹt (Chỉ dành cho máy Mac/Linux, có thể bỏ qua trên Windows)
 lsof -ti:8000 | xargs kill -9 2>/dev/null || true
-# Khởi động máy chủ
+
+# 6. Khởi động máy chủ Web App
 uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 
-*(Nếu đây là lần đầu chạy, máy chủ sẽ tốn khoảng 3 giây để nạp Mô hình AI WeChat vào RAM bộ nhớ).*
-
-> **Lưu ý cho người dùng Windows:**
-> Nếu bạn dùng máy Windows và bị báo lỗi `[Errno 48] address already in use`, hãy mở PowerShell bằng quyền Admin, gõ lệnh `Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess -Force` trước khi chạy `uvicorn`.
+> **Ghi chú cực kỳ quan trọng ở lần chạy đầu tiên:**
+> Máy chủ sẽ có thể tốn khoảng 1-2 phút "đứng hình" ở lần chạy đầu tiên để nạp các mô hình Trí tuệ Nhân tạo nặng vài chục MB (WeChat QRCode và các weights `cnn.onnx`, `transformerocr.pth` của Deepdoc VietOCR) vào bộ nhớ RAM. Hãy kiên nhẫn chờ cho đến khi thấy dòng chữ `Application startup complete`. Từ lần chạy thứ 2 trở đi, tốc độ sẽ là siêu tốc (dưới 1 giây)!
 
 Lúc này, bạn có thể truy cập thẳng Web App bằng trình duyệt trên máy tính tại địa chỉ:
 👉 **[http://localhost:8000](http://localhost:8000)**
 
 ---
 
-## Bước 2: Chia sẻ Web App lên Điện thoại (Localtunnel)
+## 📱 Bước 2: Chia sẻ Web App lên Điện thoại (Localtunnel)
 
 Tính năng quét bằng Camera cần có mạng bảo mật `https` thì trình duyệt trên di động (iPhone/Android) mới cấp quyền bật máy ảnh. Chúng ta sẽ dùng tính năng tạo đường hầm Localtunnel.
 
@@ -48,57 +47,35 @@ Tính năng quét bằng Camera cần có mạng bảo mật `https` thì trình
 ```bash
 npx localtunnel --port 8000
 ```
-
-*(Nếu máy chưa có NodeJS, hệ thống sẽ yêu cầu cài đặt npx tự động)*
+*(Nếu máy chưa có NodeJS, hệ thống sẽ yêu cầu tải npx tự động)*
 
 Hệ thống sẽ trả về một đường link ngẫu nhiên (Ví dụ: `https://abcd-1234.loca.lt`).
 
 1. Hãy dùng điện thoại di động truy cập vào đường link này.
 2. Tại màn hình cảnh báo Tunnel, bấm chọn dòng **"Click to Continue"**.
-3. Chuyển sang Tab "Sử dụng Camera" trên màn hình điện thoại, cấp quyền truy cập Camera và bắt đầu soi thẻ nhựa trực tiếp.
-
-> **Lưu ý:** Quét trên điện thoại xong, bộ đệm thông minh của Web App (Cache) sẽ lưu trữ dữ liệu lại. Bạn có thể nhấn tải về Excel ngay trên trình duyệt điện thoại để lưu trữ.
+3. Chuyển sang Tab "Sử dụng Camera", cấp quyền và bắt đầu soi thẻ nhựa trực tiếp. Dữ liệu sẽ đồng bộ liên tục về máy tính!
 
 ---
 
-## Tính năng Đồng bộ Đa thiết bị & Khôi phục (MỚI)
+## ⚙️ Tùy chỉnh Cấu hình Hệ thống (config.js)
 
-Ứng dụng hiện tại đã được nâng cấp kiến trúc "Phòng làm việc (Session)" và lưu trữ "Backup kép" (Dual Backup).
-
-1. **Làm việc nhóm (Multi-device Sync):** Nếu bạn có hàng nghìn ảnh cần quét, bạn có thể bấm **Tạo mã phiên mới** để lấy một Mã phiên (VD: `XYZ123`). Sau đó đưa mã này cho nhiều người khác cùng nhập vào ô **Vào phiên**. Lúc này, tất cả dữ liệu từ nhiều điện thoại/máy tính sẽ được đồng bộ ngay lập tức (thời gian thực qua WebSocket) về một danh sách duy nhất. Hệ thống sẽ kiểm tra chéo và tự động chặn thẻ trùng lặp giữa các máy với nhau!
-2. **Khôi phục dữ liệu (Dual Backup):** Kể cả khi bạn làm việc một mình, hệ thống cũng tự động cấp cho bạn một Mã Phiên. Dữ liệu quét của bạn được **lưu kép** cả ở trình duyệt (`localStorage`) và trên file `.json` riêng biệt tại Server. Kể cả khi bị mất mạng, lỡ tay tắt trình duyệt hay khởi động lại Server, bạn chỉ cần nhập lại Mã Phiên cũ là toàn bộ dữ liệu sẽ được khôi phục nguyên vẹn.
-
-> *Cơ chế lưu trữ tự động dọn dẹp rác (auto cleanup): Dữ liệu phiên sẽ tự động bị xóa sau 10 ngày nếu không có hoạt động mới.*
-
----
-
-## Tùy chỉnh Cấu hình Hệ thống (config.js)
-
-Để giúp việc tinh chỉnh trở nên dễ dàng và tập trung, hệ thống Web App đã được trang bị file cấu hình tổng. Bạn không cần phải tìm kiếm trong các file logic phức tạp nữa.
-
-**Cách thực hiện:**
-
-1. Mở file `webapp/public/assets/js/config.js`
-2. Tại đây, bạn có thể dễ dàng thay đổi các thông số (lưu file và F5 trang web để áp dụng):
+Để giúp việc tinh chỉnh trở nên dễ dàng, bạn có thể mở file `webapp/public/assets/js/config.js` để chỉnh sửa các thông số. Nhớ F5 trang web để áp dụng:
 
 ```javascript
 const APP_CONFIG = {
     // Tùy chỉnh hiệu năng
     concurrencyLimit: 4,      // Số lượng ảnh được xử lý song song cùng lúc (Tăng lên nếu CPU/RAM mạnh)
-    maxImageSize: 1500,       // Kích thước tối đa (pixel) khi nén ảnh trước khi gửi. Giảm xuống để chạy nhanh hơn nhưng có thể giảm độ chính xác.
+    maxImageSize: 1500,       // Kích thước tối đa (pixel) nén ảnh trước khi gửi. Giảm xuống để chạy nhẹ hơn.
   
     // Tùy chỉnh API
     apiScanQR: '/api/scan_qr',
     apiExportExcel: '/api/export',
 
     // Tùy chỉnh UI/UX
-    successBeepVolume: 1.0,   // Âm lượng tiếng bíp thành công (0.0 đến 1.0)
-    errorBeepVolume: 1.0      // Âm lượng tiếng bíp lỗi (0.0 đến 1.0)
+    successBeepVolume: 1.0,   // Âm lượng tiếng bíp thành công
+    errorBeepVolume: 1.0      // Âm lượng tiếng bíp lỗi
 };
 ```
 
 **Lưu ý khi tăng tốc độ quét (`concurrencyLimit`):**
-
-* **CPU (Chip xử lý):** Việc xử lý song song (đọc mã QR, nén ảnh, chạy nhận dạng OCR) tốn rất nhiều tài nguyên cục bộ. Chỉ nên thiết lập mức cao (trên 6 luồng) nếu máy tính dùng chip đa nhân mạnh (Apple M1+, Intel Core i7+). Tối ưu nhất là đặt số luồng **nhỏ hơn hoặc bằng** số nhân CPU thực tế.
-* **Bộ nhớ RAM:** Mỗi luồng xử lý song song sẽ tiêu tốn thêm RAM để nạp dữ liệu ảnh gốc. Nếu thiết lập mức quá cao (ví dụ: `20`), tab trình duyệt có thể bị "Crash" (Out of Memory) do tràn bộ nhớ (đặc biệt khi tải ảnh nặng 5-10MB).
-* **Hiệu năng AI OCR Backend:** Hệ thống đã được nâng cấp lên AI Deepdoc_VietOCR chạy bằng Python Backend. Khi bạn scan ảnh mờ và hệ thống gọi API `/api/ocr`, máy chủ sẽ tải nặng để xử lý chữ tiếng Việt. Hãy đảm bảo Server có cấu hình đủ khỏe nếu nhiều người gửi OCR cùng lúc!
+Mỗi luồng xử lý song song sẽ tiêu tốn thêm RAM và CPU để chạy AI OCR Backend. Nếu đặt mức quá cao (ví dụ: `20`) trên máy yếu, API có thể bị nghẽn và sập Server. Tối ưu nhất là đặt số luồng bằng với số nhân CPU.
