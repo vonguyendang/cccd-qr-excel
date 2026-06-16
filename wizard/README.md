@@ -5,27 +5,40 @@ Công cụ dòng lệnh phù hợp khi bạn có một thư mục chứa rất n
 Chương trình sẽ tự động quét toàn bộ các file ảnh trong thư mục (bao gồm cả ảnh `.HEIC` từ iPhone), phân tích mã QR, chuẩn hóa địa chỉ thông qua API `tienich.vnhub.com`, lọc trùng lặp và lưu tất cả kết quả vào một file `.xlsx`.
 Đồng thời, tự động đổi tên toàn bộ ảnh (theo định dạng `{Họ tên}_{CCCD/CMND}_Mặt trước/sau`) và nén thành 2 file `original.zip` và `rename.zip`.
 
-## Cài đặt Môi trường
+Lưu ý: Giống như Web App, **bạn không cần phải cài đặt hay chạy riêng rẽ `deepdoc_vietocr`**. Nó đã được nhúng chung vào trong `main.py` và sẽ tự động khởi động.
+
+## 🚀 Bước 1: Khởi động Môi trường ảo
+
+Để chạy phần mềm tự động, chúng ta sẽ dùng chung "môi trường ảo" (nơi đã cài sẵn các thư viện AI nặng) của Web App để tránh việc phải tải lại model và cài đặt hai lần.
+
+Bạn mở Terminal ở thư mục gốc (`cccd-qr-excel`) và gõ lần lượt các lệnh:
 
 ```bash
-# Bước 1: Di chuyển vào thư mục wizard
+# 1. Di chuyển vào thư mục wizard
 cd wizard
 
-# Bước 2: Kích hoạt môi trường ảo chung (nơi đã cài sẵn AI Model)
+# 2. Kích hoạt môi trường ảo chung của phần webapp (nơi đã cài sẵn mọi AI)
+# Trên Mac/Linux:
 source ../webapp/venv/bin/activate
+# Trên Windows:
+# ..\webapp\venv\Scripts\activate
+
+# 3. (Tuỳ chọn) Nếu bạn chưa cài đặt requirements ở Web App, bạn có thể cài tại đây:
+pip install -r requirements.txt
 ```
 
-## Cách Chạy Quét Hàng Loạt
+## ⚙️ Bước 2: Chạy Phần Mềm Quét Tự Động
 
-Chỉ cần gõ lệnh sau để khởi động phần mềm:
+Sau khi môi trường `(venv)` đã được bật (bạn sẽ thấy chữ `(venv)` xuất hiện ở đầu dòng Terminal), chỉ cần gõ lệnh sau để khởi động phần mềm:
 
 ```bash
 python3 main.py
 ```
 
-Khi chạy, chương trình sẽ yêu cầu bạn nhập đường dẫn tới thư mục chứa file ảnh. Bạn chỉ cần kéo thả thư mục đó vào cửa sổ Terminal và nhấn Enter. Mọi thao tác còn lại chương trình sẽ tự lo!
-
-File Excel kết quả sẽ được tạo tự động với cấu trúc tên `ket_qua_ngay_gio.xlsx` nằm ngay trong thư mục gốc.
+1. Ở lần chạy đầu tiên, màn hình Terminal sẽ in ra thông báo *Đang khởi tạo AI Model Deepdoc_VietOCR (lần đầu sẽ mất vài giây)*. Bạn chờ một lát để AI được nạp vào RAM.
+2. Chương trình sẽ yêu cầu bạn nhập **đường dẫn tới thư mục chứa file ảnh**. Bạn chỉ cần cầm thư mục chứa ảnh từ Finder/Explorer, kéo thả vào cửa sổ Terminal, nhấn phím `Enter`!
+3. Cứ để kệ máy chạy. Mọi thao tác xử lý, đọc lỗi, gom ảnh mặt trước mặt sau, đổi tên file chương trình sẽ tự lo toàn bộ!
+4. Quét xong, file Excel sẽ xuất hiện ngay trong thư mục gốc với tên dạng `ket_qua_ngay_gio.xlsx`.
 
 ---
 

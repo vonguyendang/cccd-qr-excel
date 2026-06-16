@@ -15,21 +15,35 @@ Khi bạn nhấn **Xuất Excel ngay**, file Excel xuất ra sẽ được bổ 
 
 ## Bước 1: Khởi động Máy chủ FastAPI (Backend & Web)
 
-Toàn bộ hệ thống Web App và AI nay đã được hợp nhất thành một máy chủ **FastAPI (Python)** mạnh mẽ. Bạn cần mở Terminal ở thư mục gốc của dự án (`cccd-qr-excel`) và nhập lệnh:
+Toàn bộ hệ thống Web App và AI (bao gồm Deepdoc_VietOCR) nay đã được hợp nhất thành một máy chủ **FastAPI (Python)** mạnh mẽ. Bạn **không cần phải khởi chạy riêng rẽ** mô hình `deepdoc_vietocr`, nó sẽ tự động chạy cùng Web App!
+
+Bạn cần mở Terminal ở thư mục gốc của dự án (`cccd-qr-excel`) và lần lượt làm theo các bước sau:
 
 ```bash
+# 1. Di chuyển vào thư mục webapp
 cd webapp
+
+# 2. Tạo môi trường ảo riêng biệt (để cài đặt các thư viện AI không bị xung đột)
 python3 -m venv venv
+
+# 3. Kích hoạt môi trường ảo
+# Trên Mac/Linux:
 source venv/bin/activate
-#Cài đặt toàn bộ thư viện cần thiết
-pip3 install -r requirements.txt
-# Lệnh dưới đây giúp tự động dọn dẹp cổng 8000 nếu đang bị kẹt (Dành cho máy Mac/Linux)
+# Trên Windows:
+# .\venv\Scripts\activate
+
+# 4. Cài đặt toàn bộ thư viện cần thiết (Bao gồm cả Numpy, Torch cho Deepdoc_VietOCR)
+pip install -r requirements.txt
+
+# 5. Dọn dẹp cổng 8000 nếu đang bị kẹt (Chỉ dành cho máy Mac/Linux, có thể bỏ qua trên Windows)
 lsof -ti:8000 | xargs kill -9 2>/dev/null || true
-# Khởi động máy chủ
+
+# 6. Khởi động máy chủ Web App
 uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 
-*(Nếu đây là lần đầu chạy, máy chủ sẽ tốn khoảng 3 giây để nạp Mô hình AI WeChat vào RAM bộ nhớ).*
+> **Ghi chú cực kỳ quan trọng ở lần chạy đầu tiên:**
+> Máy chủ sẽ có thể tốn khoảng 1-2 phút "đứng hình" ở lần chạy đầu tiên để nạp các mô hình Trí tuệ Nhân tạo nặng vài chục MB (WeChat QRCode và Deepdoc VietOCR) vào bộ nhớ RAM. Hãy kiên nhẫn chờ cho đến khi thấy dòng chữ `Application startup complete`. Từ lần chạy thứ 2 trở đi, tốc độ sẽ là siêu tốc (dưới 1 giây)!
 
 > **Lưu ý cho người dùng Windows:**
 > Nếu bạn dùng máy Windows và bị báo lỗi `[Errno 48] address already in use`, hãy mở PowerShell bằng quyền Admin, gõ lệnh `Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess -Force` trước khi chạy `uvicorn`.
