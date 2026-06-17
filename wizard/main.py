@@ -236,15 +236,15 @@ def parse_ocr_text(text):
                     # -> Phân tích: 096005156 (9 số cuối của CCCD) + 6 (Mã kiểm tra) + 086 (3 số đầu của CCCD)
                     # Sửa lỗi OCR: Chữ 'O' thường bị AI đọc nhầm thay vì số '0' -> replace 'O' bằng '0'
                     text_mrz = text_upper.replace('O', '0') 
-                    mrz_match = re.search(r'VNM(\d{9})\d(\d{3})', text_mrz)
-                    if mrz_match:
-                        # Lắp ráp lại thành CCCD hoàn chỉnh (3 số đầu + 9 số cuối)
-                        data['CCCD'] = mrz_match.group(2) + mrz_match.group(1)
+                    # Fallback cho chuẩn MRZ cũ/khác có chứa trực tiếp chuỗi 12 số CCCD liền kề dấu '<'
+                    mrz_12_match = re.search(r'(\d{12})<', text_mrz)
+                    if mrz_12_match:
+                        data['CCCD'] = mrz_12_match.group(1)
                     else:
-                        # Fallback cho chuẩn MRZ cũ/khác có chứa trực tiếp chuỗi 12 số CCCD liền kề dấu '<'
-                        mrz_12_match = re.search(r'(\d{12})<', text_mrz)
-                        if mrz_12_match:
-                            data['CCCD'] = mrz_12_match.group(1)
+                        mrz_match = re.search(r'VNM(\d{9})\d(\d{3})', text_mrz)
+                        if mrz_match:
+                            # Lắp ráp lại thành CCCD hoàn chỉnh (3 số đầu + 9 số cuối)
+                            data['CCCD'] = mrz_match.group(2) + mrz_match.group(1)
                         else:
                             # Bước 2.3: Chặn bắt cuối cùng (Fallback), quét tìm chuỗi 12 số liền nhau bắt đầu bằng số 0
                             fallback_match = re.search(r'(0[\d\s]{11,15})', text)
