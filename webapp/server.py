@@ -477,13 +477,18 @@ def calculate_expiry_date(dob_str):
 
 def process_qr_string(qr_str):
     parts = qr_str.split('|')
+    import re
+    addr_raw = parts[5] if len(parts) > 5 else ''
+    addr_clean = re.sub(r',\s*,', ',', addr_raw) # Thay thế ', ,' hoặc ',,' bằng ','
+    addr_clean = re.sub(r'\s+', ' ', addr_clean).strip(', ')
+
     data = {
         'CCCD': parts[0] if len(parts) > 0 else '',
         'CMND': parts[1] if len(parts) > 1 else '',
         'Họ tên': parts[2] if len(parts) > 2 else '',
         'Ngày sinh': format_date(parts[3]) if len(parts) > 3 else '',
         'Giới tính': parts[4] if len(parts) > 4 else '',
-        'Nơi thường trú gốc': parts[5] if len(parts) > 5 else '',
+        'Nơi thường trú gốc': addr_clean,
         'Ngày cấp CCCD': format_date(parts[6]) if len(parts) > 6 else '',
     }
     notes = []
