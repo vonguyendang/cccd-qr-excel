@@ -500,22 +500,35 @@ def fetch_single_address(addr):
         payload = json.dumps({"address": addr})
         
         for attempt in range(3):
-            response = requests.post(
-                'https://tienich.vnhub.com/api/wards', 
-                data=payload,
-                headers=headers,
-                timeout=15
-            )
-            response.raise_for_status()
-            res_data = response.json()
-            
-            if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
-                return {
-                    "original": addr,
-                    "success": True,
-                    "converted": res_data['data'][0]['address']
-                }
-            
+            try:
+                response = requests.post(
+                    'https://tienich.vnhub.com/api/wards', 
+                    data=payload,
+                    headers=headers,
+                    timeout=15
+                )
+                response.raise_for_status()
+                res_data = response.json()
+                
+                if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
+                    return {
+                        "original": addr,
+                        "success": True,
+                        "converted": res_data['data'][0]['address']
+                    }
+            except requests.exceptions.HTTPError as e:
+                # Nếu là lỗi 500, 502, 503, 504 thì retry, còn 4xx thì thôi (vì lỗi do data)
+                if response.status_code >= 500:
+                    time.sleep(1.5 * (attempt + 1)) # Backoff delay: 1.5s, 3s, 4.5s
+                    continue
+                else:
+                    break
+            except requests.exceptions.RequestException:
+                # Lỗi kết nối, timeout -> retry
+                time.sleep(1.5 * (attempt + 1))
+                continue
+                
+            # Nếu chạy đến đây mà API không lỗi nhưng success=false thì cũng chờ và thử lại
             time.sleep(1)
             
         return {
