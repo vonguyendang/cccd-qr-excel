@@ -458,7 +458,7 @@ def fetch_single_address(addr):
             "error": f"Lỗi API: {str(e)}"
         }
 
-def call_address_api(address_list, max_workers=20):
+def call_address_api(address_list, max_workers=4):
     if not address_list:
         return []
         
@@ -506,12 +506,12 @@ def run_wizard(input_dir):
         console.print("[yellow]⚠️ Giá trị không hợp lệ, sử dụng mặc định: 4 luồng.[/yellow]")
         num_threads = 4
 
-    api_threads_input = Prompt.ask("[cyan]Nhập số luồng gọi API địa chỉ song song[/cyan] (Enter để mặc định là 20)", default="20").strip()
+    api_threads_input = Prompt.ask("[cyan]Nhập số luồng gọi API địa chỉ song song[/cyan] (Enter để mặc định là 4)", default="4").strip()
     try:
-        api_threads = int(api_threads_input) if api_threads_input else 20
+        api_threads = int(api_threads_input) if api_threads_input else 4
     except ValueError:
-        console.print("[yellow]⚠️ Giá trị không hợp lệ, sử dụng mặc định: 20 luồng.[/yellow]")
-        api_threads = 20
+        console.print("[yellow]Số luồng không hợp lệ, dùng mặc định 4[/yellow]")
+        api_threads = 4
 
     # Wizard confirmation
     confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu xử lý ngay bây giờ không?[/bold yellow]")
