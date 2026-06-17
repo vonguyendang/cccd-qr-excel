@@ -324,14 +324,14 @@ def extract_ocr_data(image_path_or_cv2img):
             img_to_ocr = image_path_or_cv2img
             
     except Exception as e:
-        return {}, f"Lỗi thư viện OCR: {str(e)}"
+        return {}, f"Lỗi thư viện OCR: {str(e)}", None
         
     try:
         text = extract_text_from_image(img_to_ocr)
         data = parse_ocr_text(text)
         if data['CCCD'] or (not data['CCCD'] and data['OCR Side'] == 'Front' and data['Họ tên']): 
             # If we found CCCD, or it's clearly front and has name, return it
-            return data, "Lấy bằng OCR"
+            return data, "Lấy bằng OCR", None
             
         # Fallback rotations
         import cv2
@@ -346,11 +346,11 @@ def extract_ocr_data(image_path_or_cv2img):
             text_rot = extract_text_from_image(rotated)
             data_rot = parse_ocr_text(text_rot)
             if data_rot['CCCD'] or (data_rot['OCR Side'] == 'Front' and data_rot['Họ tên']):
-                return data_rot, f"Lấy bằng OCR ({rot_name})"
+                return data_rot, f"Lấy bằng OCR ({rot_name})", rotated
                 
-        return data, "Ảnh mờ hoặc không thể nhận diện được"
+        return data, "Ảnh mờ hoặc không thể nhận diện được", None
     except Exception as e:
-        return {}, f"Lỗi OCR: {str(e)}"
+        return {}, f"Lỗi OCR: {str(e)}", None
 
 def process_qr_string(qr_string):
     parts = qr_string.split('|')
@@ -513,7 +513,11 @@ def run_wizard(input_dir):
             # Fallback to OCR
             if img is not None:
                 log_msgs.append(f"[yellow]⚠️ Không đọc được QR, đang thử quét OCR...[/yellow]")
-                ocr_data, ocr_note = extract_ocr_data(img)
+                ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
+                
+                if rotated_img is not None:
+                    # Lưu lại ảnh đã xoay chuẩn vào ổ cứng để các bước nén zip phía sau lấy đúng ảnh chuẩn
+                    cv2.imwrite(img_path, rotated_img)
                 
                 # In thông tin OCR ra màn hình
                 parts = []
