@@ -48,7 +48,8 @@ python3 main.py
 1. Ở lần chạy đầu tiên, màn hình Terminal sẽ in ra thông báo *Đang khởi tạo AI Model Deepdoc_VietOCR (lần đầu sẽ mất vài giây)*. Bạn chờ một lát để AI được nạp vào RAM.
 2. Chương trình sẽ yêu cầu bạn nhập **đường dẫn tới thư mục chứa file ảnh**. Bạn chỉ cần cầm thư mục chứa ảnh từ Finder/Explorer, kéo thả vào cửa sổ Terminal, nhấn phím `Enter`!
 3. Cứ để kệ máy chạy. Mọi thao tác xử lý, đọc lỗi, gom ảnh mặt trước mặt sau, đổi tên file chương trình sẽ tự lo toàn bộ!
-4. Quét xong, file Excel sẽ xuất hiện ngay trong thư mục gốc với tên dạng `ket_qua_ngay_gio.xlsx`.
+4. Quét xong, hệ thống sẽ tự động tạo một thư mục `exports/` nằm ngay bên trong thư mục `wizard/`. 
+5. Toàn bộ thành quả (bao gồm file Excel, 5 file ZIP phân loại hình ảnh, và file Log chi tiết tiến trình) sẽ xuất hiện tại thư mục `wizard/exports/`. Mở lên và tận hưởng thôi!
 
 ---
 

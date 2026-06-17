@@ -37,9 +37,10 @@ Thuật toán được chúng tôi "độ" lại với hàng loạt công nghệ
 Hệ thống sử dụng cơ chế thông minh: Nếu thẻ mất mã QR, nó sẽ dùng số CCCD (bóc từ MRZ) làm cầu nối để gộp dữ liệu ảnh mặt trước và ảnh mặt sau lại với nhau.
 Ví dụ: Lấy *Họ tên, Ngày sinh* ở mặt trước đắp chung với *Ngày cấp, Quê quán* ở mặt sau. Đảm bảo file Excel cuối cùng luôn đầy đủ 100% cột dữ liệu!
 
-### 5. Tự động loại bỏ CCCD trùng lặp
+### 5. Quản lý Ảnh và Đóng gói File ZIP
 - Lọc bỏ triệt để các ảnh chụp thừa, chỉ giữ lại 1 dòng dữ liệu cho mỗi người.
-- Hệ thống xuất thêm 4 cột hình ảnh: "Ảnh mặt trước", "Ảnh mặt sau", và 2 cột Đổi tên tương ứng. Tự động gom file vào `original.zip` và file đã đổi tên vào `duplicate.zip` (ảnh rác).
+- Cung cấp thêm 4 cột hình ảnh vào file Excel: "Ảnh mặt trước gốc", "Ảnh mặt sau gốc", và "Tên ảnh đã đổi".
+- Đặc biệt với phiên bản Terminal (CLI), toàn bộ hình ảnh sau khi quét sẽ được tự động đổi tên (theo format `{Họ tên}_{CCCD/CMND}`) và phân loại nén vào **5 file ZIP riêng biệt**: `original.zip` (Ảnh gốc), `rename.zip` (Ảnh đã đổi tên), `QR_scanned.zip` (Ảnh quét bằng QR), `OCR_scanned.zip` (Ảnh phải dùng AI để đọc), và `duplicate.zip` (Ảnh rác/trùng lặp).
 
 ### 6. Multi-device Sync (Đồng bộ đa thiết bị)
 - Kết nối Web App qua WebSocket, cho phép nhiều người/thiết bị cùng quét chung vào 1 phòng theo thời gian thực.
