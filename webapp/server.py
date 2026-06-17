@@ -717,10 +717,17 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
                 
             row['Ghi chú'] = '; '.join(notes)
             
-    # Ensure all notes are strings
+    # Clean up notes and ensure they are strings
     for row in processed_data:
         if isinstance(row['Ghi chú'], list):
-            row['Ghi chú'] = '; '.join(row['Ghi chú'])
+            if row.get('QR Raw'):
+                row['Ghi chú'] = [n for n in row['Ghi chú'] if 'Lấy bằng OCR' not in n]
+            
+            unique_notes = []
+            for n in row['Ghi chú']:
+                if n not in unique_notes:
+                    unique_notes.append(n)
+            row['Ghi chú'] = '; '.join(unique_notes)
             
     print(f"-> Hoàn tất xử lý dữ liệu. Đang đóng gói file Excel...", flush=True)
     

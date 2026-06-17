@@ -665,10 +665,10 @@ def main():
         elif not isinstance(raw_notes, list):
             raw_notes = []
             
-        # Clean up "QR không đọc được" note if we actually have a QR code
+        # Clean up "QR không đọc được" và "Lấy bằng OCR" note if we actually have a QR code
         final_notes = [n for n in raw_notes if n]
         if record.get('QR Raw'):
-            final_notes = [n for n in final_notes if 'QR không đọc được' not in n]
+            final_notes = [n for n in final_notes if 'QR không đọc được' not in n and 'Lấy bằng OCR' not in n]
         
         # Xử lý logic CMND (Yêu cầu mới)
         if not record['CMND']:
