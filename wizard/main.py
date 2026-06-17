@@ -223,7 +223,8 @@ def parse_ocr_text(text):
                 # 2. TRÍCH XUẤT SỐ CCCD
                 # ---------------------------------------------------------
                 # Bước 2.1: Ưu tiên tìm chuỗi 12 số đứng độc lập bắt đầu bằng số 0 (có thể bị OCR chèn khoảng trắng)
-                cccd_match = re.search(r'\b(0[\d\s]{11,15})\b', text)
+                text_numbers = text_upper.replace('O', '0')
+                cccd_match = re.search(r'\b(0[\d\s]{11,15})\b', text_numbers)
                 if cccd_match:
                     val = cccd_match.group(1).replace(' ', '')
                     if len(val) >= 12:
@@ -247,11 +248,11 @@ def parse_ocr_text(text):
                             data['CCCD'] = mrz_match.group(2) + mrz_match.group(1)
                         else:
                             # Bước 2.3: Chặn bắt cuối cùng (Fallback), quét tìm chuỗi 12 số liền nhau bắt đầu bằng số 0
-                            fallback_match = re.search(r'(0[\d\s]{11,15})', text)
+                            # Dùng text_mrz để đảm bảo chữ 'O' đã được chuyển thành '0'
+                            text_clean = text_mrz.replace(' ', '').replace('\n', '')
+                            fallback_match = re.search(r'(0\d{11})', text_clean)
                             if fallback_match:
-                                val = fallback_match.group(1).replace(' ', '')
-                                if len(val) >= 12:
-                                    data['CCCD'] = val[:12]
+                                data['CCCD'] = fallback_match.group(1)
                 all_dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
     
                 # ---------------------------------------------------------
