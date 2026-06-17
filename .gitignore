@@ -43,6 +43,13 @@ web-app/node_modules/
 *.heic
 *.gif
 
+# Image Exceptions (System Files)
+!webapp/public/*.png
+!webapp/public/*.jpg
+!webapp/public/*.ico
+!deepdoc_vietocr/img/*
+!dummy_cccd.jpg
+
 # Web App Exports & Sessions
 webapp/exports/*
 !webapp/exports/.gitkeep
