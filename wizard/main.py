@@ -107,7 +107,10 @@ def extract_qr_data(image_path):
                 res = zxingcpp.read_barcode(scan_img)
                 if res and res.text:
                     if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', res.text):
-                        return res.text, "zxing-cpp"
+                        pos = res.position
+                        cx = (pos.top_left.x + pos.bottom_right.x) / 2
+                        cy = (pos.top_left.y + pos.bottom_right.y) / 2
+                        return res.text, "zxing-cpp", (cx, cy)
             except Exception:
                 pass
 
@@ -121,42 +124,64 @@ def extract_qr_data(image_path):
                     decoded_objects = decode(thresh, symbols=[ZBarSymbol.QRCODE])
 
             if decoded_objects:
-                txt = decoded_objects[0].data.decode('utf-8')
+                obj = decoded_objects[0]
+                txt = obj.data.decode('utf-8')
                 if '|' in txt and len(txt.split('|')) >= 6:
                     if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', txt):
-                        return txt, "pyzbar"
+                        rect = obj.rect
+                        cx = rect.left + rect.width / 2
+                        cy = rect.top + rect.height / 2
+                        return txt, "pyzbar", (cx, cy)
 
             # 3. wechat_qrcode
             global detector
             if detector:
                 try:
-                    res, _ = detector.detectAndDecode(scan_img)
+                    res, points = detector.detectAndDecode(scan_img)
                     if res and len(res) > 0:
                         txt = res[0]
                         if '|' in txt and len(txt.split('|')) >= 6:
                             if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', txt):
-                                return txt, "WeChat QRCode"
+                                pts = points[0]
+                                cx = sum(p[0] for p in pts) / 4
+                                cy = sum(p[1] for p in pts) / 4
+                                return txt, "WeChat QRCode", (cx, cy)
                 except Exception:
                     pass
             
-            return None, None
+            return None, None, None
 
         # 1. Quét toàn bộ ảnh
-        qr_data, engine = _try_scan(img)
+        qr_data, engine, center = _try_scan(img)
         
         # 2. Quét góc phần tư phía trên bên phải (CCCD) nếu toàn bộ ảnh thất bại
         if not qr_data:
             h, w = img.shape[:2]
             crop = img[0:int(h/2), int(w/2):w]
-            qr_data, engine = _try_scan(crop)
+            qr_data, engine, crop_center = _try_scan(crop)
+            if qr_data and crop_center:
+                center = (crop_center[0] + w/2, crop_center[1])
+
+        rotated_img = None
+        if qr_data and center:
+            cx, cy = center
+            h, w = img.shape[:2]
+            # Chỉ xoay nếu QR nằm rõ ràng ở 1 trong 4 góc (không phải ở giữa ảnh/crop quá bé)
+            if abs(cx - w/2) > w/6 and abs(cy - h/2) > h/6:
+                if cx > w/2 and cy > h/2:
+                    rotated_img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                elif cx < w/2 and cy < h/2:
+                    rotated_img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+                elif cx < w/2 and cy > h/2:
+                    rotated_img = cv2.rotate(img, cv2.ROTATE_180)
 
         if qr_data:
-            return qr_data, engine, None, img
+            return qr_data, engine, None, img, rotated_img
         else:
-            return None, None, "QR không đọc được", img
+            return None, None, "QR không đọc được", img, None
 
     except Exception as e:
-        return None, None, f"Lỗi xử lý ảnh: {str(e)}", None
+        return None, None, f"Lỗi xử lý ảnh: {str(e)}", None, None
 
 
 def parse_ocr_text(text):
@@ -489,7 +514,7 @@ def run_wizard(input_dir):
     seen_cccds = set()
     
     def process_single_image(img_path):
-        qr_string, engine, err, img = extract_qr_data(img_path)
+        qr_string, engine, err, img, qr_rotated_img = extract_qr_data(img_path)
         
         log_msgs = []
         if qr_string:
@@ -503,6 +528,13 @@ def run_wizard(input_dir):
             'Full Image Path': img_path,
             'Scan Type': 'error'
         }
+        
+        if qr_rotated_img is not None:
+            # Lưu lại ảnh QR đã xoay chuẩn vào thư mục tạm
+            temp_path = os.path.join(temp_rotated_dir, os.path.basename(img_path))
+            cv2.imwrite(temp_path, qr_rotated_img)
+            row_data['Full Image Path'] = temp_path
+            img = qr_rotated_img # Cập nhật img để nếu fallback sang OCR thì OCR lấy luôn ảnh đã xoay
         notes = []
 
         if qr_string:
