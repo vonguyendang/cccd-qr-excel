@@ -158,11 +158,161 @@ def extract_qr_data(image_path):
     except Exception as e:
         return None, None, f"Lỗi xử lý ảnh: {str(e)}", None
 
+
+def parse_ocr_text(text):
+                data = {
+                    'CCCD': '', 'CMND': '', 'Họ tên': '', 'Ngày sinh': '',
+                    'Giới tính': '', 'Nơi thường trú gốc': '', 'Ngày cấp CCCD': '',
+                    'OCR Side': ''
+                }
+
+                if not text.strip():
+                    return data, "Ảnh không thể nhận diện được chữ"
+
+                text_upper = text.upper()
+
+                # ---------------------------------------------------------
+                # 1. NHẬN DIỆN MẶT THẺ (FRONT / BACK)
+                # Dựa vào các từ khóa đặc trưng xuất hiện trên từng mặt thẻ
+                # ---------------------------------------------------------
+                if "<<" in text_upper or "IDVNM" in text_upper or "ĐẶC ĐIỂM NHẬN DẠNG" in text_upper or "NGÓN TRỎ" in text_upper or "CỤC TRƯỞNG" in text_upper:
+                    data['OCR Side'] = 'Back'
+                # Các từ khóa đặc trưng của Mặt Trước
+                elif "CĂN CƯỚC" in text_upper or "CẦN CƯỚC" in text_upper or "CÔNG DÂN" in text_upper or "ĐỘC LẬP" in text_upper or "TỰ DO" in text_upper or "HỌ VÀ TÊN" in text_upper:
+                    data['OCR Side'] = 'Front'
+
+                # ---------------------------------------------------------
+                # 2. TRÍCH XUẤT SỐ CCCD
+                # ---------------------------------------------------------
+                # Bước 2.1: Ưu tiên tìm chuỗi 12 số đứng độc lập bắt đầu bằng số 0 (có thể bị OCR chèn khoảng trắng)
+                cccd_match = re.search(r'\b(0[\d\s]{11,15})\b', text)
+                if cccd_match:
+                    val = cccd_match.group(1).replace(' ', '')
+                    if len(val) >= 12:
+                        data['CCCD'] = val[:12]
+
+                if not data['CCCD']:
+                    # Bước 2.2: Lấy từ mã MRZ ở mặt sau (Mã MRZ là chuỗi ký tự ở đáy mặt sau thẻ)
+                    # Tại Việt Nam, thẻ CCCD áp dụng chuẩn ICAO chia số CCCD thành 2 đoạn trong mã MRZ:
+                    # Ví dụ MRZ có chuỗi: VNM0960051566086... 
+                    # -> Phân tích: 096005156 (9 số cuối của CCCD) + 6 (Mã kiểm tra) + 086 (3 số đầu của CCCD)
+                    # Sửa lỗi OCR: Chữ 'O' thường bị AI đọc nhầm thay vì số '0' -> replace 'O' bằng '0'
+                    text_mrz = text_upper.replace('O', '0') 
+                    mrz_match = re.search(r'VNM(\d{9})\d(\d{3})', text_mrz)
+                    if mrz_match:
+                        # Lắp ráp lại thành CCCD hoàn chỉnh (3 số đầu + 9 số cuối)
+                        data['CCCD'] = mrz_match.group(2) + mrz_match.group(1)
+                    else:
+                        # Bước 2.3: Chặn bắt cuối cùng (Fallback), quét tìm chuỗi 12 số liền nhau bắt đầu bằng số 0
+                        fallback_match = re.search(r'(0[\d\s]{11,15})', text)
+                        if fallback_match:
+                            val = fallback_match.group(1).replace(' ', '')
+                            if len(val) >= 12:
+                                data['CCCD'] = val[:12]
+                all_dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
+    
+                # ---------------------------------------------------------
+                # 3. TRÍCH XUẤT GIỚI TÍNH (Thuật toán Fallback toàn cục)
+                # Lưu ý: Sẽ bị ghi đè nếu lát nữa vòng lặp đọc được dòng chứa chữ "Giới tính" rõ ràng.
+                # Logic: Đếm số từ 'nam' trong toàn văn bản, sau đó trừ đi chữ 'Việt Nam' (Quốc tịch)
+                # ---------------------------------------------------------
+                text_lower = text.lower()
+                # Chỉ đếm giới tính rải rác nếu không phải mặt sau (vì mặt sau không có thông tin giới tính)
+                if data['OCR Side'] != 'Back':
+                    nam_count = len(re.findall(r'\bnam\b', text_lower))
+                    vietnam_count = len(re.findall(r'việt nam|viet nam|hà nam|quảng nam|hải nam', text_lower))
+                    if nam_count > vietnam_count:
+                        data['Giới tính'] = 'Nam'
+                    elif re.search(r'\bn[uưứữ][\s]*\b', text_lower) or re.search(r'\bnữ\b', text_lower):
+                        data['Giới tính'] = 'Nữ'
+        
+                lines = [line.strip() for line in text.split('\n') if line.strip()]
+
+                # ---------------------------------------------------------
+                # 4. DUYỆT TỪNG DÒNG (VÉT THÔNG TIN: TÊN, ĐỊA CHỈ, NGÀY THÁNG)
+                # OCR đọc ảnh từ trên xuống dưới, nên ta duyệt từng dòng để bắt từ khóa
+                # ---------------------------------------------------------
+                for i, line in enumerate(lines):
+                    line_lower = line.lower()
+    
+                    # 1. Name
+                    if "họ và tên" in line_lower or "họ chữ đệm và tên" in line_lower or "full name" in line_lower:
+                        if ":" in line:
+                            name_part = line.split(":", 1)[1].strip()
+                            if name_part.isupper() and len(name_part) > 3:
+                                data['Họ tên'] = name_part
+                        if not data['Họ tên'] and i + 1 < len(lines):
+                            next_line = lines[i+1].replace('|', '').strip()
+                            if next_line.isupper() and len(next_line) > 3:
+                                data['Họ tên'] = next_line
+                
+                    # 2. DOB
+                    if "sinh" in line_lower or "birth" in line_lower:
+                        for j in range(i, min(i+2, len(lines))):
+                            m = re.search(r'\b\d{2}/\d{2}/\d{4}\b', lines[j])
+                            if m:
+                                data['Ngày sinh'] = m.group(0)
+                                break
+                
+                    # --- BƯỚC 4.3: TRÍCH XUẤT ĐỊA CHỈ (NƠI THƯỜNG TRÚ/CƯ TRÚ) ---
+                    if "nơi thường trú" in line_lower or "nơi cư trú" in line_lower or "residence" in line_lower:
+                        addr_parts = []
+                        if ":" in line:
+                            addr_parts.append(line.split(":", 1)[1].strip())
+        
+                        # Quét các dòng tiếp theo để nối đuôi địa chỉ do địa chỉ thường rất dài và bị rớt dòng.
+                        # Bỏ qua các dòng rác bị AI đọc đan xen vào (như 'giá trị đến', 'date') do layout 2 cột của thẻ.
+                        # Ngắt ngay (break) nếu gặp 'nơi đăng ký khai sinh' (tránh gộp quê quán vào nơi ở của thẻ mới).
+                        for j in range(i + 1, min(i + 5, len(lines))):
+                            next_line = lines[j].replace('|', '').strip()
+                            next_lower = next_line.lower()
+                            if "giá trị đến" in next_lower or "expiry" in next_lower or "date" in next_lower:
+                                continue
+                            if "khai sinh" in next_lower or "birth" in next_lower or "nơi cấp" in next_lower or "bộ công an" in next_lower or "cục cảnh sát" in next_lower:
+                                break
+                            if re.search(r'\b\d{2}/\d{2}/\d{4}\b', next_line):
+                                continue
+                            if len(next_line) > 3:
+                                addr_parts.append(next_line)
+                
+                        addr = ", ".join(filter(bool, addr_parts))
+                        data['Nơi thường trú gốc'] = re.sub(r',\s*,', ',', addr).lstrip(', ')
+        
+                    # --- BƯỚC 4.4: TRÍCH XUẤT GIỚI TÍNH (Chính xác từ dòng ghi Giới tính) ---
+                    if "giới tính" in line_lower or "sex" in line_lower:
+                        if "nữ" in line_lower or "nư" in line_lower or "nu " in line_lower:
+                            data['Giới tính'] = 'Nữ'
+                        elif "nam" in line_lower:
+                            data['Giới tính'] = 'Nam'
+        
+                    # --- BƯỚC 4.5: TRÍCH XUẤT NGÀY CẤP ---
+                    # Chỉ quét tìm Ngày cấp khi có từ khóa.
+                    # Phải lọc bỏ 'sinh', 'hết hạn' để tránh bắt nhầm Ngày sinh (ở thẻ mới) hoặc Ngày hết hạn (ở thẻ cũ)
+                    if ("ngày, tháng, năm" in line_lower or "date, month, year" in line_lower or "date of issue" in line_lower or "cấp" in line_lower) and "sinh" not in line_lower and "hết hạn" not in line_lower and "expiry" not in line_lower and "birth" not in line_lower:
+                        for j in range(i, min(i+3, len(lines))):
+                            m = re.search(r'\b\d{2}/\d{2}/\d{4}\b', lines[j])
+                            if m:
+                                data['Ngày cấp CCCD'] = m.group(0)
+                                break
+                
+                # ---------------------------------------------------------
+                # 5. FALLBACK CHO NGÀY SINH (Nếu thuật toán từ khóa thất bại)
+                # Lấy mốc thời gian < 2020 để làm ngày sinh dự phòng
+                # ---------------------------------------------------------
+                if not data['Ngày sinh'] and all_dates:
+                    first_date = all_dates[0]
+                    try:
+                        if int(first_date.split('/')[-1]) < 2020:
+                            data['Ngày sinh'] = first_date
+                    except: pass
+
+
+                    return data
+
 def extract_ocr_data(image_path_or_cv2img):
     """
     Hàm xử lý OCR (Trích xuất văn bản từ ảnh) bằng AI Deepdoc_VietOCR.
-    Nhận vào đường dẫn ảnh hoặc object ảnh cv2.
-    Trả về một tuple: (dictionary chứa dữ liệu trích xuất, chuỗi ghi chú)
+    Hỗ trợ tự động xoay ảnh (rotation fallback) nếu không tìm thấy CCCD.
     """
     try:
         if isinstance(image_path_or_cv2img, str):
@@ -173,158 +323,34 @@ def extract_ocr_data(image_path_or_cv2img):
         else:
             img_to_ocr = image_path_or_cv2img
             
-        # Trích xuất toàn bộ text từ ảnh
-        text = extract_text_from_image(img_to_ocr)
     except Exception as e:
         return {}, f"Lỗi thư viện OCR: {str(e)}"
         
-    data = {
-        'CCCD': '', 'CMND': '', 'Họ tên': '', 'Ngày sinh': '',
-        'Giới tính': '', 'Nơi thường trú gốc': '', 'Ngày cấp CCCD': '',
-        'OCR Side': ''
-    }
-    
-    if not text.strip():
-        return data, "Ảnh không thể nhận diện được chữ"
-    
-    text_upper = text.upper()
-    
-    # ---------------------------------------------------------
-    # 1. NHẬN DIỆN MẶT THẺ (FRONT / BACK)
-    # Dựa vào các từ khóa đặc trưng xuất hiện trên từng mặt thẻ
-    # ---------------------------------------------------------
-    if "<<" in text_upper or "IDVNM" in text_upper or "ĐẶC ĐIỂM NHẬN DẠNG" in text_upper or "NGÓN TRỎ" in text_upper or "CỤC TRƯỞNG" in text_upper:
-        data['OCR Side'] = 'Back'
-    # Các từ khóa đặc trưng của Mặt Trước
-    elif "CĂN CƯỚC" in text_upper or "CẦN CƯỚC" in text_upper or "CÔNG DÂN" in text_upper or "ĐỘC LẬP" in text_upper or "TỰ DO" in text_upper or "HỌ VÀ TÊN" in text_upper:
-        data['OCR Side'] = 'Front'
-    
-    # ---------------------------------------------------------
-    # 2. TRÍCH XUẤT SỐ CCCD
-    # ---------------------------------------------------------
-    # Bước 2.1: Ưu tiên tìm chuỗi 12 số đứng độc lập bắt đầu bằng số 0 (có thể bị OCR chèn khoảng trắng)
-    cccd_match = re.search(r'\b(0[\d\s]{11,15})\b', text)
-    if cccd_match:
-        val = cccd_match.group(1).replace(' ', '')
-        if len(val) >= 12:
-            data['CCCD'] = val[:12]
-    
-    if not data['CCCD']:
-        # Bước 2.2: Lấy từ mã MRZ ở mặt sau (Mã MRZ là chuỗi ký tự ở đáy mặt sau thẻ)
-        # Tại Việt Nam, thẻ CCCD áp dụng chuẩn ICAO chia số CCCD thành 2 đoạn trong mã MRZ:
-        # Ví dụ MRZ có chuỗi: VNM0960051566086... 
-        # -> Phân tích: 096005156 (9 số cuối của CCCD) + 6 (Mã kiểm tra) + 086 (3 số đầu của CCCD)
-        # Sửa lỗi OCR: Chữ 'O' thường bị AI đọc nhầm thay vì số '0' -> replace 'O' bằng '0'
-        text_mrz = text_upper.replace('O', '0') 
-        mrz_match = re.search(r'VNM(\d{9})\d(\d{3})', text_mrz)
-        if mrz_match:
-            # Lắp ráp lại thành CCCD hoàn chỉnh (3 số đầu + 9 số cuối)
-            data['CCCD'] = mrz_match.group(2) + mrz_match.group(1)
-        else:
-            # Bước 2.3: Chặn bắt cuối cùng (Fallback), quét tìm chuỗi 12 số liền nhau bắt đầu bằng số 0
-            fallback_match = re.search(r'(0[\d\s]{11,15})', text)
-            if fallback_match:
-                val = fallback_match.group(1).replace(' ', '')
-                if len(val) >= 12:
-                    data['CCCD'] = val[:12]
-    all_dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
+    try:
+        text = extract_text_from_image(img_to_ocr)
+        data = parse_ocr_text(text)
+        if data['CCCD'] or (not data['CCCD'] and data['OCR Side'] == 'Front' and data['Họ tên']): 
+            # If we found CCCD, or it's clearly front and has name, return it
+            return data, "Lấy bằng OCR"
+            
+        # Fallback rotations
+        import cv2
+        rotations = [
+            (cv2.ROTATE_90_COUNTERCLOCKWISE, "Xoay trái 90 độ"),
+            (cv2.ROTATE_90_CLOCKWISE, "Xoay phải 90 độ"),
+            (cv2.ROTATE_180, "Xoay 180 độ")
+        ]
         
-    # ---------------------------------------------------------
-    # 3. TRÍCH XUẤT GIỚI TÍNH (Thuật toán Fallback toàn cục)
-    # Lưu ý: Sẽ bị ghi đè nếu lát nữa vòng lặp đọc được dòng chứa chữ "Giới tính" rõ ràng.
-    # Logic: Đếm số từ 'nam' trong toàn văn bản, sau đó trừ đi chữ 'Việt Nam' (Quốc tịch)
-    # ---------------------------------------------------------
-    text_lower = text.lower()
-    # Chỉ đếm giới tính rải rác nếu không phải mặt sau (vì mặt sau không có thông tin giới tính)
-    if data['OCR Side'] != 'Back':
-        nam_count = len(re.findall(r'\bnam\b', text_lower))
-        vietnam_count = len(re.findall(r'việt nam|viet nam|hà nam|quảng nam|hải nam', text_lower))
-        if nam_count > vietnam_count:
-            data['Giới tính'] = 'Nam'
-        elif re.search(r'\bn[uưứữ][\s]*\b', text_lower) or re.search(r'\bnữ\b', text_lower):
-            data['Giới tính'] = 'Nữ'
-            
-    lines = [line.strip() for line in text.split('\n') if line.strip()]
-    
-    # ---------------------------------------------------------
-    # 4. DUYỆT TỪNG DÒNG (VÉT THÔNG TIN: TÊN, ĐỊA CHỈ, NGÀY THÁNG)
-    # OCR đọc ảnh từ trên xuống dưới, nên ta duyệt từng dòng để bắt từ khóa
-    # ---------------------------------------------------------
-    for i, line in enumerate(lines):
-        line_lower = line.lower()
-        
-        # 1. Name
-        if "họ và tên" in line_lower or "họ chữ đệm và tên" in line_lower or "full name" in line_lower:
-            if ":" in line:
-                name_part = line.split(":", 1)[1].strip()
-                if name_part.isupper() and len(name_part) > 3:
-                    data['Họ tên'] = name_part
-            if not data['Họ tên'] and i + 1 < len(lines):
-                next_line = lines[i+1].replace('|', '').strip()
-                if next_line.isupper() and len(next_line) > 3:
-                    data['Họ tên'] = next_line
-                    
-        # 2. DOB
-        if "sinh" in line_lower or "birth" in line_lower:
-            for j in range(i, min(i+2, len(lines))):
-                m = re.search(r'\b\d{2}/\d{2}/\d{4}\b', lines[j])
-                if m:
-                    data['Ngày sinh'] = m.group(0)
-                    break
-                    
-        # --- BƯỚC 4.3: TRÍCH XUẤT ĐỊA CHỈ (NƠI THƯỜNG TRÚ/CƯ TRÚ) ---
-        if "nơi thường trú" in line_lower or "nơi cư trú" in line_lower or "residence" in line_lower:
-            addr_parts = []
-            if ":" in line:
-                addr_parts.append(line.split(":", 1)[1].strip())
-            
-            # Quét các dòng tiếp theo để nối đuôi địa chỉ do địa chỉ thường rất dài và bị rớt dòng.
-            # Bỏ qua các dòng rác bị AI đọc đan xen vào (như 'giá trị đến', 'date') do layout 2 cột của thẻ.
-            # Ngắt ngay (break) nếu gặp 'nơi đăng ký khai sinh' (tránh gộp quê quán vào nơi ở của thẻ mới).
-            for j in range(i + 1, min(i + 5, len(lines))):
-                next_line = lines[j].replace('|', '').strip()
-                next_lower = next_line.lower()
-                if "giá trị đến" in next_lower or "expiry" in next_lower or "date" in next_lower:
-                    continue
-                if "khai sinh" in next_lower or "birth" in next_lower or "nơi cấp" in next_lower or "bộ công an" in next_lower or "cục cảnh sát" in next_lower:
-                    break
-                if re.search(r'\b\d{2}/\d{2}/\d{4}\b', next_line):
-                    continue
-                if len(next_line) > 3:
-                    addr_parts.append(next_line)
-                    
-            addr = ", ".join(filter(bool, addr_parts))
-            data['Nơi thường trú gốc'] = re.sub(r',\s*,', ',', addr).lstrip(', ')
-            
-        # --- BƯỚC 4.4: TRÍCH XUẤT GIỚI TÍNH (Chính xác từ dòng ghi Giới tính) ---
-        if "giới tính" in line_lower or "sex" in line_lower:
-            if "nữ" in line_lower or "nư" in line_lower or "nu " in line_lower:
-                data['Giới tính'] = 'Nữ'
-            elif "nam" in line_lower:
-                data['Giới tính'] = 'Nam'
-            
-        # --- BƯỚC 4.5: TRÍCH XUẤT NGÀY CẤP ---
-        # Chỉ quét tìm Ngày cấp khi có từ khóa.
-        # Phải lọc bỏ 'sinh', 'hết hạn' để tránh bắt nhầm Ngày sinh (ở thẻ mới) hoặc Ngày hết hạn (ở thẻ cũ)
-        if ("ngày, tháng, năm" in line_lower or "date, month, year" in line_lower or "date of issue" in line_lower or "cấp" in line_lower) and "sinh" not in line_lower and "hết hạn" not in line_lower and "expiry" not in line_lower and "birth" not in line_lower:
-            for j in range(i, min(i+3, len(lines))):
-                m = re.search(r'\b\d{2}/\d{2}/\d{4}\b', lines[j])
-                if m:
-                    data['Ngày cấp CCCD'] = m.group(0)
-                    break
-                    
-    # ---------------------------------------------------------
-    # 5. FALLBACK CHO NGÀY SINH (Nếu thuật toán từ khóa thất bại)
-    # Lấy mốc thời gian < 2020 để làm ngày sinh dự phòng
-    # ---------------------------------------------------------
-    if not data['Ngày sinh'] and all_dates:
-        first_date = all_dates[0]
-        try:
-            if int(first_date.split('/')[-1]) < 2020:
-                data['Ngày sinh'] = first_date
-        except: pass
-
-    return data, "Lấy bằng OCR"
+        for rot_code, rot_name in rotations:
+            rotated = cv2.rotate(img_to_ocr, rot_code)
+            text_rot = extract_text_from_image(rotated)
+            data_rot = parse_ocr_text(text_rot)
+            if data_rot['CCCD'] or (data_rot['OCR Side'] == 'Front' and data_rot['Họ tên']):
+                return data_rot, f"Lấy bằng OCR ({rot_name})"
+                
+        return data, "Ảnh mờ hoặc không thể nhận diện được"
+    except Exception as e:
+        return {}, f"Lỗi OCR: {str(e)}"
 
 def process_qr_string(qr_string):
     parts = qr_string.split('|')
