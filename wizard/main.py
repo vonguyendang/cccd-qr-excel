@@ -648,6 +648,36 @@ def main():
             
             row['Ghi chú'] = '; '.join(new_notes)
             
+    # Pass 4: Final formatting and cleanup
+    for cccd, record in records.items():
+        # Đảm bảo Ghi chú là list
+        raw_notes = record['Ghi chú']
+        if isinstance(raw_notes, str):
+            raw_notes = raw_notes.split('; ')
+        elif not isinstance(raw_notes, list):
+            raw_notes = []
+            
+        # Clean up "QR không đọc được" note if we actually have a QR code
+        final_notes = [n for n in raw_notes if n]
+        if record.get('QR Raw'):
+            final_notes = [n for n in final_notes if 'QR không đọc được' not in n]
+        
+        # Xử lý logic CMND (Yêu cầu mới)
+        if not record['CMND']:
+            if record.get('QR Raw'):
+                record['CMND'] = 'Không có'
+            else:
+                record['CMND'] = 'Chưa xác định'
+                
+        # Deduplicate notes and convert to string
+        unique_notes = []
+        for note in final_notes:
+            # handle cases where notes were joined by '; '
+            for subnote in note.split('; '):
+                if subnote and subnote not in unique_notes:
+                    unique_notes.append(subnote)
+        record['Ghi chú'] = '; '.join(unique_notes)
+            
     # Fix note formatting for those not processed by API
     for row in processed_data:
         if isinstance(row['Ghi chú'], list):

@@ -659,6 +659,26 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
             ext = os.path.splitext(record['Ảnh mặt sau CCCD/CC'])[1]
             record['Đổi tên Ảnh mặt sau CCCD/CC'] = f"{hoten_clean}_{cccd}{cmnd_str}_Mặt sau{ext}"
 
+        # Xử lý logic CMND (Yêu cầu mới)
+        if not record['CMND']:
+            if record.get('QR Raw'):
+                record['CMND'] = 'Không có'
+            else:
+                record['CMND'] = 'Chưa xác định'
+
+        # Lọc trùng lặp ghi chú
+        raw_notes = record['Ghi chú']
+        if isinstance(raw_notes, str):
+            raw_notes = raw_notes.split('; ')
+        elif not isinstance(raw_notes, list):
+            raw_notes = []
+        unique_notes = []
+        for note in [n for n in raw_notes if n]:
+            for subnote in note.split('; '):
+                if subnote and subnote not in unique_notes:
+                    unique_notes.append(subnote)
+        record['Ghi chú'] = '; '.join(unique_notes)
+
     processed_data = list(records.values())
 
     unique_addresses = list(set([row['Nơi thường trú gốc'] for row in processed_data if row.get('Nơi thường trú gốc')]))
