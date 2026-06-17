@@ -119,7 +119,7 @@ def extract_qr_data(image_path):
                 if not decoded_objects:
                     thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
                     decoded_objects = decode(thresh, symbols=[ZBarSymbol.QRCODE])
-            
+
             if decoded_objects:
                 txt = decoded_objects[0].data.decode('utf-8')
                 if '|' in txt and len(txt.split('|')) >= 6:
@@ -465,6 +465,9 @@ def main():
         print(f"[{idx+1}/{total}] Đang đọc {os.path.basename(img_path)}...")
         qr_string, err, img = extract_qr_data(img_path)
         
+        if qr_string:
+            print(f"   -> [{os.path.basename(img_path)}] Đã quét được mã QR: {qr_string}")
+            
         row_data = {
             'Họ tên': '', 'CCCD': '', 'CMND': '', 'Giới tính': '',
             'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': '',
@@ -653,6 +656,41 @@ def main():
             
             row['Ghi chú'] = '; '.join(new_notes)
             
+    # Pass 4: Final formatting and cleanup
+    for cccd, record in records.items():
+        # Đảm bảo Ghi chú là list
+        raw_notes = record['Ghi chú']
+        if isinstance(raw_notes, str):
+            raw_notes = raw_notes.split('; ')
+        elif not isinstance(raw_notes, list):
+            raw_notes = []
+            
+        # Clean up "QR không đọc được" note if we actually have a QR code
+        final_notes = [n for n in raw_notes if n]
+        if record.get('QR Raw'):
+            final_notes = [n for n in final_notes if 'QR không đọc được' not in n]
+        
+        # Xử lý logic CMND (Yêu cầu mới)
+        if not record['CMND']:
+            if record.get('QR Raw'):
+                record['CMND'] = 'Không có'
+            else:
+                record['CMND'] = 'Chưa xác định'
+
+        # Tính toán ngày hết hạn dựa trên ngày sinh nếu bị khuyết (rất hay gặp ở luồng OCR)
+        if not record['Ngày hết hạn'] and record.get('Ngày sinh'):
+            record['Ngày hết hạn'] = calculate_expiry_date(record['Ngày sinh'])
+            record['Phân loại'] = 'Căn cước / CCCD'
+                
+        # Deduplicate notes and convert to string
+        unique_notes = []
+        for note in final_notes:
+            # handle cases where notes were joined by '; '
+            for subnote in note.split('; '):
+                if subnote and subnote not in unique_notes:
+                    unique_notes.append(subnote)
+        record['Ghi chú'] = '; '.join(unique_notes)
+            
     # Fix note formatting for those not processed by API
     for row in processed_data:
         if isinstance(row['Ghi chú'], list):
@@ -666,7 +704,7 @@ def main():
 
     headers = [
         "STT", "Họ tên", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
-        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", 
+        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", "QR Raw", 
         "Ảnh mặt trước CCCD/CC", "Ảnh mặt sau CCCD/CC", "Đổi tên Ảnh mặt trước CCCD/CC", "Đổi tên Ảnh mặt sau CCCD/CC"
     ]
     
@@ -689,6 +727,7 @@ def main():
             row_data['Ngày hết hạn'],
             row_data['Phân loại'],
             row_data['Ghi chú'],
+            row_data.get('QR Raw', ''),
             row_data.get('Ảnh mặt trước CCCD/CC', ''),
             row_data.get('Ảnh mặt sau CCCD/CC', ''),
             row_data.get('Đổi tên Ảnh mặt trước CCCD/CC', ''),
