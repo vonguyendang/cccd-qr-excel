@@ -240,17 +240,21 @@ def parse_ocr_text(text):
                         if assembled.startswith('0') and len(assembled) == 12:
                             data['CCCD'] = assembled
 
-                # Nếu vẫn chưa có: tìm dòng IDVNM, bỏ 3 ký tự cuối, lấy 12 ký tự cuối còn lại
-                # Ví dụ: IDVNM1820104071092182010407<<0 -> clean='1820104071092182010407<<0'
-                #        clean[:-3]='1820104071092182010407' -> [-12:]='092182010407' = CCCD ✅
+                # Nếu vẫn chưa có: tìm dòng/khối IDVNM, gom ký tự số + '<' từ khối đó
+                # Bỏ 3 ký tự cuối (<<X), lấy 12 ký tự cuối còn lại = CCCD
+                # Lưu ý: OCR có thể vỡ dòng MRZ ra nhiều dòng nhỏ → gom cả khối 5 dòng tiếp theo
+                # Lưu ý: MRZ không có chữ O → mọi 'O' đều là số 0 bị OCR đọc sai
                 if not data['CCCD']:
-                    mrz_lines = text_mrz.split('\n')
-                    for line in mrz_lines:
+                    mrz_lines = text_mrz.split('\n')  # text_mrz đã replace O→0 rồi
+                    for i, line in enumerate(mrz_lines):
                         line_stripped = line.strip()
                         if line_stripped.startswith('IDVN'):
-                            # Phần nội dung sau tiền tố IDVNM/IDVNN
-                            after_prefix = re.sub(r'^IDVN[NM]', '', line_stripped)
-                            # Giữ lại chỉ chữ số và dấu '<'
+                            # Gom: dòng IDVNN + tối đa 5 dòng tiếp theo (MRZ có thể wrap)
+                            block_lines = mrz_lines[i:i+6]
+                            block = ' '.join(block_lines)
+                            # Bỏ tiền tố IDVNM/IDVNN
+                            after_prefix = re.sub(r'^IDVN[NM0]', '', block.strip())
+                            # Chỉ giữ lại chữ số và dấu '<' (MRZ không có chữ O)
                             cleaned = re.sub(r'[^0-9<]', '', after_prefix)
                             # Cần ít nhất 15 ký tự: 3 cuối (<<X) + 12 CCCD
                             if len(cleaned) >= 15:
@@ -260,13 +264,15 @@ def parse_ocr_text(text):
                             break
 
                 # ------- MẶT TRƯỚC (Front): không có MRZ, quét số trực tiếp -------
+                # Chỉ chạy nếu chưa có CCCD từ MRZ
                 if not data['CCCD']:
                     text_numbers = text_upper.replace('O', '0')
                     # Lấy tất cả cụm 12 số đứng độc lập bắt đầu bằng 0
+                    # Dùng re.sub loại toàn bộ whitespace (kể cả \n \t) để tránh đếm sai độ dài
                     cccd_matches = re.findall(r'\b(0[\d\s]{11,15})\b', text_numbers)
                     valid_cccds = []
                     for match_str in cccd_matches:
-                        val = match_str.replace(' ', '')
+                        val = re.sub(r'\s+', '', match_str)  # loại mọi whitespace kể cả \n
                         if len(val) == 12:
                             valid_cccds.append(val)
                     
@@ -277,7 +283,7 @@ def parse_ocr_text(text):
                             if 'SỐ' in line or 'CƯỚC' in line:
                                 m = re.search(r'\b(0[\d\s]{11,15})\b', line.replace('O','0'))
                                 if m:
-                                    val = m.group(1).replace(' ', '')
+                                    val = re.sub(r'\s+', '', m.group(1))
                                     if len(val) == 12:
                                         data['CCCD'] = val
                                         break
