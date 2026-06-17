@@ -508,6 +508,26 @@ def process_qr_string(qr_str):
         notes.append('Thiếu nơi thường trú')
     return data, notes
 
+def _simplify_address_variants(addr):
+    """Tạo các phiên bản đơn giản hóa của địa chỉ để thử lần lượt khi API thất bại."""
+    import re as _re
+    variants = [addr]
+    parts = [p.strip() for p in addr.split(',')]
+    if len(parts) >= 3:
+        simplified = ', '.join(parts[1:])
+        if simplified != addr:
+            variants.append(simplified)
+        if len(parts) >= 4:
+            simplified2 = ', '.join(parts[2:])
+            if simplified2 not in variants:
+                variants.append(simplified2)
+    cleaned = _re.sub(r'\bNhà\s+\d{4}\b', '', addr, flags=_re.IGNORECASE)
+    cleaned = _re.sub(r'\bBàn\s+\w+\s+\d{4}\b', '', cleaned, flags=_re.IGNORECASE)
+    cleaned = _re.sub(r'\s{2,}', ' ', cleaned).strip().strip(',').strip()
+    if cleaned and cleaned != addr and cleaned not in variants:
+        variants.append(cleaned)
+    return variants
+
 async def fetch_single_address_async(client, addr):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:151.0) Gecko/20100101 Firefox/151.0',
@@ -520,27 +540,37 @@ async def fetch_single_address_async(client, addr):
     try:
         import json
         import asyncio
-        payload = json.dumps({"address": addr})
         
-        for attempt in range(3):
-            response = await client.post(
-                'https://tienich.vnhub.com/api/wards',
-                content=payload,
-                headers=headers,
-                timeout=15.0
-            )
-            response.raise_for_status()
-            res_data = response.json()
-            
-            if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
-                return {
-                    "original": addr,
-                    "success": True,
-                    "converted": res_data['data'][0]['address']
-                }
-                
-            await asyncio.sleep(1)
-            
+        variants = _simplify_address_variants(addr)
+        
+        for variant in variants:
+            for attempt in range(3):
+                try:
+                    payload = json.dumps({"address": variant})
+                    response = await client.post(
+                        'https://tienich.vnhub.com/api/wards',
+                        content=payload,
+                        headers=headers,
+                        timeout=15.0
+                    )
+                    response.raise_for_status()
+                    res_data = response.json()
+                    
+                    if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
+                        return {
+                            "original": addr,
+                            "success": True,
+                            "converted": res_data['data'][0]['address']
+                        }
+                    # data rỗng → thử variant tiếp theo
+                    break
+                except Exception as http_e:
+                    status = getattr(getattr(http_e, 'response', None), 'status_code', 0)
+                    if status >= 500:
+                        await asyncio.sleep(0.5 * (attempt + 1))
+                        continue
+                    break
+                    
         return {
             "original": addr,
             "success": False,

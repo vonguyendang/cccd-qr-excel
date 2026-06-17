@@ -525,6 +525,53 @@ def process_qr_string(qr_string):
         
     return data, notes
 
+def _simplify_address_variants(addr):
+    """
+    Tạo danh sách các phiên bản đơn giản hóa của địa chỉ để thử lần lượt.
+    Ưu tiên giữ nguyên, sau đó cắt bớt số nhà/phức tạp.
+    """
+    import re as _re
+    variants = [addr]  # Bản gốc luôn thử trước
+    
+    # Phiên bản 2: Bỏ số nhà/phần đầu phức tạp (trước dấu phẩy đầu tiên)
+    parts = [p.strip() for p in addr.split(',')]
+    if len(parts) >= 3:
+        # Thử bỏ số nhà (phần tử đầu tiên), giữ từ phần 2 trở đi
+        simplified = ', '.join(parts[1:])
+        if simplified != addr:
+            variants.append(simplified)
+        
+        # Thử bỏ 2 phần đầu (số nhà + đường/ấp), giữ từ phần 3
+        if len(parts) >= 4:
+            simplified2 = ', '.join(parts[2:])
+            if simplified2 not in variants:
+                variants.append(simplified2)
+    
+    # Phiên bản 3: Xóa các từ gây 500 (số năm, ký tự phức tạp liên tiếp)
+    cleaned = _re.sub(r'\bNhà\s+\d{4}\b', '', addr, flags=_re.IGNORECASE)
+    cleaned = _re.sub(r'\bBàn\s+\w+\s+\d{4}\b', '', cleaned, flags=_re.IGNORECASE)
+    cleaned = _re.sub(r'\s{2,}', ' ', cleaned).strip().strip(',').strip()
+    if cleaned and cleaned != addr and cleaned not in variants:
+        variants.append(cleaned)
+    
+    return variants
+
+def _call_api_once(addr, headers):
+    """Gọi API một lần, trả về (success, converted_address_or_none)"""
+    import json, time, requests as _req
+    payload = json.dumps({"address": addr})
+    response = _req.post(
+        'https://tienich.vnhub.com/api/wards',
+        data=payload,
+        headers=headers,
+        timeout=15
+    )
+    response.raise_for_status()
+    res_data = response.json()
+    if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
+        return True, res_data['data'][0]['address']
+    return False, None
+
 def fetch_single_address(addr):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:151.0) Gecko/20100101 Firefox/151.0',
@@ -536,40 +583,32 @@ def fetch_single_address(addr):
     }
     try:
         import json, time
-        payload = json.dumps({"address": addr})
         
-        for attempt in range(3):
-            try:
-                response = requests.post(
-                    'https://tienich.vnhub.com/api/wards', 
-                    data=payload,
-                    headers=headers,
-                    timeout=15
-                )
-                response.raise_for_status()
-                res_data = response.json()
-                
-                if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
-                    return {
-                        "original": addr,
-                        "success": True,
-                        "converted": res_data['data'][0]['address']
-                    }
-            except requests.exceptions.HTTPError as e:
-                # Nếu là lỗi 500, 502, 503, 504 thì retry, còn 4xx thì thôi (vì lỗi do data)
-                if response.status_code >= 500:
-                    time.sleep(1.5 * (attempt + 1)) # Backoff delay: 1.5s, 3s, 4.5s
-                    continue
-                else:
+        # Thử từng phiên bản địa chỉ (gốc → đơn giản hóa dần)
+        variants = _simplify_address_variants(addr)
+        
+        for variant in variants:
+            for attempt in range(3):
+                try:
+                    ok, converted = _call_api_once(variant, headers)
+                    if ok:
+                        return {
+                            "original": addr,
+                            "success": True,
+                            "converted": converted
+                        }
+                    # API thành công nhưng data rỗng → thử variant tiếp theo
                     break
-            except requests.exceptions.RequestException:
-                # Lỗi kết nối, timeout -> retry
-                time.sleep(1.5 * (attempt + 1))
-                continue
-                
-            # Nếu chạy đến đây mà API không lỗi nhưng success=false thì cũng chờ và thử lại
-            time.sleep(1)
-            
+                except requests.exceptions.HTTPError as e:
+                    if hasattr(e, 'response') and e.response is not None and e.response.status_code >= 500:
+                        # 500: server crash do địa chỉ phức tạp → retry với backoff nhỏ
+                        time.sleep(0.5 * (attempt + 1))
+                        continue
+                    break  # 4xx → lỗi data, không retry
+                except requests.exceptions.RequestException:
+                    time.sleep(1.5 * (attempt + 1))
+                    continue
+        
         return {
             "original": addr,
             "success": False,
