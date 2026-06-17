@@ -633,9 +633,9 @@ def main():
             batch = unique_addresses[i:i+batch_size]
             api_results = call_address_api(batch, max_workers=api_threads)
             
-            for j, result in enumerate(api_results):
-                if j < len(batch):
-                    address_map[batch[j]] = result
+            for result in api_results:
+                if result and 'original' in result:
+                    address_map[result['original']] = result
 
     # Cập nhật kết quả API vào dữ liệu
     for row in processed_data:
