@@ -491,6 +491,11 @@ def main():
             if img is not None:
                 print(f"   -> [{os.path.basename(img_path)}] Không đọc được QR, đang thử quét OCR...")
                 ocr_data, ocr_note = extract_ocr_data(img)
+                
+                # In thông tin OCR ra màn hình
+                ocr_print_info = f"Họ tên: {ocr_data.get('Họ tên')}, CCCD: {ocr_data.get('CCCD')}, Ngày sinh: {ocr_data.get('Ngày sinh')}"
+                print(f"   -> [{os.path.basename(img_path)}] Kết quả OCR: {ocr_print_info}")
+                
                 if ocr_data.get('CCCD'):
                     row_data['Scan Type'] = 'OCR_scanned'
                 row_data.update(ocr_data)
@@ -521,6 +526,7 @@ def main():
         cccd = item.get('CCCD')
         if not cccd: continue
         
+        is_new_record = False
         if cccd not in records:
             records[cccd] = {
                 'Họ tên': '', 'CCCD': cccd, 'CMND': '', 'Giới tính': '',
@@ -537,13 +543,23 @@ def main():
                 'OCR Image Path Back': '',
                 'Full OCR Image Path Back': '',
                 'OCR Image Path Unknown': '',
-                'Full OCR Image Path Unknown': ''
+                'Full OCR Image Path Unknown': '',
+                'has_qr_data': False,
+                'has_ocr_data': False
             }
+            is_new_record = True
         
         record = records[cccd]
         
         is_qr = bool(item.get('QR Raw'))
         if is_qr:
+            if not is_new_record:
+                if record['has_ocr_data'] and not record['has_qr_data']:
+                    print(f"   -> [GỘP DỮ LIỆU] GHI ĐÈ thông tin từ ảnh {item['Image Path']} (Đọc mã QR) lên thông tin OCR trước đó của CCCD {cccd}")
+                elif record['has_qr_data']:
+                    print(f"   -> [GỘP DỮ LIỆU] Bỏ qua thông tin từ ảnh {item['Image Path']} vì đã quét mã QR thành công trước đó cho CCCD {cccd}")
+            
+            record['has_qr_data'] = True
             # Overwrite text fields with QR accuracy
             for k in ['Họ tên', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD', 'Nơi cấp', 'Ngày hết hạn', 'Phân loại', 'QR Raw']:
                 if item.get(k): record[k] = item[k]
@@ -560,6 +576,14 @@ def main():
             if item.get('Ghi chú'):
                 record['Ghi chú'].append(item['Ghi chú'])
         else: # OCR
+            if not is_new_record:
+                if record['has_qr_data']:
+                    print(f"   -> [GỘP DỮ LIỆU] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã có dữ liệu QR chuẩn xác của CCCD {cccd}")
+                elif record['has_ocr_data']:
+                    print(f"   -> [GỘP DỮ LIỆU] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã xử lý ảnh OCR trước đó cho CCCD {cccd}")
+            
+            record['has_ocr_data'] = True
+            
             # Fill empty text fields
             for k in ['Họ tên', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD']:
                 if item.get(k) and not record.get(k): record[k] = item[k]
