@@ -583,6 +583,45 @@ def run_wizard(input_dir):
 
     console.print(f"\n[bold green]✅ Đã quét thư mục và tìm thấy tổng cộng {len(image_paths)} file ảnh.[/bold green]")
     
+    # --- AUTO BACKUP AND RENAME LOGIC ---
+    import zipfile
+    import uuid
+    zip_path = os.path.join(input_dir, "original.zip")
+    
+    if not os.path.exists(zip_path):
+        console.print("[cyan]📦 Đang sao lưu các file ảnh gốc vào original.zip...[/cyan]")
+        try:
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for file_path in image_paths:
+                    zipf.write(file_path, os.path.basename(file_path))
+            
+            console.print("[cyan]🔄 Đang đổi tên các file ảnh theo số thứ tự...[/cyan]")
+            # Bước 1: Đổi tên thành tên tạm (để tránh ghi đè ngẫu nhiên)
+            temp_paths = []
+            for file_path in image_paths:
+                ext = os.path.splitext(file_path)[1]
+                temp_name = f"temp_{uuid.uuid4().hex[:8]}{ext}"
+                temp_path = os.path.join(input_dir, temp_name)
+                os.rename(file_path, temp_path)
+                temp_paths.append((temp_path, ext))
+                
+            # Bước 2: Đổi tên thành số thứ tự
+            new_image_paths = []
+            for i, (temp_path, ext) in enumerate(temp_paths, 1):
+                new_name = f"{i}{ext}"
+                new_path = os.path.join(input_dir, new_name)
+                os.rename(temp_path, new_path)
+                new_image_paths.append(new_path)
+                
+            image_paths = new_image_paths
+            console.print("[bold green]✅ Đã sao lưu và đổi tên thành công![/bold green]")
+        except Exception as e:
+            console.print(f"[bold red]❌ Lỗi trong quá trình sao lưu/đổi tên: {e}[/bold red]")
+            return
+    else:
+        console.print("[yellow]⚠️ Bỏ qua bước sao lưu và đổi tên do file original.zip đã tồn tại trong thư mục này.[/yellow]")
+    # ------------------------------------
+    
     # Cấu hình luồng xử lý
     num_threads_input = Prompt.ask("\n[cyan]Nhập số luồng xử lý ảnh song song[/cyan] (Enter để mặc định là 4)", default="4").strip()
     try:
