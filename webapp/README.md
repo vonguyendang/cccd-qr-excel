@@ -2,7 +2,7 @@
 
 Hệ thống Web App cung cấp cho bạn một giao diện vô cùng thân thiện và tiện lợi, hỗ trợ hai chế độ làm việc:
 
-1. **Upload File:** Chọn hàng loạt file ảnh lưu sẵn trên máy tính để đọc. Nếu có ảnh khó, Web App sẽ tự động đẩy xuống lõi Trí tuệ Nhân tạo (WeChat QRCode) của Python để bóc tách.
+1. **Upload File:** Chọn hàng loạt file ảnh lưu sẵn trên máy tính để đọc. Nếu có ảnh khó (mất QR, lóa sáng), Web App sẽ tự động đẩy xuống lõi Trí tuệ Nhân tạo (WeChat QRCode và Deepdoc_VietOCR) để bóc tách chữ. Thuật toán OCR mới nhất cho phép **quét xuyên khoảng trắng** để khôi phục các mã số CCCD bị đứt gãy, đảm bảo không bỏ sót bất kỳ một chữ số nào.
 2. **Camera Scanner:** Truy cập trực tiếp Camera trên máy tính hoặc điện thoại di động để quét Live mã QR trên CCCD nhựa cứng một cách vô cùng nhanh nhạy và phát ra âm thanh báo hiệu.
 
 Dữ liệu sau khi quét sẽ được gom vào bảng, tự động chuẩn hóa địa chỉ tại hệ thống VNHub. 

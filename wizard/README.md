@@ -3,7 +3,17 @@
 Công cụ dòng lệnh phù hợp khi bạn có một thư mục chứa rất nhiều file ảnh CCCD và muốn phần mềm chạy nền tự động xử lý một lần, không cần thao tác bấm từng file trên giao diện Web.
 
 Chương trình sẽ tự động quét toàn bộ các file ảnh trong thư mục (bao gồm cả ảnh `.HEIC` từ iPhone), phân tích mã QR, chuẩn hóa địa chỉ thông qua API `tienich.vnhub.com`, lọc trùng lặp và lưu tất cả kết quả vào một file `.xlsx`.
-Đồng thời, tự động đổi tên toàn bộ ảnh (theo định dạng `{Họ tên}_{CCCD/CMND}_Mặt trước/sau`) và nén thành 2 file `original.zip` và `rename.zip`.
+Đồng thời, tự động đổi tên toàn bộ ảnh (theo định dạng `{Họ tên}_{CCCD/CMND}_Mặt trước/sau`) và nén thành 5 file phân loại:
+1. `original.zip`: Ảnh gốc.
+2. `rename.zip`: Ảnh đã đổi tên theo dữ liệu quét.
+3. `QR_scanned.zip`: Các ảnh đọc được bằng mã QR.
+4. `OCR_scanned.zip`: Các ảnh hỏng QR, phải đọc bằng AI OCR.
+5. `duplicate.zip`: Các ảnh trùng lặp, ảnh lỗi hoặc không dùng đến.
+
+**Tính năng vượt trội phiên bản mới:**
+- Tích hợp **Rich UI** hiển thị sinh động, có thanh tiến trình và đánh số thứ tự hồ sơ `[Người 1]` trên Terminal.
+- Tự động xuất kèm file `log_YYYYMMDD_HHMMSS.txt` lưu lại toàn bộ tiến trình báo cáo.
+- Xử lý mượt mà lỗi "hiển thị thiếu 3 số" bằng thuật toán Regex quét ngang qua các điểm ngắt do xước thẻ.
 
 Lưu ý: Giống như Web App, **bạn không cần phải cài đặt hay chạy riêng rẽ `deepdoc_vietocr`**. Nó đã được nhúng chung vào trong `main.py` và sẽ tự động khởi động.
 
