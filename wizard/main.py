@@ -364,33 +364,105 @@ def extract_ocr_data(image_path_or_cv2img):
         return {}, f"Lỗi thư viện OCR: {str(e)}", None
         
     try:
+        import cv2
+        import numpy as np
+        
+        # --- PASS 1: TÌM CHIỀU ẢNH TỐT NHẤT ---
+        best_img = img_to_ocr
+        best_data = {'CCCD': '', 'Họ tên': '', 'Ngày sinh': '', 'OCR Side': ''}
+        best_note = "Ảnh mờ hoặc không thể nhận diện được"
+        rotated_return = None
+        
         text, is_vertical = extract_text_from_image(img_to_ocr, return_orientation=True)
         data = parse_ocr_text(text)
-        if data['CCCD'] or (not data['CCCD'] and data['OCR Side'] == 'Front' and data['Họ tên']): 
-            # If we found CCCD, or it's clearly front and has name, return it
-            # Nhưng nếu chữ bị dọc (do chụp dọc thẻ nằm ngang), ta tự động xoay lại 90 độ
-            if is_vertical:
-                import cv2
-                rotated_img = cv2.rotate(img_to_ocr, cv2.ROTATE_90_COUNTERCLOCKWISE)
-                return data, "Lấy bằng OCR (Đã tự xoay chữ dọc)", rotated_img
-            return data, "Lấy bằng OCR", None
-            
-        # Fallback rotations
-        import cv2
-        rotations = [
-            (cv2.ROTATE_90_COUNTERCLOCKWISE, "Xoay trái 90 độ"),
-            (cv2.ROTATE_90_CLOCKWISE, "Xoay phải 90 độ"),
-            (cv2.ROTATE_180, "Xoay 180 độ")
-        ]
         
-        for rot_code, rot_name in rotations:
-            rotated = cv2.rotate(img_to_ocr, rot_code)
-            text_rot = extract_text_from_image(rotated)
-            data_rot = parse_ocr_text(text_rot)
-            if data_rot['CCCD'] or (data_rot['OCR Side'] == 'Front' and data_rot['Họ tên']):
-                return data_rot, f"Lấy bằng OCR ({rot_name})", rotated
+        if data['CCCD'] or (not data['CCCD'] and data['OCR Side'] == 'Front' and data['Họ tên']):
+            best_data = data
+            if is_vertical:
+                best_img = cv2.rotate(img_to_ocr, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                rotated_return = best_img
+                # Cập nhật lại data cho ảnh đã xoay để chính xác hơn (đôi khi xoay lại đọc tốt hơn)
+                text_rot, _ = extract_text_from_image(best_img, return_orientation=True)
+                data_rot = parse_ocr_text(text_rot)
+                for k, v in data_rot.items():
+                    if v and not best_data.get(k): best_data[k] = v
+                best_note = "Lấy bằng OCR (Đã tự xoay chữ dọc)"
+            else:
+                best_note = "Lấy bằng OCR"
+        else:
+            # Fallback xoay để tìm chiều đúng
+            rotations = [
+                (cv2.ROTATE_90_COUNTERCLOCKWISE, "Xoay trái 90 độ"),
+                (cv2.ROTATE_90_CLOCKWISE, "Xoay phải 90 độ"),
+                (cv2.ROTATE_180, "Xoay 180 độ")
+            ]
+            for rot_code, rot_name in rotations:
+                rotated = cv2.rotate(img_to_ocr, rot_code)
+                # extract_text_from_image có thể nhận 1 biến trả về nếu không yêu cầu orientation
+                # Ở đây code cũ dùng extract_text_from_image(rotated) mà không có return_orientation=False
+                # Hàm mặc định return_orientation=False, trả về mỗi text.
+                text_rot = extract_text_from_image(rotated)
+                data_rot = parse_ocr_text(text_rot)
+                if data_rot['CCCD'] or (data_rot['OCR Side'] == 'Front' and data_rot['Họ tên']):
+                    best_data = data_rot
+                    best_img = rotated
+                    rotated_return = rotated
+                    best_note = f"Lấy bằng OCR ({rot_name})"
+                    break
+            else:
+                # Nếu xoay 4 hướng vẫn không được, giữ lại data gốc tốt nhất (nếu có)
+                best_data = data
+                best_note = "Lấy bằng OCR"
+
+        # --- KIỂM TRA ĐIỀU KIỆN RETRY ---
+        def missing_critical(d):
+            if d.get('OCR Side') == 'Back':
+                return not d.get('CCCD') or not d.get('Ngày cấp CCCD')
+            return not d.get('CCCD') or not d.get('Họ tên') or not d.get('Ngày sinh')
+            
+        if missing_critical(best_data):
+            # --- PASS 2: BỘ LỌC TƯƠNG PHẢN (CLAHE) ---
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            lab = cv2.cvtColor(best_img, cv2.COLOR_BGR2LAB)
+            l, a, b = cv2.split(lab)
+            l2 = clahe.apply(l)
+            lab = cv2.merge((l2,a,b))
+            img_contrast = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+            
+            text_p2 = extract_text_from_image(img_contrast)
+            data_p2 = parse_ocr_text(text_p2)
+            
+            merged = False
+            for k, v in data_p2.items():
+                if v and not best_data.get(k):
+                    best_data[k] = v
+                    merged = True
+                    
+            if merged:
+                best_note += " + Lọc Tương phản"
                 
-        return data, "Ảnh mờ hoặc không thể nhận diện được", None
+            if missing_critical(best_data):
+                # --- PASS 3: BỘ LỌC LÀM NÉT (SHARPENING) ---
+                kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+                img_sharpen = cv2.filter2D(best_img, -1, kernel)
+                
+                text_p3 = extract_text_from_image(img_sharpen)
+                data_p3 = parse_ocr_text(text_p3)
+                
+                merged_p3 = False
+                for k, v in data_p3.items():
+                    if v and not best_data.get(k):
+                        best_data[k] = v
+                        merged_p3 = True
+                
+                if merged_p3:
+                    best_note += " + Làm nét"
+
+        # Nếu cả 3 pass vẫn trống toàn bộ
+        if not best_data['CCCD'] and not best_data['Họ tên'] and not best_data['Ngày sinh']:
+            return best_data, "Ảnh mờ hoặc không thể nhận diện được", rotated_return
+            
+        return best_data, best_note, rotated_return
     except Exception as e:
         return {}, f"Lỗi OCR: {str(e)}", None
 
