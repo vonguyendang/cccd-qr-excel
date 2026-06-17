@@ -493,7 +493,14 @@ def main():
                 ocr_data, ocr_note = extract_ocr_data(img)
                 
                 # In thông tin OCR ra màn hình
-                ocr_print_info = f"Họ tên: {ocr_data.get('Họ tên')}, CCCD: {ocr_data.get('CCCD')}, Ngày sinh: {ocr_data.get('Ngày sinh')}"
+                parts = []
+                if ocr_data.get('OCR Side'): parts.append(f"[{ocr_data['OCR Side']}]")
+                if ocr_data.get('CCCD'): parts.append(f"CCCD: {ocr_data['CCCD']}")
+                if ocr_data.get('Họ tên'): parts.append(f"Tên: {ocr_data['Họ tên']}")
+                if ocr_data.get('Ngày sinh'): parts.append(f"NS: {ocr_data['Ngày sinh']}")
+                if ocr_data.get('Ngày cấp CCCD'): parts.append(f"Ngày cấp: {ocr_data['Ngày cấp CCCD']}")
+                
+                ocr_print_info = ", ".join(parts) if parts else "Không nhận diện được chữ"
                 print(f"   -> [{os.path.basename(img_path)}] Kết quả OCR: {ocr_print_info}")
                 
                 if ocr_data.get('CCCD'):
