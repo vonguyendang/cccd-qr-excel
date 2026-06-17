@@ -408,15 +408,23 @@ async def extract_ocr(req: OCRRequest):
         from wizard.main import extract_ocr_data
         ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
         
-        if ocr_data.get('CCCD'):
+        if ocr_data.get('CCCD') or ocr_data.get('Họ tên'):
             rotated_base64 = None
             if rotated_img is not None:
                 _, buffer = cv2.imencode('.jpg', rotated_img)
                 rotated_base64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode('utf-8')
                 
-            print(f"-> OCR Thành công: {ocr_data.get('CCCD')} - {ocr_note}")
+            print(f"-> OCR Thành công: CCCD={ocr_data.get('CCCD')}, Tên={ocr_data.get('Họ tên')} - {ocr_note}")
+            # Dù không có CCCD nhưng có tên, hoặc có CCCD, đều trả về success True (hoặc có rotatedBase64 thì ưu tiên trả về)
             return {"success": True, "ocrData": ocr_data, "rotatedBase64": rotated_base64}
         else:
+            # Nếu OCR trả về rotated_img nhưng không có tên/CCCD (rất hiếm), ta vẫn có thể muốn giữ lại ảnh đã xoay
+            rotated_base64 = None
+            if rotated_img is not None:
+                _, buffer = cv2.imencode('.jpg', rotated_img)
+                rotated_base64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode('utf-8')
+                return {"success": True, "ocrData": ocr_data, "rotatedBase64": rotated_base64, "text": ocr_note}
+                
             return {"success": False, "error": ocr_note}
             
     except Exception as e:
