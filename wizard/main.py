@@ -99,56 +99,61 @@ def extract_qr_data(image_path):
         if img is None:
             return None, "Lỗi đọc file ảnh", None
 
-        # 1. Try zxing-cpp FIRST (Best for Shift-JIS mojibake in VN CCCD)
-        try:
-            import zxingcpp
-            res = zxingcpp.read_barcode(img)
-            if res and res.text:
-                qr_data = res.text
-                import re
-                if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', qr_data):
-                    return qr_data, None, img
-        except Exception:
-            pass
+        import re
+        def _try_scan(scan_img):
+            # 1. zxingcpp
+            try:
+                import zxingcpp
+                res = zxingcpp.read_barcode(scan_img)
+                if res and res.text:
+                    if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', res.text):
+                        return res.text
+            except Exception:
+                pass
 
-        # 2. Try decoding directly with pyzbar
-        decoded_objects = decode(img, symbols=[ZBarSymbol.QRCODE])
-        
-        # If not found, try grayscale and thresholding for blurry/dark images
-        if not decoded_objects:
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            decoded_objects = decode(gray, symbols=[ZBarSymbol.QRCODE])
-            
+            # 2. pyzbar
+            decoded_objects = decode(scan_img, symbols=[ZBarSymbol.QRCODE])
             if not decoded_objects:
-                # Apply adaptive thresholding
-                thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-                decoded_objects = decode(thresh, symbols=[ZBarSymbol.QRCODE])
+                gray = cv2.cvtColor(scan_img, cv2.COLOR_BGR2GRAY)
+                decoded_objects = decode(gray, symbols=[ZBarSymbol.QRCODE])
+                if not decoded_objects:
+                    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+                    decoded_objects = decode(thresh, symbols=[ZBarSymbol.QRCODE])
+            
+            if decoded_objects:
+                txt = decoded_objects[0].data.decode('utf-8')
+                if '|' in txt and len(txt.split('|')) >= 6:
+                    if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', txt):
+                        return txt
 
-        if not decoded_objects:
-            # Fallback to WeChat QRCode CNN detector
+            # 3. wechat_qrcode
             global detector
             if detector:
                 try:
-                    res, _ = detector.detectAndDecode(img)
+                    res, _ = detector.detectAndDecode(scan_img)
                     if res and len(res) > 0:
-                        return res[0], None, img
-                except Exception as e:
+                        txt = res[0]
+                        if '|' in txt and len(txt.split('|')) >= 6:
+                            if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', txt):
+                                return txt
+                except Exception:
                     pass
-            return None, "QR không đọc được", img
-
-        # Assuming we just need the first QR code found
-        qr_data = decoded_objects[0].data.decode('utf-8')
-        
-        # --- BƯỚC KIỂM TRA LỖI FONT CỦA CƠ QUAN CẤP PHÁT ---
-        # Một số thẻ CCCD bị lỗi phần mềm in thẻ, khiến mã QR bị ghi nhầm bằng chuẩn Shift-JIS
-        # Dẫn đến chuỗi UTF-8 thu được bị biến dạng thành các ký tự Kanji (VD: 蘯, 盻, 廙, ｳ)
-        # Nếu phát hiện ký tự lạ không thuộc bảng chữ cái tiếng Việt, ta chặn luôn để ép hệ thống dùng AI OCR đọc chữ trên mặt thẻ.
-        import re
-        if re.search(r'[蘯ｧ盻ｳ廙砝廕蜩赴璽吵ヾ]', qr_data) or re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', qr_data):
-            # Biểu thức chính quy chặn các ký tự Kanji/Katakana đặc trưng hoặc bất cứ ký tự nào nằm ngoài ASCII và tiếng Việt
-            return None, "Mã QR bị hỏng font (Shift-JIS lỗi từ phôi thẻ), chuyển sang OCR", img
             
-        return qr_data, None, img
+            return None
+
+        # 1. Quét toàn bộ ảnh
+        qr_data = _try_scan(img)
+        
+        # 2. Quét góc phần tư phía trên bên phải (CCCD) nếu toàn bộ ảnh thất bại
+        if not qr_data:
+            h, w = img.shape[:2]
+            crop = img[0:int(h/2), int(w/2):w]
+            qr_data = _try_scan(crop)
+
+        if qr_data:
+            return qr_data, None, img
+        else:
+            return None, "QR không đọc được", img
 
     except Exception as e:
         return None, f"Lỗi xử lý ảnh: {str(e)}", None
@@ -460,9 +465,6 @@ def main():
         print(f"[{idx+1}/{total}] Đang đọc {os.path.basename(img_path)}...")
         qr_string, err, img = extract_qr_data(img_path)
         
-        if qr_string:
-            print(f"   -> [{os.path.basename(img_path)}] Đã quét được mã QR: {qr_string}")
-            
         row_data = {
             'Họ tên': '', 'CCCD': '', 'CMND': '', 'Giới tính': '',
             'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': '',
@@ -651,41 +653,6 @@ def main():
             
             row['Ghi chú'] = '; '.join(new_notes)
             
-    # Pass 4: Final formatting and cleanup
-    for cccd, record in records.items():
-        # Đảm bảo Ghi chú là list
-        raw_notes = record['Ghi chú']
-        if isinstance(raw_notes, str):
-            raw_notes = raw_notes.split('; ')
-        elif not isinstance(raw_notes, list):
-            raw_notes = []
-            
-        # Clean up "QR không đọc được" note if we actually have a QR code
-        final_notes = [n for n in raw_notes if n]
-        if record.get('QR Raw'):
-            final_notes = [n for n in final_notes if 'QR không đọc được' not in n]
-        
-        # Xử lý logic CMND (Yêu cầu mới)
-        if not record['CMND']:
-            if record.get('QR Raw'):
-                record['CMND'] = 'Không có'
-            else:
-                record['CMND'] = 'Chưa xác định'
-
-        # Tính toán ngày hết hạn dựa trên ngày sinh nếu bị khuyết (rất hay gặp ở luồng OCR)
-        if not record['Ngày hết hạn'] and record.get('Ngày sinh'):
-            record['Ngày hết hạn'] = calculate_expiry_date(record['Ngày sinh'])
-            record['Phân loại'] = 'Căn cước / CCCD'
-                
-        # Deduplicate notes and convert to string
-        unique_notes = []
-        for note in final_notes:
-            # handle cases where notes were joined by '; '
-            for subnote in note.split('; '):
-                if subnote and subnote not in unique_notes:
-                    unique_notes.append(subnote)
-        record['Ghi chú'] = '; '.join(unique_notes)
-            
     # Fix note formatting for those not processed by API
     for row in processed_data:
         if isinstance(row['Ghi chú'], list):
@@ -699,7 +666,7 @@ def main():
 
     headers = [
         "STT", "Họ tên", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
-        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", "QR Raw", 
+        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", 
         "Ảnh mặt trước CCCD/CC", "Ảnh mặt sau CCCD/CC", "Đổi tên Ảnh mặt trước CCCD/CC", "Đổi tên Ảnh mặt sau CCCD/CC"
     ]
     
@@ -722,7 +689,6 @@ def main():
             row_data['Ngày hết hạn'],
             row_data['Phân loại'],
             row_data['Ghi chú'],
-            row_data.get('QR Raw', ''),
             row_data.get('Ảnh mặt trước CCCD/CC', ''),
             row_data.get('Ảnh mặt sau CCCD/CC', ''),
             row_data.get('Đổi tên Ảnh mặt trước CCCD/CC', ''),
