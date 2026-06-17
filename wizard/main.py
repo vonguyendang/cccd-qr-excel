@@ -167,26 +167,16 @@ def extract_qr_data(image_path):
             cx, cy = center
             h, w = img.shape[:2]
             
-            # Logic xoay ảnh ưu tiên: Nếu ảnh chụp là dọc (Portrait) thì bắt buộc xoay thành ngang (Landscape)
-            if h > w * 1.1:
-                # Ảnh dọc -> xoay 90 độ
-                if cy > h/2:
-                    # QR ở nửa dưới (Góc Bottom-Right) -> Xoay ngược kim đồng hồ
+            # Chỉ xoay nếu QR nằm lệch rõ ràng về 1 góc (xa tâm hơn 10%)
+            # Điều này giúp tránh xoay nhầm ảnh Portrait chứa thẻ nằm ngang (QR nằm gần tâm)
+            if cx < w/2 and cy > h/2:
+                # QR ở Bottom-Left -> Bị lộn ngược 180 độ
+                rotated_img = cv2.rotate(img, cv2.ROTATE_180)
+            elif abs(cx - w/2) > w/10 and abs(cy - h/2) > h/10:
+                if cx > w/2 and cy > h/2:
                     rotated_img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-                else:
-                    # QR ở nửa trên (Góc Top-Left) -> Xoay cùng chiều kim đồng hồ
+                elif cx < w/2 and cy < h/2:
                     rotated_img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
-            else:
-                # Ảnh ngang (Landscape)
-                if cx < w/2 and cy > h/2:
-                    # QR ở Bottom-Left -> Bị lộn ngược 180 độ
-                    rotated_img = cv2.rotate(img, cv2.ROTATE_180)
-                elif abs(cx - w/2) > w/10 and abs(cy - h/2) > h/10:
-                    # Trường hợp thẻ chụp dọc trong một bức ảnh ngang rộng
-                    if cx > w/2 and cy > h/2:
-                        rotated_img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-                    elif cx < w/2 and cy < h/2:
-                        rotated_img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
 
         if qr_data:
             return qr_data, engine, None, img, rotated_img
