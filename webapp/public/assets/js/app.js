@@ -721,20 +721,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         // ---------------------------------------------------------
                         // 2. TRÍCH XUẤT SỐ CCCD
                         // ---------------------------------------------------------
-                        const cccdMatch = text.match(/\\b(0\\d{11})\\b/);
+                        const cccdMatch = text.match(/\b(0[\d\s]{11,15})\b/);
                         if (cccdMatch) {
-                            ocrData['CCCD'] = cccdMatch[1];
-                        } else {
+                            let val = cccdMatch[1].replace(/\s/g, '');
+                            if (val.length >= 12) {
+                                ocrData['CCCD'] = val.substring(0, 12);
+                            }
+                        }
+                        
+                        if (!ocrData['CCCD']) {
                             // Trích xuất từ mã MRZ ở mặt sau thẻ (Chuẩn ICAO của Việt Nam)
                             // Chuỗi VNM0960051566086... -> 096005156 (9 số cuối) + 6 + 086 (3 số đầu)
                             const textMrz = textUpper.replace(/O/g, '0'); // Fix lỗi OCR đọc nhầm số 0 thành chữ O
-                            const mrzMatch = textMrz.match(/VNM(\\d{9})\\d(\\d{3})/);
+                            const mrzMatch = textMrz.match(/VNM(\d{9})\d(\d{3})/);
                             if (mrzMatch) {
                                 ocrData['CCCD'] = mrzMatch[2] + mrzMatch[1];
                             } else {
                                 // Quét rà soát fallback
-                                const fallbackMatch = text.match(/(0\\d{11})/);
-                                if (fallbackMatch) ocrData['CCCD'] = fallbackMatch[1];
+                                const fallbackMatch = text.match(/(0[\d\s]{11,15})/);
+                                if (fallbackMatch) {
+                                    let val = fallbackMatch[1].replace(/\s/g, '');
+                                    if (val.length >= 12) {
+                                        ocrData['CCCD'] = val.substring(0, 12);
+                                    }
+                                }
                             }
                         }
                         const lines = text.split('\n').map(l => l.trim()).filter(l => l);
