@@ -97,7 +97,7 @@ def extract_qr_data(image_path):
             img = cv2.imread(image_path)
             
         if img is None:
-            return None, "Lỗi đọc file ảnh", None
+            return None, None, "Lỗi đọc file ảnh", None
 
         import re
         def _try_scan(scan_img):
@@ -107,7 +107,7 @@ def extract_qr_data(image_path):
                 res = zxingcpp.read_barcode(scan_img)
                 if res and res.text:
                     if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', res.text):
-                        return res.text
+                        return res.text, "zxing-cpp"
             except Exception:
                 pass
 
@@ -124,7 +124,7 @@ def extract_qr_data(image_path):
                 txt = decoded_objects[0].data.decode('utf-8')
                 if '|' in txt and len(txt.split('|')) >= 6:
                     if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', txt):
-                        return txt
+                        return txt, "pyzbar"
 
             # 3. wechat_qrcode
             global detector
@@ -135,28 +135,28 @@ def extract_qr_data(image_path):
                         txt = res[0]
                         if '|' in txt and len(txt.split('|')) >= 6:
                             if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', txt):
-                                return txt
+                                return txt, "WeChat QRCode"
                 except Exception:
                     pass
             
-            return None
+            return None, None
 
         # 1. Quét toàn bộ ảnh
-        qr_data = _try_scan(img)
+        qr_data, engine = _try_scan(img)
         
         # 2. Quét góc phần tư phía trên bên phải (CCCD) nếu toàn bộ ảnh thất bại
         if not qr_data:
             h, w = img.shape[:2]
             crop = img[0:int(h/2), int(w/2):w]
-            qr_data = _try_scan(crop)
+            qr_data, engine = _try_scan(crop)
 
         if qr_data:
-            return qr_data, None, img
+            return qr_data, engine, None, img
         else:
-            return None, "QR không đọc được", img
+            return None, None, "QR không đọc được", img
 
     except Exception as e:
-        return None, f"Lỗi xử lý ảnh: {str(e)}", None
+        return None, None, f"Lỗi xử lý ảnh: {str(e)}", None
 
 def extract_ocr_data(image_path_or_cv2img):
     """
@@ -463,10 +463,10 @@ def main():
     
     def process_single_image(img_path, idx, total):
         print(f"[{idx+1}/{total}] Đang đọc {os.path.basename(img_path)}...")
-        qr_string, err, img = extract_qr_data(img_path)
+        qr_string, engine, err, img = extract_qr_data(img_path)
         
         if qr_string:
-            print(f"   -> [{os.path.basename(img_path)}] Đã quét được mã QR: {qr_string}")
+            print(f"   -> [{os.path.basename(img_path)}] Đã quét được mã QR (bằng {engine}): {qr_string}")
             
         row_data = {
             'Họ tên': '', 'CCCD': '', 'CMND': '', 'Giới tính': '',
