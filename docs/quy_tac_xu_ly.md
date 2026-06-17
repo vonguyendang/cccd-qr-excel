@@ -42,12 +42,19 @@ Hệ thống kết nối đến API VNHub qua endpoint: `https://tienich.vnhub.c
 
 ## Quy tắc Trích xuất bằng AI (OCR)
 
-Khi mã QR không thể đọc được, Web App sử dụng Tesseract.js chạy trong Web Worker để đọc chữ (OCR) với ngôn ngữ `vie`.
+Khi mã QR không thể đọc được, hệ thống (cả bản Web và Terminal) sẽ sử dụng AI OCR để đọc chữ từ ảnh.
 
-- **Số CCCD:** Tìm chuỗi chính xác 12 chữ số liền nhau (`\b\d{12}\b`).
+- **Số CCCD:** Tìm chuỗi 12-15 ký tự bắt đầu bằng số 0 (Regex: `\b(0[\d\s]{11,15})\b`). Cho phép quét xuyên qua các khoảng trắng để khôi phục số CCCD bị đứt gãy do OCR nhận diện sai, sau đó tự động nối lại thành đúng 12 số nguyên bản.
 - **Ngày sinh/Ngày cấp:** Tìm theo định dạng `dd/mm/yyyy` (cho phép khoảng trắng).
 - **Giới tính:** Đếm số lần xuất hiện chữ `nam`. Hệ thống có cơ chế trừ hao các cụm từ chứa chữ "nam" nhưng là địa danh (như `việt nam`, `hà nam`, `quảng nam`, `hải nam`) để xác định chính xác giới tính.
 - Dữ liệu OCR luôn có mức ưu tiên thấp hơn QR. Trong file Excel, các dòng OCR sẽ bị đẩy xuống dưới cùng và luôn có `Ghi chú: Lấy bằng OCR`.
+
+## Quy tắc Giao diện & Log hệ thống (Terminal)
+
+Phiên bản chạy dòng lệnh (Wizard CLI) được trang bị giao diện **Rich UI** tiên tiến:
+1. **Định danh CCCD/CMND thông minh:** Hệ thống tự động nhận diện độ dài ID (12 số là CCCD, 9 số là CMND) để xưng hô chuẩn xác trong log.
+2. **Đánh số thứ tự người dùng:** Trong quá trình gộp dữ liệu mặt trước/sau, mỗi người được đánh một số thứ tự duy nhất (Ví dụ: `[Người 1]`, `[Người 2]`), giúp dễ dàng theo dõi số lượng hồ sơ.
+3. **Lưu vết Log File:** Toàn bộ tiến trình làm việc (bao gồm cả lỗi và màu sắc cảnh báo) được tự động xuất ra file `log_YYYYMMDD_HHMMSS.txt` song song với file Excel, tiện lợi cho việc tra soát sau này.
 
 ## Quy tắc Lưu trữ & Đồng bộ (Cập nhật Mới)
 

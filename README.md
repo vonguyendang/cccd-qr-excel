@@ -16,7 +16,13 @@ Hệ thống được phát triển 100% bằng **Python** và cung cấp hai ph
 - Nhận diện mã QR chính xác tuyệt đối nhờ kết hợp các thư viện chuyên dụng (`pyzbar`, `ZXing`, `WeChatQRCode AI`). 
 - Xử lý được các mã lóa sáng, mờ, xước.
 
-### 2. Thuật toán AI OCR Đột Phá (Cho ảnh hỏng mã QR)
+### 2. Trải nghiệm Terminal Hiện Đại (Rich UI) & Logging Chuyên Sâu
+- Giao diện dòng lệnh được thiết kế với **Rich**, cung cấp thanh tiến trình (Progress Bar), hiệu ứng Loading (Spinner), và màu sắc hiển thị sinh động.
+- Tự động đánh số thứ tự cho từng người dùng `[Người 1]`, `[Người 2]` trong hệ thống log để dễ dàng giám sát quá trình gộp dữ liệu.
+- Phân biệt xưng hô tự động giữa CCCD (12 số) và CMND (9 số).
+- **Xuất File Log Chi Tiết:** Toàn bộ tiến trình chạy (kể cả cảnh báo lỗi) sẽ được kết xuất ra file văn bản `log_YYYYMMDD_HHMMSS.txt` song song với file Excel, giúp việc kiểm tra và đối chiếu trở nên cực kỳ thuận tiện.
+
+### 3. Thuật toán AI OCR Đột Phá (Cho ảnh hỏng mã QR)
 Khi mã QR không thể đọc được, hệ thống tự động kích hoạt mạng nén AI **Deepdoc VietOCR** (chuyên dụng tiếng Việt) để đọc chữ trực tiếp từ ảnh.
 Thuật toán được chúng tôi "độ" lại với hàng loạt công nghệ bóc tách chuyên sâu:
 - **Nhận diện mặt thẻ thông minh:** Phân loại chính xác 100% đâu là Mặt Trước, đâu là Mặt Sau dựa trên các cụm từ khóa chuyên biệt (VD: *Độc lập, Tự do* -> Mặt trước; *Đặc điểm nhận dạng* -> Mặt sau).
@@ -25,16 +31,17 @@ Thuật toán được chúng tôi "độ" lại với hàng loạt công nghệ
   - Phân biệt rạch ròi *Ngày sinh*, *Ngày cấp*, và *Ngày hết hạn* (dù cả 3 đều có chữ "Ngày, tháng, năm").
   - Tránh bị nối nhầm *Nơi đăng ký khai sinh* vào *Nơi cư trú* ở mặt sau thẻ.
   - Ngăn ngừa tình trạng bắt nhầm Giới tính từ chữ "Nam" trong từ *Việt Nam* hay tên đường (*Trần Hoàng Nam*).
+  - **Nhận diện xuyên khoảng trắng:** Thuật toán regex cực mạnh có khả năng quét qua các khoảng trống đứt đoạn của AI OCR để lấy lại nguyên vẹn 12 số CCCD, khắc phục triệt để lỗi "hiển thị thiếu 3 số".
 
-### 3. Hợp nhất 2 Mặt Thẻ Bù Trừ (Pass 3 Merging)
+### 4. Hợp nhất 2 Mặt Thẻ Bù Trừ (Pass 3 Merging)
 Hệ thống sử dụng cơ chế thông minh: Nếu thẻ mất mã QR, nó sẽ dùng số CCCD (bóc từ MRZ) làm cầu nối để gộp dữ liệu ảnh mặt trước và ảnh mặt sau lại với nhau.
 Ví dụ: Lấy *Họ tên, Ngày sinh* ở mặt trước đắp chung với *Ngày cấp, Quê quán* ở mặt sau. Đảm bảo file Excel cuối cùng luôn đầy đủ 100% cột dữ liệu!
 
-### 4. Tự động loại bỏ CCCD trùng lặp
+### 5. Tự động loại bỏ CCCD trùng lặp
 - Lọc bỏ triệt để các ảnh chụp thừa, chỉ giữ lại 1 dòng dữ liệu cho mỗi người.
 - Hệ thống xuất thêm 4 cột hình ảnh: "Ảnh mặt trước", "Ảnh mặt sau", và 2 cột Đổi tên tương ứng. Tự động gom file vào `original.zip` và file đã đổi tên vào `duplicate.zip` (ảnh rác).
 
-### 5. Multi-device Sync (Đồng bộ đa thiết bị)
+### 6. Multi-device Sync (Đồng bộ đa thiết bị)
 - Kết nối Web App qua WebSocket, cho phép nhiều người/thiết bị cùng quét chung vào 1 phòng theo thời gian thực.
 - Cơ chế "Backup Kép" (Dual Backup) tự động lưu trữ tiến trình ra file JSON. Có thể khôi phục lại dễ dàng và tự động dọn rác sau 10 ngày.
 
