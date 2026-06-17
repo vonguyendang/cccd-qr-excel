@@ -711,7 +711,10 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
             notes = row['Ghi chú'] if isinstance(row['Ghi chú'], list) else []
             
             if result['success']:
-                row['Địa chỉ chuẩn hóa mới'] = result.get('converted', '')
+                converted_addr = result.get('converted', '')
+                row['Địa chỉ chuẩn hóa mới'] = converted_addr
+                if converted_addr.lower().strip() == addr.lower().strip():
+                    notes.append("Địa chỉ không đổi")
             else:
                 notes.append(result.get('error', 'Lỗi không xác định'))
                 

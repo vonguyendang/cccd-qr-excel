@@ -647,7 +647,10 @@ def main():
                 new_notes.extend(row['Ghi chú'] if isinstance(row['Ghi chú'], list) else [row['Ghi chú']])
             
             if result.get('success'):
-                row['Địa chỉ chuẩn hóa mới'] = result.get('converted', '')
+                converted_addr = result.get('converted', '')
+                row['Địa chỉ chuẩn hóa mới'] = converted_addr
+                if converted_addr.lower().strip() == addr.lower().strip():
+                    new_notes.append("Địa chỉ không đổi")
                 if result.get('notSure'):
                     new_notes.append("Địa chỉ chuyển đổi chưa chắc chắn")
             else:
