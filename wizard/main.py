@@ -351,15 +351,13 @@ def fetch_single_address(addr):
         'Referer': 'https://tienich.vnhub.com/'
     }
     try:
-        import json
-        response = requests.post(
-            'https://tienich.vnhub.com/api/wards', 
-            data=json.dumps({"address": addr}),
-            headers=headers,
-            timeout=15
+        import json, time
+        payload = json.dumps({"address": addr})
         )
         response.raise_for_status()
         res_data = response.json()
+        print(f"Received JSON: {json.dumps(res_data, ensure_ascii=False)}")
+        print(f"-----------------")
         if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
             return {
                 "original": addr,

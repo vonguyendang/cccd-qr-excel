@@ -514,29 +514,33 @@ async def fetch_single_address_async(client, addr):
     }
     try:
         import json
-        response = await client.post(
-            'https://tienich.vnhub.com/api/wards',
-            content=json.dumps({"address": addr}),
-            headers=headers,
-            timeout=15.0
-        )
-        response.raise_for_status()
-        res_data = response.json()
-        if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
-            return {
-                "original": addr,
-                "success": True,
-                "converted": res_data['data'][0]['address']
-            }
-        else:
-            err_msg = "Không tìm thấy địa chỉ tương ứng"
-            if res_data.get('success') is False and res_data.get('error'):
-                err_msg = f"API bị lỗi: {res_data.get('error')}"
-            return {
-                "original": addr,
-                "success": False,
-                "error": err_msg
-            }
+        import asyncio
+        payload = json.dumps({"address": addr})
+        
+        for attempt in range(3):
+            response = await client.post(
+                'https://tienich.vnhub.com/api/wards',
+                content=payload,
+                headers=headers,
+                timeout=15.0
+            )
+            response.raise_for_status()
+            res_data = response.json()
+            
+            if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
+                return {
+                    "original": addr,
+                    "success": True,
+                    "converted": res_data['data'][0]['address']
+                }
+                
+            await asyncio.sleep(1)
+            
+        return {
+            "original": addr,
+            "success": False,
+            "error": "Không tìm thấy địa chỉ tương ứng"
+        }
     except Exception as e:
         return {
             "original": addr,
