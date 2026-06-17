@@ -356,63 +356,33 @@ async def scan_qr(req: ScanQRRequest):
             print("-> Lỗi: Dữ liệu ảnh không hợp lệ.", flush=True)
             return {"success": False, "error": "Invalid image"}
             
-        import re
-        def _try_scan(scan_img):
-            # 1. zxingcpp
-            try:
-                import zxingcpp
-                res = zxingcpp.read_barcode(scan_img)
-                if res and res.text:
-                    if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', res.text):
-                        return res.text, "zxing-cpp"
-            except Exception:
-                pass
-
-            # 2. pyzbar
-            decoded_objects = decode(scan_img, symbols=[ZBarSymbol.QRCODE])
-            if not decoded_objects:
-                gray = cv2.cvtColor(scan_img, cv2.COLOR_BGR2GRAY)
-                decoded_objects = decode(gray, symbols=[ZBarSymbol.QRCODE])
-                if not decoded_objects:
-                    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-                    decoded_objects = decode(thresh, symbols=[ZBarSymbol.QRCODE])
-            
-            if decoded_objects:
-                txt = decoded_objects[0].data.decode('utf-8')
-                if '|' in txt and len(txt.split('|')) >= 6:
-                    if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', txt):
-                        return txt, "pyzbar"
-
-            # 3. wechat_qrcode
-            global detector
-            if detector:
-                try:
-                    res, _ = detector.detectAndDecode(scan_img)
-                    if res and len(res) > 0:
-                        txt = res[0]
-                        if '|' in txt and len(txt.split('|')) >= 6:
-                            if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', txt):
-                                return txt, "WeChat"
-                except Exception:
-                    pass
-            
-            return None, None
-
-        # 1. Quét toàn bộ ảnh
-        qr_data, engine = _try_scan(img)
+        import tempfile
+        from wizard.main import extract_qr_data
         
-        # 2. Quét góc phần tư phía trên bên phải nếu toàn ảnh thất bại
-        if not qr_data:
-            h, w = img.shape[:2]
-            crop = img[0:int(h/2), int(w/2):w]
-            qr_data, engine = _try_scan(crop)
-
-        if qr_data:
-            print(f"-> Quét thành công QR ({engine}): {qr_data}", flush=True)
-            return {"success": True, "data": qr_data}
+        fd, temp_path = tempfile.mkstemp(suffix=".jpg")
+        os.close(fd)
+        
+        try:
+            with open(temp_path, "wb") as f:
+                f.write(base64.b64decode(base64_str))
+                
+            qr_string, engine, err, _, qr_rotated_img = extract_qr_data(temp_path)
             
-        print("-> Không tìm thấy mã QR trong ảnh.", flush=True)
-        return {"success": False, "error": "QR not found"}
+            if qr_string:
+                rotated_base64 = None
+                if qr_rotated_img is not None:
+                    _, buffer = cv2.imencode('.jpg', qr_rotated_img)
+                    rotated_base64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode('utf-8')
+                    
+                print(f"-> Quét thành công QR ({engine}): {qr_string}", flush=True)
+                return {"success": True, "data": qr_string, "rotatedBase64": rotated_base64}
+            else:
+                print(f"-> Lỗi QR: {err}", flush=True)
+                return {"success": False, "error": err}
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+                
     except Exception as e:
         print(f"-> Lỗi hệ thống khi quét ảnh: {str(e)}", flush=True)
         return {"success": False, "error": f"Exception: {str(e)}"}
@@ -435,9 +405,20 @@ async def extract_ocr(req: OCRRequest):
         if img is None:
             return {"success": False, "error": "Invalid image"}
             
-        text = extract_text_from_image(img)
-        print(f"-> OCR Trích xuất được {len(text)} ký tự.")
-        return {"success": True, "text": text}
+        from wizard.main import extract_ocr_data
+        ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
+        
+        if ocr_data.get('CCCD'):
+            rotated_base64 = None
+            if rotated_img is not None:
+                _, buffer = cv2.imencode('.jpg', rotated_img)
+                rotated_base64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode('utf-8')
+                
+            print(f"-> OCR Thành công: {ocr_data.get('CCCD')} - {ocr_note}")
+            return {"success": True, "ocrData": ocr_data, "rotatedBase64": rotated_base64}
+        else:
+            return {"success": False, "error": ocr_note}
+            
     except Exception as e:
         print(f"-> Lỗi OCR: {e}")
         return {"success": False, "error": str(e)}

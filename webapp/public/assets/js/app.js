@@ -684,6 +684,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         const res = await response.json();
                         if (res.success && res.data) {
                             dataObj.qrData = res.data;
+                            if (res.rotatedBase64) {
+                                dataObj.imageBase64 = res.rotatedBase64;
+                                optimizedBase64 = res.rotatedBase64;
+                                log(`[${index+1}/${totalFilesInQueue}] Ảnh QR đã được tự động xoay chuẩn.`);
+                            }
                             foundQR = true;
                             log(`[${index+1}/${totalFilesInQueue}] Tìm thấy QR bằng AI Backend.`);
                         }
@@ -695,7 +700,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!foundQR) {
                     log(`[${index+1}/${totalFilesInQueue}] Không tìm thấy QR, đang thử OCR...`);
                     try {
-                        // Gọi API Backend chạy Deepdoc OCR thay vì Tesseract ở frontend
                         const ocrRes = await fetch('/api/ocr', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -703,138 +707,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         const ocrJson = await ocrRes.json();
                         if (!ocrJson.success) throw new Error(ocrJson.error || "Lỗi AI OCR");
-                        const text = ocrJson.text || "";
-                        let ocrData = { 'CCCD': '', 'Họ tên': '', 'Ngày sinh': '', 'Giới tính': '', 'Ngày cấp CCCD': '', 'Nơi thường trú gốc': '', 'OCR Side': '' };
                         
-                        const textUpper = text.toUpperCase();
-                        
-                        // ---------------------------------------------------------
-                        // 1. NHẬN DIỆN MẶT THẺ (FRONT / BACK)
-                        // Bắt các từ khóa đặc thù để dán nhãn mặt thẻ
-                        // ---------------------------------------------------------
-                        if (textUpper.includes("<<") || textUpper.includes("IDVNM") || textUpper.includes("ĐẶC ĐIỂM NHẬN DẠNG") || textUpper.includes("NGÓN TRỎ") || textUpper.includes("CỤC TRƯỞNG")) {
-                            ocrData['OCR Side'] = 'Back';
-                        } else if (textUpper.includes("CĂN CƯỚC") || textUpper.includes("CẦN CƯỚC") || textUpper.includes("CÔNG DÂN") || textUpper.includes("ĐỘC LẬP") || textUpper.includes("TỰ DO") || textUpper.includes("HỌ VÀ TÊN")) {
-                            ocrData['OCR Side'] = 'Front';
+                        let ocrData = ocrJson.ocrData;
+                        if (ocrJson.rotatedBase64) {
+                            dataObj.imageBase64 = ocrJson.rotatedBase64;
+                            optimizedBase64 = ocrJson.rotatedBase64;
+                            log(`[${index+1}/${totalFilesInQueue}] Ảnh OCR đã được tự động xoay chuẩn.`);
                         }
-                        
-                        // ---------------------------------------------------------
-                        // 2. TRÍCH XUẤT SỐ CCCD
-                        // ---------------------------------------------------------
-                        const cccdMatch = text.match(/\b(0[\d\s]{11,15})\b/);
-                        if (cccdMatch) {
-                            let val = cccdMatch[1].replace(/\s/g, '');
-                            if (val.length >= 12) {
-                                ocrData['CCCD'] = val.substring(0, 12);
-                            }
-                        }
-                        
-                        if (!ocrData['CCCD']) {
-                            // Trích xuất từ mã MRZ ở mặt sau thẻ (Chuẩn ICAO của Việt Nam)
-                            // Chuỗi VNM0960051566086... -> 096005156 (9 số cuối) + 6 + 086 (3 số đầu)
-                            const textMrz = textUpper.replace(/O/g, '0'); // Fix lỗi OCR đọc nhầm số 0 thành chữ O
-                            const mrzMatch = textMrz.match(/VNM(\d{9})\d(\d{3})/);
-                            if (mrzMatch) {
-                                ocrData['CCCD'] = mrzMatch[2] + mrzMatch[1];
-                            } else {
-                                // Quét rà soát fallback
-                                const fallbackMatch = text.match(/(0[\d\s]{11,15})/);
-                                if (fallbackMatch) {
-                                    let val = fallbackMatch[1].replace(/\s/g, '');
-                                    if (val.length >= 12) {
-                                        ocrData['CCCD'] = val.substring(0, 12);
-                                    }
-                                }
-                            }
-                        }
-                        const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-                        const allDates = text.match(/\b\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}\b/g) || [];
-                        
-                        for (let i = 0; i < lines.length; i++) {
-                            const line = lines[i];
-                            const lineLower = line.toLowerCase();
-                            
-                            // Extract Gender strictly from Gender line
-                            if (lineLower.includes("giới tính") || lineLower.includes("sex") || lineLower.includes("gioi tinh") || lineLower.includes("gidi")) {
-                                if (lineLower.includes("nữ") || lineLower.includes("nu ") || lineLower.includes("nư")) ocrData['Giới tính'] = 'Nữ';
-                                else if (lineLower.includes("nam")) ocrData['Giới tính'] = 'Nam';
-                            }
-                            
-                            // 1. Extract Name
-                            if (lineLower.includes("họ và tên") || lineLower.includes("họ chữ đệm") || lineLower.includes("họ, chữ đệm") || lineLower.includes("full name")) {
-                                if (line.includes(":")) {
-                                    let namePart = line.split(":")[1].replace(/[|]/g, '').trim();
-                                    namePart = namePart.replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' ').trim();
-                                    if (namePart.length > 3) ocrData['Họ tên'] = namePart.toUpperCase();
-                                }
-                                if (!ocrData['Họ tên'] && i + 1 < lines.length) {
-                                    let nextLine = lines[i+1].replace(/\|/g, '').trim();
-                                    nextLine = nextLine.replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' ').trim();
-                                    if (nextLine.length > 3 && !nextLine.toLowerCase().includes("ngày") && !nextLine.toLowerCase().includes("date")) {
-                                        ocrData['Họ tên'] = nextLine.toUpperCase();
-                                    }
-                                }
-                            }
-                            
-                            // 2. Extract DOB
-                            if (lineLower.includes("sinh") || lineLower.includes("birth")) {
-                                for (let j = i; j <= i+1 && j < lines.length; j++) {
-                                    const m = lines[j].match(/\b\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}\b/);
-                                    if (m) { ocrData['Ngày sinh'] = m[0].replace(/\s/g, ''); break; }
-                                }
-                            }
-                            
-                            // 3. Extract Address
-                            if (lineLower.includes("thường trú") || lineLower.includes("cư trú") || lineLower.includes("residence") || lineLower.includes("cu tru") || lineLower.includes("thuong tru") || lineLower.includes("trú /") || lineLower.includes("tru /")) {
-                                let addrParts = [];
-                                if (line.includes(":")) addrParts.push(line.split(":")[1].replace(/[|]/g, '').trim());
-                                
-                                // Quét các dòng tiếp theo, bỏ qua các dòng rác
-                                for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-                                    let nextLine = lines[j].replace(/\|/g, '').trim();
-                                    let nextLower = nextLine.toLowerCase();
-                                    if (nextLower.includes("giá trị đến") || nextLower.includes("expiry") || nextLower.includes("date")) continue;
-                                    if (nextLower.includes("khai sinh") || nextLower.includes("birth") || nextLower.includes("nơi cấp") || nextLower.includes("bộ công an") || nextLower.includes("cục cảnh sát")) break;
-                                    if (nextLine.match(/\b\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}\b/)) continue;
-                                    if (nextLine.length > 3) addrParts.push(nextLine);
-                                }
-                                
-                                ocrData['Nơi thường trú gốc'] = addrParts.filter(p => p).join(', ').replace(/,\s*,/g, ',').replace(/^,\s*/, '');
-                            }
-                            
-                            // --- BƯỚC 3.4: TRÍCH XUẤT NGÀY CẤP (Dành cho mặt sau thẻ cũ hoặc mặt trước thẻ mới) ---
-                            // Bắt buộc có chữ "ngày, tháng, năm" hoặc "cấp" 
-                            // PHẢI LOẠI TRỪ các từ "sinh", "hết hạn", "expiry" để không bắt nhầm ngày sinh hoặc ngày hết hạn (Thẻ mới bị dính lỗi này)
-                            if ((lineLower.includes("ngày, tháng, năm") || lineLower.includes("date, month, year") || lineLower.includes("date of issue") || lineLower.includes("ngay, thang, nam") || lineLower.includes("cấp")) && !lineLower.includes("sinh") && !lineLower.includes("hết hạn") && !lineLower.includes("expiry") && !lineLower.includes("birth")) {
-                                for (let j = i; j <= i+2 && j < lines.length; j++) {
-                                    const m = lines[j].match(/\b\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}\b/);
-                                    if (m) { ocrData['Ngày cấp CCCD'] = m[0].replace(/\s/g, ''); break; }
-                                }
-                            }
-                        }
-                        
-                        // Fallback DOB if keyword failed
-                        if (!ocrData['Ngày sinh'] && allDates.length > 0) {
-                            const firstDate = allDates[0].replace(/\s/g, '');
-                            if (parseInt(firstDate.split('/')[2]) < 2020) ocrData['Ngày sinh'] = firstDate;
-                        }
-                        
-                        // Fallback Gender if keyword failed but Nữ is found anywhere
-                        if (!ocrData['Giới tính'] && (text.toLowerCase().includes("nữ") || text.toLowerCase().includes("nư "))) {
-                            ocrData['Giới tính'] = 'Nữ';
-                        }
-                        // Fallback Gender: Nam (if not Việt Nam or other common Nam, and only if Front side)
-                        if (!ocrData['Giới tính'] && ocrData['OCR Side'] !== 'Back') {
-                            const textLower = text.toLowerCase();
-                            // Count occurrences of "nam"
-                            const namCount = (textLower.match(/\bnam\b/g) || []).length;
-                            const vietNamCount = (textLower.match(/việt nam|viet nam|hà nam|quảng nam|hải nam/g) || []).length;
-                            if (namCount > vietNamCount) {
-                                ocrData['Giới tính'] = 'Nam';
-                            }
-                        }
-                            
-
                         
                         dataObj.ocrData = ocrData;
                         dataObj.fromOCR = true;
