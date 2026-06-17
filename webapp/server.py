@@ -363,7 +363,7 @@ async def scan_qr(req: ScanQRRequest):
                 qr_data = res.text
                 import re
                 if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', qr_data):
-                    print(f"-> Quét thành công QR (zxing-cpp): {qr_data[:50]}...", flush=True)
+                    print(f"-> Quét thành công QR (zxing-cpp): {qr_data}", flush=True)
                     return {"success": True, "data": qr_data}
         except Exception:
             pass
@@ -387,11 +387,11 @@ async def scan_qr(req: ScanQRRequest):
             # Kiểm tra thẻ bị in lỗi font (Mojibake Kanji)
             import re
             if re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', qr_data):
-                print(f"-> Phát hiện QR lỗi font từ phôi thẻ (Chứa ký tự lạ): {qr_data[:50]}...", flush=True)
+                print(f"-> Phát hiện QR lỗi font từ phôi thẻ (Chứa ký tự lạ): {qr_data}", flush=True)
                 return {"success": False, "error": "Mã QR bị hỏng font, chuyển sang OCR"}
                 
             if '|' in qr_data and len(qr_data.split('|')) >= 6:
-                print(f"-> Quét thành công QR (pyzbar): {qr_data[:50]}...", flush=True)
+                print(f"-> Quét thành công QR (pyzbar): {qr_data}", flush=True)
                 return {"success": True, "data": qr_data}
             else:
                 print(f"-> pyzbar phát hiện QR rác (không phải CCCD), chuyển sang WeChat...", flush=True)
@@ -403,9 +403,9 @@ async def scan_qr(req: ScanQRRequest):
                 qr_data = res[0]
                 import re
                 if re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', qr_data):
-                    print(f"-> Phát hiện QR lỗi font từ phôi thẻ (WeChat): {qr_data[:50]}...", flush=True)
+                    print(f"-> Phát hiện QR lỗi font từ phôi thẻ (WeChat): {qr_data}", flush=True)
                     return {"success": False, "error": "Mã QR bị hỏng font, chuyển sang OCR"}
-                print(f"-> Quét thành công QR (WeChat): {qr_data[:50]}...", flush=True)
+                print(f"-> Quét thành công QR (WeChat): {qr_data}", flush=True)
                 return {"success": True, "data": qr_data}
             
         print("-> Không tìm thấy mã QR trong ảnh.", flush=True)
@@ -666,6 +666,11 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
             else:
                 record['CMND'] = 'Chưa xác định'
 
+        # Tính toán ngày hết hạn dựa trên ngày sinh nếu bị khuyết
+        if not record['Ngày hết hạn'] and record.get('Ngày sinh'):
+            record['Ngày hết hạn'] = calculate_expiry_date(record['Ngày sinh'])
+            record['Phân loại'] = 'Căn cước / CCCD'
+
         # Lọc trùng lặp ghi chú
         raw_notes = record['Ghi chú']
         if isinstance(raw_notes, str):
@@ -724,7 +729,7 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
     
     headers = [
         "STT", "Họ tên", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
-        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", 
+        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", "QR Raw", 
         "Ảnh mặt trước CCCD/CC", "Ảnh mặt sau CCCD/CC", "Đổi tên Ảnh mặt trước CCCD/CC", "Đổi tên Ảnh mặt sau CCCD/CC"
     ]
     
@@ -748,10 +753,11 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
         ws.cell(row=row_idx, column=11, value=data.get('Ngày hết hạn', ''))
         ws.cell(row=row_idx, column=12, value=data.get('Phân loại', ''))
         ws.cell(row=row_idx, column=13, value=data.get('Ghi chú', ''))
-        ws.cell(row=row_idx, column=14, value=data.get('Ảnh mặt trước CCCD/CC', ''))
-        ws.cell(row=row_idx, column=15, value=data.get('Ảnh mặt sau CCCD/CC', ''))
-        ws.cell(row=row_idx, column=16, value=data.get('Đổi tên Ảnh mặt trước CCCD/CC', ''))
-        ws.cell(row=row_idx, column=17, value=data.get('Đổi tên Ảnh mặt sau CCCD/CC', ''))
+        ws.cell(row=row_idx, column=14, value=data.get('QR Raw', ''))
+        ws.cell(row=row_idx, column=15, value=data.get('Ảnh mặt trước CCCD/CC', ''))
+        ws.cell(row=row_idx, column=16, value=data.get('Ảnh mặt sau CCCD/CC', ''))
+        ws.cell(row=row_idx, column=17, value=data.get('Đổi tên Ảnh mặt trước CCCD/CC', ''))
+        ws.cell(row=row_idx, column=18, value=data.get('Đổi tên Ảnh mặt sau CCCD/CC', ''))
         
     for col in ws.columns:
         max_length = 0

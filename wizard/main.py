@@ -460,6 +460,9 @@ def main():
         print(f"[{idx+1}/{total}] Đang đọc {os.path.basename(img_path)}...")
         qr_string, err, img = extract_qr_data(img_path)
         
+        if qr_string:
+            print(f"   -> [{os.path.basename(img_path)}] Đã quét được mã QR: {qr_string}")
+            
         row_data = {
             'Họ tên': '', 'CCCD': '', 'CMND': '', 'Giới tính': '',
             'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': '',
@@ -668,6 +671,11 @@ def main():
                 record['CMND'] = 'Không có'
             else:
                 record['CMND'] = 'Chưa xác định'
+
+        # Tính toán ngày hết hạn dựa trên ngày sinh nếu bị khuyết (rất hay gặp ở luồng OCR)
+        if not record['Ngày hết hạn'] and record.get('Ngày sinh'):
+            record['Ngày hết hạn'] = calculate_expiry_date(record['Ngày sinh'])
+            record['Phân loại'] = 'Căn cước / CCCD'
                 
         # Deduplicate notes and convert to string
         unique_notes = []
@@ -691,7 +699,7 @@ def main():
 
     headers = [
         "STT", "Họ tên", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
-        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", 
+        "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", "QR Raw", 
         "Ảnh mặt trước CCCD/CC", "Ảnh mặt sau CCCD/CC", "Đổi tên Ảnh mặt trước CCCD/CC", "Đổi tên Ảnh mặt sau CCCD/CC"
     ]
     
@@ -714,6 +722,7 @@ def main():
             row_data['Ngày hết hạn'],
             row_data['Phân loại'],
             row_data['Ghi chú'],
+            row_data.get('QR Raw', ''),
             row_data.get('Ảnh mặt trước CCCD/CC', ''),
             row_data.get('Ảnh mặt sau CCCD/CC', ''),
             row_data.get('Đổi tên Ảnh mặt trước CCCD/CC', ''),
