@@ -573,11 +573,12 @@ def run_wizard(input_dir):
         
         is_qr = bool(item.get('QR Raw'))
         if is_qr:
+            id_type = 'CCCD' if len(str(cccd)) == 12 else 'CMND'
             if not is_new_record:
                 if record['has_ocr_data'] and not record['has_qr_data']:
-                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] GHI ĐÈ thông tin từ ảnh {item['Image Path']} (Đọc mã QR) lên thông tin OCR trước đó của CCCD {cccd}")
+                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] GHI ĐÈ thông tin từ ảnh {item['Image Path']} (Đọc mã QR) lên thông tin OCR trước đó của {id_type} {cccd}")
                 elif record['has_qr_data']:
-                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin từ ảnh {item['Image Path']} vì đã quét mã QR thành công trước đó cho CCCD {cccd}")
+                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin từ ảnh {item['Image Path']} vì đã quét mã QR thành công trước đó cho {id_type} {cccd}")
             
             record['has_qr_data'] = True
             # Overwrite text fields with QR accuracy
@@ -596,11 +597,12 @@ def run_wizard(input_dir):
             if item.get('Ghi chú'):
                 record['Ghi chú'].append(item['Ghi chú'])
         else: # OCR
+            id_type = 'CCCD' if len(str(cccd)) == 12 else 'CMND'
             if not is_new_record:
                 if record['has_qr_data']:
-                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã có dữ liệu QR chuẩn xác của CCCD {cccd}")
+                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã có dữ liệu QR chuẩn xác của {id_type} {cccd}")
                 elif record['has_ocr_data']:
-                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã xử lý ảnh OCR trước đó cho CCCD {cccd}")
+                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã xử lý ảnh OCR trước đó cho {id_type} {cccd}")
             
             record['has_ocr_data'] = True
             
@@ -806,9 +808,8 @@ def run_wizard(input_dir):
         adjusted_width = (max_length + 2)
         ws.column_dimensions[column].width = min(adjusted_width, 40) # Max width 40
 
-    print("\n" + "="*40)
-    print("✨ CHUẨN BỊ XUẤT FILE EXCEL ✨")
-    print("="*40)
+    console.print("\n")
+    console.print(Panel("[bold cyan]✨ CHUẨN BỊ XUẤT FILE EXCEL ✨[/bold cyan]", border_style="green"))
     
     exports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports')
     if not os.path.exists(exports_dir):
@@ -817,7 +818,7 @@ def run_wizard(input_dir):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     default_filename = f"ket_qua_{timestamp}.xlsx"
     
-    custom_name = input(f"\nNhập tên file Excel muốn lưu (nhấn Enter để dùng tên mặc định '{default_filename}'): ").strip()
+    custom_name = Prompt.ask(f"[bold cyan]Nhập tên file Excel muốn lưu[/bold cyan] (nhấn Enter để dùng tên mặc định [yellow]'{default_filename}'[/yellow])").strip()
     if not custom_name:
         output_filename = os.path.join(exports_dir, default_filename)
     else:
@@ -856,47 +857,46 @@ def run_wizard(input_dir):
     
     wb.save(output_filename)
     
-    print("\nĐang tạo các file nén zip...")
-    
-    import shutil
-    
-    # 1. original.zip
-    original_zip_path = os.path.join(exports_dir, 'original.zip')
-    with zipfile.ZipFile(original_zip_path, 'w') as zf:
-        for path in image_paths:
-            if os.path.exists(path):
-                zf.write(path, os.path.basename(path))
-    print(f" -> Đã tạo original.zip với {len(image_paths)} file.")
-    
-    # 2. rename.zip
-    rename_zip_path = os.path.join(exports_dir, 'rename.zip')
-    with zipfile.ZipFile(rename_zip_path, 'w') as zf:
-        count_rename = 0
-        for row in processed_data:
-            folder = "CCCD" if row.get("Phân loại") == "Căn cước công dân" else "CC"
-            
-            front_path = row.get('Full Image Path Front')
-            if front_path and os.path.exists(front_path) and row.get('Đổi tên Ảnh mặt trước CCCD/CC'):
-                zf.write(front_path, f"{folder}/{row['Đổi tên Ảnh mặt trước CCCD/CC']}")
-                count_rename += 1
+    with console.status("[bold green]Đang tạo các file nén zip phân loại ảnh...", spinner="dots"):
+        import shutil
+        
+        # 1. original.zip
+        original_zip_path = os.path.join(exports_dir, 'original.zip')
+        with zipfile.ZipFile(original_zip_path, 'w') as zf:
+            for path in image_paths:
+                if os.path.exists(path):
+                    zf.write(path, os.path.basename(path))
+        console.print(f" [green]✓[/green] Đã tạo [bold]original.zip[/bold] với {len(image_paths)} file.")
+        
+        # 2. rename.zip
+        rename_zip_path = os.path.join(exports_dir, 'rename.zip')
+        with zipfile.ZipFile(rename_zip_path, 'w') as zf:
+            count_rename = 0
+            for row in processed_data:
+                folder = "CCCD" if row.get("Phân loại") == "Căn cước công dân" else "CC"
                 
-            back_path = row.get('Full Image Path Back')
-            if back_path and os.path.exists(back_path) and row.get('Đổi tên Ảnh mặt sau CCCD/CC'):
-                zf.write(back_path, f"{folder}/{row['Đổi tên Ảnh mặt sau CCCD/CC']}")
-                count_rename += 1
-                
-    print(f" -> Đã tạo rename.zip với {count_rename} file đã được đổi tên (trong CC và CCCD).")
-    
-    # 3. Khôi phục lại các file nén phân loại cũ
-    def create_zip_helper(zip_name, file_paths):
-        if not file_paths:
-            return
-        zip_path = os.path.join(exports_dir, zip_name)
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            for fpath in file_paths:
-                if os.path.exists(fpath):
-                    zf.write(fpath, os.path.basename(fpath))
-        print(f" -> Đã tạo {zip_name} với {len(file_paths)} file.")
+                front_path = row.get('Full Image Path Front')
+                if front_path and os.path.exists(front_path) and row.get('Đổi tên Ảnh mặt trước CCCD/CC'):
+                    zf.write(front_path, f"{folder}/{row['Đổi tên Ảnh mặt trước CCCD/CC']}")
+                    count_rename += 1
+                    
+                back_path = row.get('Full Image Path Back')
+                if back_path and os.path.exists(back_path) and row.get('Đổi tên Ảnh mặt sau CCCD/CC'):
+                    zf.write(back_path, f"{folder}/{row['Đổi tên Ảnh mặt sau CCCD/CC']}")
+                    count_rename += 1
+                    
+        console.print(f" [green]✓[/green] Đã tạo [bold]rename.zip[/bold] với {count_rename} file đã được đổi tên (trong CC và CCCD).")
+        
+        # 3. Khôi phục lại các file nén phân loại cũ
+        def create_zip_helper(zip_name, file_paths):
+            if not file_paths:
+                return
+            zip_path = os.path.join(exports_dir, zip_name)
+            with zipfile.ZipFile(zip_path, 'w') as zf:
+                for fpath in file_paths:
+                    if os.path.exists(fpath):
+                        zf.write(fpath, os.path.basename(fpath))
+            console.print(f" [green]✓[/green] Đã tạo [bold]{zip_name}[/bold] với {len(file_paths)} file.")
 
     qr_files = [item['Full Image Path'] for item in extracted_items if item.get('Scan Type') == 'QR_scanned']
     ocr_files = [item['Full Image Path'] for item in extracted_items if item.get('Scan Type') == 'OCR_scanned']
