@@ -30,7 +30,21 @@ File Excel bắt buộc phải có đủ 10 cột theo đúng thứ tự sau:
 8. **Địa chỉ chuẩn hóa mới**: Kết quả trả về từ API chuẩn hóa (`success = true`)
 9. **Ngày cấp CCCD**: Định dạng `dd/mm/yyyy` (chuyển từ `ddmmyyyy`)
 10. **Ghi chú**: Chứa lỗi ảnh không đọc được, dữ liệu trống, hoặc cảnh báo từ API. Các ghi chú nối với nhau bằng dấu `; `.
+## Quy tắc Gộp Dữ Liệu 2 Mặt Thẻ (Merging)
 
+Hệ thống sử dụng cơ chế gộp thông minh dựa trên "Số CCCD" làm khóa chính (Primary Key) để gom dữ liệu 2 mặt thẻ rời rạc thành một dòng duy nhất:
+- **Ưu tiên QR:** Nếu thẻ mặt trước/sau quét bằng OCR (độ tin cậy thấp), và hệ thống phát hiện một mặt thẻ khác cùng số CCCD quét bằng QR (chính xác tuyệt đối), nó sẽ lấy dữ liệu QR để **GHI ĐÈ** lên dữ liệu OCR.
+- **Bỏ qua trùng lặp:** Nếu cùng 1 CCCD mà quét nhiều lần (thừa ảnh), hệ thống sẽ giữ lại bản nét nhất/sớm nhất và đánh dấu các ảnh thừa là "Bỏ qua trùng lặp".
+- **Bù trừ thông tin:** Dữ liệu mặt trước (Họ tên, Ngày sinh) sẽ tự động được đắp chung với dữ liệu mặt sau (Ngày cấp, Quê quán) để tạo thành một bộ hồ sơ đầy đủ 100%.
+
+## Quy tắc Đóng gói File ZIP (Dành cho bản Terminal CLI)
+
+Song song với việc xuất file Excel, phần mềm tự động phân loại và nén ảnh vào 5 file ZIP riêng biệt:
+1. `original.zip`: Chứa toàn bộ file ảnh gốc ban đầu.
+2. `rename.zip`: Chứa các file ảnh đã được nhận diện và đổi tên chuẩn theo định dạng `{Họ tên}_{CCCD/CMND}_Mặt trước/Mặt sau`. Được chia thư mục con theo loại thẻ (CCCD / CC).
+3. `QR_scanned.zip`: Chứa các ảnh được đọc thành công bằng mã QR.
+4. `OCR_scanned.zip`: Chứa các ảnh hỏng/mất mã QR, phải dùng đến AI OCR để bóc tách.
+5. `duplicate.zip`: Chứa các ảnh rác, ảnh thừa, hoặc ảnh trùng lặp không sử dụng đến.
 ## Quy tắc gọi API chuẩn hóa Địa chỉ
 
 Hệ thống kết nối đến API VNHub qua endpoint: `https://tienich.vnhub.com/api/wards`
