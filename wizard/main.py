@@ -241,12 +241,17 @@ def parse_ocr_text(text):
                         # Lắp ráp lại thành CCCD hoàn chỉnh (3 số đầu + 9 số cuối)
                         data['CCCD'] = mrz_match.group(2) + mrz_match.group(1)
                     else:
-                        # Bước 2.3: Chặn bắt cuối cùng (Fallback), quét tìm chuỗi 12 số liền nhau bắt đầu bằng số 0
-                        fallback_match = re.search(r'(0[\d\s]{11,15})', text)
-                        if fallback_match:
-                            val = fallback_match.group(1).replace(' ', '')
-                            if len(val) >= 12:
-                                data['CCCD'] = val[:12]
+                        # Fallback cho chuẩn MRZ cũ/khác có chứa trực tiếp chuỗi 12 số CCCD liền kề dấu '<'
+                        mrz_12_match = re.search(r'(\d{12})<', text_mrz)
+                        if mrz_12_match:
+                            data['CCCD'] = mrz_12_match.group(1)
+                        else:
+                            # Bước 2.3: Chặn bắt cuối cùng (Fallback), quét tìm chuỗi 12 số liền nhau bắt đầu bằng số 0
+                            fallback_match = re.search(r'(0[\d\s]{11,15})', text)
+                            if fallback_match:
+                                val = fallback_match.group(1).replace(' ', '')
+                                if len(val) >= 12:
+                                    data['CCCD'] = val[:12]
                 all_dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
     
                 # ---------------------------------------------------------
