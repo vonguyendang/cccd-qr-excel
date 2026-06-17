@@ -202,11 +202,14 @@ def extract_ocr_data(image_path_or_cv2img):
     # ---------------------------------------------------------
     # 2. TRÍCH XUẤT SỐ CCCD
     # ---------------------------------------------------------
-    # Bước 2.1: Ưu tiên tìm chuỗi 12 số đứng độc lập bắt đầu bằng số 0 (thường là ở mặt trước thẻ cũ)
-    cccd_match = re.search(r'\b(0\d{11})\b', text)
+    # Bước 2.1: Ưu tiên tìm chuỗi 12 số đứng độc lập bắt đầu bằng số 0 (có thể bị OCR chèn khoảng trắng)
+    cccd_match = re.search(r'\b(0[\d\s]{11,15})\b', text)
     if cccd_match:
-        data['CCCD'] = cccd_match.group(1)
-    else:
+        val = cccd_match.group(1).replace(' ', '')
+        if len(val) >= 12:
+            data['CCCD'] = val[:12]
+    
+    if not data['CCCD']:
         # Bước 2.2: Lấy từ mã MRZ ở mặt sau (Mã MRZ là chuỗi ký tự ở đáy mặt sau thẻ)
         # Tại Việt Nam, thẻ CCCD áp dụng chuẩn ICAO chia số CCCD thành 2 đoạn trong mã MRZ:
         # Ví dụ MRZ có chuỗi: VNM0960051566086... 
@@ -219,9 +222,11 @@ def extract_ocr_data(image_path_or_cv2img):
             data['CCCD'] = mrz_match.group(2) + mrz_match.group(1)
         else:
             # Bước 2.3: Chặn bắt cuối cùng (Fallback), quét tìm chuỗi 12 số liền nhau bắt đầu bằng số 0
-            fallback_match = re.search(r'(0\d{11})', text)
+            fallback_match = re.search(r'(0[\d\s]{11,15})', text)
             if fallback_match:
-                data['CCCD'] = fallback_match.group(1)
+                val = fallback_match.group(1).replace(' ', '')
+                if len(val) >= 12:
+                    data['CCCD'] = val[:12]
     all_dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
         
     # ---------------------------------------------------------
@@ -402,7 +407,7 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
 from rich.prompt import Prompt, Confirm
 
-console = Console()
+console = Console(record=True)
 
 def run_wizard(input_dir):
     # Xóa dấu nháy đơn/kép nếu người dùng kéo thả thư mục vào terminal có sinh ra
@@ -549,6 +554,7 @@ def run_wizard(input_dir):
         is_new_record = False
         if cccd not in records:
             records[cccd] = {
+                'index': len(records) + 1,
                 'Họ tên': '', 'CCCD': cccd, 'CMND': '', 'Giới tính': '',
                 'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': '',
                 'Ngày cấp CCCD': '', 'Nơi cấp': '', 'Ngày hết hạn': '', 'Phân loại': '', 'Ghi chú': [], 'QR Raw': '',
@@ -570,15 +576,16 @@ def run_wizard(input_dir):
             is_new_record = True
         
         record = records[cccd]
+        person_idx = record['index']
         
         is_qr = bool(item.get('QR Raw'))
         if is_qr:
             id_type = 'CCCD' if len(str(cccd)) == 12 else 'CMND'
             if not is_new_record:
                 if record['has_ocr_data'] and not record['has_qr_data']:
-                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] GHI ĐÈ thông tin từ ảnh {item['Image Path']} (Đọc mã QR) lên thông tin OCR trước đó của {id_type} {cccd}")
+                    console.print(f"   [yellow]→ [Người {person_idx}] [GỘP DỮ LIỆU][/yellow] GHI ĐÈ thông tin từ ảnh {item['Image Path']} (Đọc mã QR) lên thông tin OCR trước đó của {id_type} {cccd}")
                 elif record['has_qr_data']:
-                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin từ ảnh {item['Image Path']} vì đã quét mã QR thành công trước đó cho {id_type} {cccd}")
+                    console.print(f"   [yellow]→ [Người {person_idx}] [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin từ ảnh {item['Image Path']} vì đã quét mã QR thành công trước đó cho {id_type} {cccd}")
             
             record['has_qr_data'] = True
             # Overwrite text fields with QR accuracy
@@ -600,9 +607,9 @@ def run_wizard(input_dir):
             id_type = 'CCCD' if len(str(cccd)) == 12 else 'CMND'
             if not is_new_record:
                 if record['has_qr_data']:
-                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã có dữ liệu QR chuẩn xác của {id_type} {cccd}")
+                    console.print(f"   [yellow]→ [Người {person_idx}] [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã có dữ liệu QR chuẩn xác của {id_type} {cccd}")
                 elif record['has_ocr_data']:
-                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã xử lý ảnh OCR trước đó cho {id_type} {cccd}")
+                    console.print(f"   [yellow]→ [Người {person_idx}] [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã xử lý ảnh OCR trước đó cho {id_type} {cccd}")
             
             record['has_ocr_data'] = True
             
@@ -909,6 +916,11 @@ def run_wizard(input_dir):
     console.print("\n" + "🎉"*15)
     console.print(f"[bold green]ĐÃ HOÀN TẤT THÀNH CÔNG![/bold green]")
     console.print(f"File kết quả được lưu tại: [yellow]{os.path.abspath(output_filename)}[/yellow]")
+    
+    # Xuất file log
+    log_filename = os.path.join(exports_dir, f"log_{timestamp}.txt")
+    console.save_text(log_filename)
+    console.print(f"File log chi tiết được lưu tại: [yellow]{os.path.abspath(log_filename)}[/yellow]")
     console.print("🎉"*15 + "\n")
 
 def main():
