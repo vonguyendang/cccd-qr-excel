@@ -167,16 +167,26 @@ def extract_qr_data(image_path):
             cx, cy = center
             h, w = img.shape[:2]
             
-            # Chỉ xoay nếu QR nằm lệch rõ ràng về 1 góc (xa tâm hơn 10%)
-            # Điều này giúp tránh xoay nhầm ảnh Portrait chứa thẻ nằm ngang (QR nằm gần tâm)
-            if cx < w/2 and cy > h/2:
-                # QR ở Bottom-Left -> Bị lộn ngược 180 độ
-                rotated_img = cv2.rotate(img, cv2.ROTATE_180)
-            elif abs(cx - w/2) > w/10 and abs(cy - h/2) > h/10:
-                if cx > w/2 and cy > h/2:
-                    rotated_img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-                elif cx < w/2 and cy < h/2:
-                    rotated_img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+            # Lấy vector từ tâm ảnh đến QR
+            dx = cx - w/2
+            dy = cy - h/2
+            
+            # Chỉ xoay nếu QR nằm lệch rõ ràng khỏi tâm (tránh nhiễu)
+            if max(abs(dx), abs(dy)) > min(w, h) * 0.05:
+                if abs(dx) > abs(dy):
+                    # QR nằm thiên về hai bên trái/phải -> Thẻ đang nằm ngang
+                    if dx < 0:
+                        # QR bên trái -> Thẻ bị lộn ngược 180 độ
+                        rotated_img = cv2.rotate(img, cv2.ROTATE_180)
+                    # Nếu dx > 0: QR bên phải -> Thẻ đúng chiều, không cần xoay
+                else:
+                    # QR nằm thiên về trên/dưới -> Thẻ đang nằm dọc
+                    if dy < 0:
+                        # QR ở trên -> Xoay 90 độ cùng chiều kim đồng hồ
+                        rotated_img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+                    else:
+                        # QR ở dưới -> Xoay 90 độ ngược chiều kim đồng hồ
+                        rotated_img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
         if qr_data:
             return qr_data, engine, None, img, rotated_img
