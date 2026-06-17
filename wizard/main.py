@@ -480,6 +480,11 @@ def run_wizard(input_dir):
     console.print("\n")
     console.print(Panel(f"[bold cyan]🚀 BẮT ĐẦU XỬ LÝ {len(image_paths)} ẢNH VỚI {num_threads} LUỒNG...[/bold cyan]", border_style="green"))
 
+    import tempfile
+    import uuid
+    temp_rotated_dir = os.path.join(tempfile.gettempdir(), f"cccd_exports_{uuid.uuid4().hex[:8]}")
+    os.makedirs(temp_rotated_dir, exist_ok=True)
+
     processed_data = []
     seen_cccds = set()
     
@@ -516,8 +521,10 @@ def run_wizard(input_dir):
                 ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
                 
                 if rotated_img is not None:
-                    # Lưu lại ảnh đã xoay chuẩn vào ổ cứng để các bước nén zip phía sau lấy đúng ảnh chuẩn
-                    cv2.imwrite(img_path, rotated_img)
+                    # Lưu lại ảnh đã xoay chuẩn vào thư mục tạm thay vì ghi đè file gốc
+                    temp_path = os.path.join(temp_rotated_dir, os.path.basename(img_path))
+                    cv2.imwrite(temp_path, rotated_img)
+                    row_data['Full Image Path'] = temp_path
                 
                 # In thông tin OCR ra màn hình
                 parts = []
