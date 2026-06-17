@@ -513,9 +513,10 @@ async def fetch_single_address_async(client, addr):
         'Referer': 'https://tienich.vnhub.com/'
     }
     try:
+        import json
         response = await client.post(
             'https://tienich.vnhub.com/api/wards',
-            json={"address": addr},
+            data=json.dumps({"address": addr}),
             headers=headers,
             timeout=15.0
         )
