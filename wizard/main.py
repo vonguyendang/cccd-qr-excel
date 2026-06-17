@@ -669,6 +669,8 @@ def main():
         final_notes = [n for n in raw_notes if n]
         if record.get('QR Raw'):
             final_notes = [n for n in final_notes if 'QR không đọc được' not in n and 'Lấy bằng OCR' not in n]
+            if 'Đọc mã QR' not in final_notes:
+                final_notes.insert(0, 'Đọc mã QR')
         
         # Xử lý logic CMND (Yêu cầu mới)
         if not record['CMND']:

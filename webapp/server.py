@@ -722,6 +722,8 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
         if isinstance(row['Ghi chú'], list):
             if row.get('QR Raw'):
                 row['Ghi chú'] = [n for n in row['Ghi chú'] if 'Lấy bằng OCR' not in n]
+                if 'Đọc mã QR' not in row['Ghi chú']:
+                    row['Ghi chú'].insert(0, 'Đọc mã QR')
             
             unique_notes = []
             for n in row['Ghi chú']:
