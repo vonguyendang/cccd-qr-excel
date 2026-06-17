@@ -6,6 +6,7 @@ import uuid
 import datetime
 import asyncio
 import httpx
+import re
 from io import BytesIO
 import numpy as np
 import logging

@@ -795,11 +795,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                     let nextLower = nextLine.toLowerCase();
                                     if (nextLower.includes("giá trị đến") || nextLower.includes("expiry") || nextLower.includes("date")) continue;
                                     if (nextLower.includes("khai sinh") || nextLower.includes("birth") || nextLower.includes("nơi cấp") || nextLower.includes("bộ công an") || nextLower.includes("cục cảnh sát")) break;
-                                    if (nextLine.match(/\\b\\d{2}\\s*\\/\\s*\\d{2}\\s*\\/\\s*\\d{4}\\b/)) continue;
+                                    if (nextLine.match(/\b\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}\b/)) continue;
                                     if (nextLine.length > 3) addrParts.push(nextLine);
                                 }
                                 
-                                ocrData['Nơi thường trú gốc'] = addrParts.filter(p => p).join(', ').replace(/,\\s*,/g, ',').replace(/^,\\s*/, '');
+                                ocrData['Nơi thường trú gốc'] = addrParts.filter(p => p).join(', ').replace(/,\s*,/g, ',').replace(/^,\s*/, '');
                             }
                             
                             // --- BƯỚC 3.4: TRÍCH XUẤT NGÀY CẤP (Dành cho mặt sau thẻ cũ hoặc mặt trước thẻ mới) ---
@@ -807,8 +807,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             // PHẢI LOẠI TRỪ các từ "sinh", "hết hạn", "expiry" để không bắt nhầm ngày sinh hoặc ngày hết hạn (Thẻ mới bị dính lỗi này)
                             if ((lineLower.includes("ngày, tháng, năm") || lineLower.includes("date, month, year") || lineLower.includes("date of issue") || lineLower.includes("ngay, thang, nam") || lineLower.includes("cấp")) && !lineLower.includes("sinh") && !lineLower.includes("hết hạn") && !lineLower.includes("expiry") && !lineLower.includes("birth")) {
                                 for (let j = i; j <= i+2 && j < lines.length; j++) {
-                                    const m = lines[j].match(/\\b\\d{2}\\s*\\/\\s*\\d{2}\\s*\\/\\s*\\d{4}\\b/);
-                                    if (m) { ocrData['Ngày cấp CCCD'] = m[0].replace(/\\s/g, ''); break; }
+                                    const m = lines[j].match(/\b\d{2}\s*\/\s*\d{2}\s*\/\s*\d{4}\b/);
+                                    if (m) { ocrData['Ngày cấp CCCD'] = m[0].replace(/\s/g, ''); break; }
                                 }
                             }
                         }
@@ -827,7 +827,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!ocrData['Giới tính'] && ocrData['OCR Side'] !== 'Back') {
                             const textLower = text.toLowerCase();
                             // Count occurrences of "nam"
-                            const namCount = (textLower.match(/\\bnam\\b/g) || []).length;
+                            const namCount = (textLower.match(/\bnam\b/g) || []).length;
                             const vietNamCount = (textLower.match(/việt nam|viet nam|hà nam|quảng nam|hải nam/g) || []).length;
                             if (namCount > vietNamCount) {
                                 ocrData['Giới tính'] = 'Nam';
