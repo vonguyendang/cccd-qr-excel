@@ -404,27 +404,14 @@ from rich.prompt import Prompt, Confirm
 
 console = Console()
 
-def main():
-    console.print(Panel.fit("[bold green]🚀 PHẦN MỀM TRÍCH XUẤT MÃ QR TỪ ẢNH CCCD RA EXCEL[/bold green]", border_style="cyan", padding=(1, 5)))
-
-    
-    input_dir = ""
-    if len(sys.argv) >= 2:
-        input_dir = sys.argv[1]
-    else:
-        console.print("\n[yellow][Hướng dẫn][/yellow]: Kéo thả thư mục chứa ảnh vào cửa sổ này, hoặc copy đường dẫn thư mục và dán vào đây.\n")
-        input_dir = Prompt.ask("[bold cyan]Nhập đường dẫn thư mục chứa ảnh CCCD[/bold cyan]").strip()
-    
-    with console.status("[bold green]Đang khởi tạo model AI...", spinner="dots"):
-        init_models()
-
+def run_wizard(input_dir):
     # Xóa dấu nháy đơn/kép nếu người dùng kéo thả thư mục vào terminal có sinh ra
     input_dir = input_dir.strip('\'"')
 
     if not input_dir or not os.path.isdir(input_dir):
         console.print(f"\n[bold red]❌ Lỗi:[/bold red] Thư mục '{input_dir}' không tồn tại hoặc đường dẫn không đúng.")
-        Prompt.ask("[dim]Nhấn Enter để thoát...[/dim]")
-        sys.exit(1)
+        Prompt.ask("[dim]Nhấn Enter để thử lại...[/dim]")
+        return
 
     # Search for common image formats
     image_paths = []
@@ -433,8 +420,8 @@ def main():
 
     if not image_paths:
         console.print("\n[bold red]❌ Thật tiếc, không tìm thấy file ảnh nào (.jpg, .png) trong thư mục này.[/bold red]")
-        Prompt.ask("[dim]Nhấn Enter để thoát...[/dim]")
-        sys.exit(0)
+        Prompt.ask("[dim]Nhấn Enter để thử lại...[/dim]")
+        return
 
     console.print(f"\n[bold green]✅ Đã quét thư mục và tìm thấy tổng cộng {len(image_paths)} file ảnh.[/bold green]")
     
@@ -457,7 +444,7 @@ def main():
     confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu xử lý ngay bây giờ không?[/bold yellow]")
     if not confirm:
         console.print("[yellow]Đã hủy quá trình.[/yellow]")
-        sys.exit(0)
+        return
 
     console.print("\n")
     console.print(Panel(f"[bold cyan]🚀 BẮT ĐẦU XỬ LÝ {len(image_paths)} ẢNH VỚI {num_threads} LUỒNG...[/bold cyan]", border_style="green"))
@@ -919,12 +906,38 @@ def main():
     create_zip_helper('OCR_scanned.zip', ocr_files)
     create_zip_helper('duplicate.zip', dup_files)
     
-    print("\n" + "🎉"*15)
-    print(f"ĐÃ HOÀN TẤT THÀNH CÔNG!")
-    print(f"File kết quả được lưu tại: {os.path.abspath(output_filename)}")
-    print("🎉"*15 + "\n")
+    console.print("\n" + "🎉"*15)
+    console.print(f"[bold green]ĐÃ HOÀN TẤT THÀNH CÔNG![/bold green]")
+    console.print(f"File kết quả được lưu tại: [yellow]{os.path.abspath(output_filename)}[/yellow]")
+    console.print("🎉"*15 + "\n")
+
+def main():
+    console.print(Panel.fit("[bold green]🚀 PHẦN MỀM TRÍCH XUẤT MÃ QR TỪ ẢNH CCCD RA EXCEL[/bold green]", border_style="cyan", padding=(1, 5)))
     
-    input("Nhấn Enter để thoát chương trình...")
+    with console.status("[bold green]Đang khởi tạo model AI...", spinner="dots"):
+        init_models()
+        
+    first_run = True
+
+    while True:
+        input_dir = ""
+        if first_run and len(sys.argv) >= 2:
+            input_dir = sys.argv[1]
+            first_run = False
+        else:
+            console.print("\n[yellow][Hướng dẫn][/yellow]: Kéo thả thư mục chứa ảnh vào cửa sổ này, hoặc copy đường dẫn thư mục và dán vào đây.")
+            input_dir = Prompt.ask("[bold cyan]Nhập đường dẫn thư mục chứa ảnh CCCD (hoặc gõ 'q' để thoát)[/bold cyan]").strip()
+            first_run = False
+            
+        if input_dir.lower() in ('q', 'quit', 'exit'):
+            console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
+            break
+            
+        run_wizard(input_dir)
+        
+        if not Confirm.ask("\n[bold yellow]Bạn có muốn tiếp tục xử lý thư mục khác không?[/bold yellow]"):
+            console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
+            break
 
 if __name__ == '__main__':
     main()
