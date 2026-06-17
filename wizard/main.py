@@ -222,42 +222,51 @@ def parse_ocr_text(text):
                 # ---------------------------------------------------------
                 # 2. TRÍCH XUẤT SỐ CCCD
                 # ---------------------------------------------------------
-                # Bước 2.1: Ưu tiên tìm chuỗi 12 số đứng độc lập bắt đầu bằng số 0 (có thể bị OCR chèn khoảng trắng)
-                text_numbers = text_upper.replace('O', '0')
-                cccd_match = re.search(r'\b(0[\d\s]{11,15})\b', text_numbers)
-                if cccd_match:
-                    val = cccd_match.group(1).replace(' ', '')
-                    if len(val) >= 12:
-                        data['CCCD'] = val[:12]
-
-                if not data['CCCD']:
-                    # Bước 2.2: Lấy từ mã MRZ ở mặt sau (Mã MRZ là chuỗi ký tự ở đáy mặt sau thẻ)
-                    # Tại Việt Nam, thẻ CCCD áp dụng chuẩn ICAO chia số CCCD thành 2 đoạn trong mã MRZ:
-                    # Ví dụ MRZ có chuỗi: VNM0960051566086... 
-                    # -> Phân tích: 096005156 (9 số cuối của CCCD) + 6 (Mã kiểm tra) + 086 (3 số đầu của CCCD)
-                    # Sửa lỗi OCR: Chữ 'O' thường bị AI đọc nhầm thay vì số '0' -> replace 'O' bằng '0'
-                    text_mrz = text_upper.replace('O', '0') 
-                    # Fallback cho chuẩn MRZ cũ/khác có chứa trực tiếp chuỗi 12 số CCCD liền kề dấu '<'
-                    mrz_12_match = re.search(r'(\d{12})<', text_mrz)
-                    if mrz_12_match:
-                        data['CCCD'] = mrz_12_match.group(1)
+                text_mrz = text_upper.replace('O', '0') 
+                
+                # Bước 2.1: Ưu tiên lấy từ mã MRZ (Mặt sau thẻ có độ chính xác 100%)
+                mrz_12_match = re.search(r'(\d{12})<', text_mrz)
+                if mrz_12_match:
+                    data['CCCD'] = mrz_12_match.group(1)
+                else:
+                    mrz_match = re.search(r'VNM(\d{9})\d(\d{3})', text_mrz)
+                    if mrz_match:
+                        # Lắp ráp lại thành CCCD hoàn chỉnh (3 số đầu + 9 số cuối)
+                        data['CCCD'] = mrz_match.group(2) + mrz_match.group(1)
                     else:
-                        mrz_match = re.search(r'VNM(\d{9})\d(\d{3})', text_mrz)
-                        if mrz_match:
-                            # Lắp ráp lại thành CCCD hoàn chỉnh (3 số đầu + 9 số cuối)
-                            data['CCCD'] = mrz_match.group(2) + mrz_match.group(1)
-                        else:
-                            # Bước 2.3: Tìm cụm số dài nhất trong MRZ (thường là 22-25 số), 12 số cuối chính là CCCD
-                            text_clean = text_mrz.replace(' ', '').replace('\n', '')
-                            long_numbers = re.findall(r'\d{12,}', text_clean)
-                            if long_numbers:
-                                longest_num = max(long_numbers, key=len)
+                        # Tìm cụm số dài nhất trong MRZ (thường là 22-25 số), 12 số cuối chính là CCCD
+                        text_clean = text_mrz.replace(' ', '').replace('\n', '')
+                        long_numbers = re.findall(r'\d{12,}', text_clean)
+                        if long_numbers and ("<" in text_clean or "IDVNM" in text_clean or "VNM" in text_clean):
+                            # Chỉ lấy cụm dài nhất nếu thực sự có dấu hiệu của MRZ để tránh lấy nhầm số linh tinh
+                            longest_num = max(long_numbers, key=len)
+                            if len(longest_num) >= 20: # MRZ block is usually >= 22
                                 data['CCCD'] = longest_num[-12:]
-                            else:
-                                # Chặn bắt cuối cùng (Fallback), quét tìm chuỗi 12 số liền nhau bắt đầu bằng số 0
-                                fallback_match = re.search(r'(0\d{11})', text_clean)
-                                if fallback_match:
-                                    data['CCCD'] = fallback_match.group(1)
+
+                # Bước 2.2: Nếu không có MRZ (ví dụ mặt trước thẻ), tìm chuỗi 12 số đứng độc lập bắt đầu bằng số 0
+                if not data['CCCD']:
+                    text_numbers = text_upper.replace('O', '0')
+                    # Lấy tất cả các cụm 12 số
+                    cccd_matches = re.findall(r'\b(0[\d\s]{11,15})\b', text_numbers)
+                    valid_cccds = []
+                    for match_str in cccd_matches:
+                        val = match_str.replace(' ', '')
+                        if len(val) == 12:
+                            valid_cccds.append(val)
+                    
+                    if valid_cccds:
+                        # Nếu có nhiều cụm 12 số (bị lẫn số tài khoản ngân hàng), ưu tiên lấy cụm nằm sát chữ SỐ/NO
+                        # hoặc lấy cụm đầu tiên nếu không có manh mối.
+                        data['CCCD'] = valid_cccds[0]
+                        for i, line in enumerate(text_upper.split('\n')):
+                            if 'SỐ' in line or 'NO' in line or 'CƯỚC' in line:
+                                # Lấy cụm số nằm trên cùng dòng hoặc dòng ngay dưới
+                                line_numbers = re.search(r'\b(0[\d\s]{11,15})\b', text_numbers)
+                                if line_numbers:
+                                    val = line_numbers.group(1).replace(' ', '')
+                                    if len(val) == 12:
+                                        data['CCCD'] = val
+                                        break
                 all_dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
     
                 # ---------------------------------------------------------
