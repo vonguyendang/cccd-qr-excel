@@ -189,6 +189,7 @@ class ExportItem(BaseModel):
     ocrData: Optional[Dict[str, str]] = None
     imageBase64: Optional[str] = None
     isDuplicate: Optional[bool] = False
+    duplicateWith: Optional[str] = None
 
 class RoomAddRequest(BaseModel):
     room_id: str
@@ -222,7 +223,10 @@ async def room_add(req: RoomAddRequest):
     
     if item.isDuplicate:
         if item.filename:
-            room["duplicate_files"].append(item.filename)
+            room["duplicate_files"].append({
+                "duplicate": item.filename,
+                "original": item.duplicateWith or ""
+            })
         save_room(room_id)
         return {"success": True, "total_count": len(room["items"])}
     
@@ -248,7 +252,10 @@ async def room_add(req: RoomAddRequest):
                     # Upgrade OCR to QR
                     old_filename = existing_item.get("filename")
                     if old_filename:
-                        room["duplicate_files"].append(old_filename)
+                        room["duplicate_files"].append({
+                            "duplicate": old_filename,
+                            "original": item.filename or ""
+                        })
                     room["items"][existing_idx] = item.dict()
                     await manager.broadcast({
                         "type": "update_item",
@@ -275,7 +282,10 @@ async def room_add(req: RoomAddRequest):
                     if new_count > old_count:
                         old_filename = existing_item.get("filename")
                         if old_filename:
-                            room["duplicate_files"].append(old_filename)
+                            room["duplicate_files"].append({
+                                "duplicate": old_filename,
+                                "original": item.filename or ""
+                            })
                         room["items"][existing_idx] = item.dict()
                         await manager.broadcast({
                             "type": "update_item",
@@ -551,7 +561,8 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
     # Store all original filenames for original.zip
     original_filenames = []
     if duplicate_files:
-        original_filenames.extend(duplicate_files)
+        for dup in duplicate_files:
+            original_filenames.append(dup.get("duplicate") if isinstance(dup, dict) else dup)
     
     records = {} # mapping cccd -> record
     
@@ -785,6 +796,18 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
         adjusted_width = min((max_length + 2), 40)
         ws.column_dimensions[column].width = adjusted_width
         
+    ws_dup = wb.create_sheet(title="duplicate")
+    ws_dup.append(["STT", "Tên file", "Trùng lặp với"])
+    if duplicate_files:
+        for i, dup in enumerate(duplicate_files, 1):
+            if isinstance(dup, dict):
+                ws_dup.append([i, dup.get('duplicate', ''), dup.get('original', '')])
+            else:
+                ws_dup.append([i, str(dup), ''])
+                
+    for col in ws_dup.columns:
+        ws_dup.column_dimensions[col[0].column_letter].width = 30
+
     stream = BytesIO()
     wb.save(stream)
     stream.seek(0)

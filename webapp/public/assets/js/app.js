@@ -399,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function isDuplicateCccd(dataObj) {
-        if (!dataObj) return false;
+        if (!dataObj) return { isDup: false };
         let newCccd = null;
         let isNewQR = !!dataObj.qrData;
 
@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (dataObj.ocrData && dataObj.ocrData['CCCD']) {
             newCccd = dataObj.ocrData['CCCD'];
         }
-        if (!newCccd) return false;
+        if (!newCccd) return { isDup: false };
         
         let dupIndex = scannedResults.findIndex(item => {
             let existingCccd = null;
@@ -422,11 +422,11 @@ document.addEventListener('DOMContentLoaded', () => {
             let isExistingQR = !!existingItem.qrData;
 
             if (isNewQR && !isExistingQR) {
-                return false; // Server will handle replacement
+                return { isDup: false }; // Server will handle replacement
             }
-            return true;
+            return { isDup: true, duplicateWith: existingItem.filename };
         }
-        return false;
+        return { isDup: false };
     }
 
 
@@ -516,7 +516,8 @@ document.addEventListener('DOMContentLoaded', () => {
             fromOCR: false
         };
 
-        if (isDuplicateCccd(dataObj)) {
+        let dupCheck = isDuplicateCccd(dataObj);
+        if (dupCheck.isDup) {
             recentScans.add(decodedText);
             showToast('Thẻ này đã được quét rồi!', 'warning');
             log(`[Camera] Bỏ qua thẻ trùng: CCCD ${dataObj.qrData.split('|')[0]}`);
@@ -727,9 +728,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!dataObj.error && (dataObj.qrData || dataObj.ocrData['CCCD'])) {
-                if (isDuplicateCccd(dataObj)) {
-                    log(`[${index+1}/${totalFilesInQueue}] Bỏ qua ${file.name}: Dữ liệu CCCD bị trùng.`);
+                let dupCheck = isDuplicateCccd(dataObj);
+                if (dupCheck.isDup) {
+                    log(`[${index+1}/${totalFilesInQueue}] Bỏ qua ${file.name}: Dữ liệu CCCD bị trùng với ${dupCheck.duplicateWith}.`);
                     dataObj.isDuplicate = true;
+                    dataObj.duplicateWith = dupCheck.duplicateWith;
                     addScannedItem(dataObj);
                 } else {
                     addScannedItem(dataObj);

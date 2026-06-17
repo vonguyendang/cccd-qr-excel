@@ -1097,15 +1097,46 @@ def run_wizard(input_dir):
             
     # Xác định các file bị trùng lặp hoặc không được sử dụng
     used_images = set()
+    used_images = set()
+    cccd_to_front = {}
+    cccd_to_back = {}
     for row in processed_data:
-        if row.get('Full Image Path Front'): used_images.add(row['Full Image Path Front'])
-        if row.get('Full Image Path Back'): used_images.add(row['Full Image Path Back'])
+        cccd = row.get('CCCD') or row.get('CMND')
+        if row.get('Full Image Path Front'): 
+            used_images.add(row['Full Image Path Front'])
+            if cccd: cccd_to_front[cccd] = row.get('Ảnh mặt trước CCCD/CC', '')
+        if row.get('Full Image Path Back'): 
+            used_images.add(row['Full Image Path Back'])
+            if cccd: cccd_to_back[cccd] = row.get('Ảnh mặt sau CCCD/CC', '')
         
-    duplicate_files = [item for item in extracted_items if item['Full Image Path'] not in used_images]
+    duplicate_files = []
+    for item in extracted_items:
+        if item['Full Image Path'] not in used_images:
+            cccd = item.get('CCCD') or item.get('CMND')
+            dup_with = ""
+            if cccd:
+                is_front = False
+                is_back = False
+                if item.get('QR Raw'):
+                    fields = item['QR Raw'].split('|')
+                    if len(fields) == 7: is_front = True
+                    elif len(fields) >= 10: is_back = True
+                elif item.get('OCR Side') == 'Front': is_front = True
+                elif item.get('OCR Side') == 'Back': is_back = True
+                
+                if is_front and cccd in cccd_to_front:
+                    dup_with = cccd_to_front[cccd]
+                elif is_back and cccd in cccd_to_back:
+                    dup_with = cccd_to_back[cccd]
+                else:
+                    dup_with = cccd_to_front.get(cccd) or cccd_to_back.get(cccd) or ""
+            item['Duplicate With'] = dup_with
+            duplicate_files.append(item)
+
     ws_dup = wb.create_sheet(title="duplicate")
-    ws_dup.append(["STT", "Tên file"])
+    ws_dup.append(["STT", "Tên file", "Trùng lặp với"])
     for i, item in enumerate(duplicate_files, 1):
-        ws_dup.append([i, item['Image Path']])
+        ws_dup.append([i, item['Image Path'], item.get('Duplicate With', '')])
     
     wb.save(output_filename)
     
