@@ -15,3 +15,5 @@ pycryptodomex
 setuptools<70
 pdfplumber
 onnxruntime
+
+zxing-cpp==3.0.0

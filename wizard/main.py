@@ -99,7 +99,19 @@ def extract_qr_data(image_path):
         if img is None:
             return None, "Lỗi đọc file ảnh", None
 
-        # Try decoding directly
+        # 1. Try zxing-cpp FIRST (Best for Shift-JIS mojibake in VN CCCD)
+        try:
+            import zxingcpp
+            res = zxingcpp.read_barcode(img)
+            if res and res.text:
+                qr_data = res.text
+                import re
+                if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', qr_data):
+                    return qr_data, None, img
+        except Exception:
+            pass
+
+        # 2. Try decoding directly with pyzbar
         decoded_objects = decode(img, symbols=[ZBarSymbol.QRCODE])
         
         # If not found, try grayscale and thresholding for blurry/dark images
@@ -126,6 +138,16 @@ def extract_qr_data(image_path):
 
         # Assuming we just need the first QR code found
         qr_data = decoded_objects[0].data.decode('utf-8')
+        
+        # --- BƯỚC KIỂM TRA LỖI FONT CỦA CƠ QUAN CẤP PHÁT ---
+        # Một số thẻ CCCD bị lỗi phần mềm in thẻ, khiến mã QR bị ghi nhầm bằng chuẩn Shift-JIS
+        # Dẫn đến chuỗi UTF-8 thu được bị biến dạng thành các ký tự Kanji (VD: 蘯, 盻, 廙, ｳ)
+        # Nếu phát hiện ký tự lạ không thuộc bảng chữ cái tiếng Việt, ta chặn luôn để ép hệ thống dùng AI OCR đọc chữ trên mặt thẻ.
+        import re
+        if re.search(r'[蘯ｧ盻ｳ廙砝廕蜩赴璽吵ヾ]', qr_data) or re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', qr_data):
+            # Biểu thức chính quy chặn các ký tự Kanji/Katakana đặc trưng hoặc bất cứ ký tự nào nằm ngoài ASCII và tiếng Việt
+            return None, "Mã QR bị hỏng font (Shift-JIS lỗi từ phôi thẻ), chuyển sang OCR", img
+            
         return qr_data, None, img
 
     except Exception as e:
@@ -138,8 +160,16 @@ def extract_ocr_data(image_path_or_cv2img):
     Trả về một tuple: (dictionary chứa dữ liệu trích xuất, chuỗi ghi chú)
     """
     try:
-        # img is a numpy array (cv2 image BGR) or PIL Image
-        text = extract_text_from_image(image_path_or_cv2img)
+        if isinstance(image_path_or_cv2img, str):
+            import cv2
+            img_to_ocr = cv2.imread(image_path_or_cv2img)
+            if img_to_ocr is None:
+                return {"CCCD": "", "CMND": "", "Họ tên": "", "Ngày sinh": "", "Giới tính": "", "Nơi thường trú gốc": "", "Ngày cấp CCCD": "", "OCR Side": ""}, "Không thể đọc file ảnh"
+        else:
+            img_to_ocr = image_path_or_cv2img
+            
+        # Trích xuất toàn bộ text từ ảnh
+        text = extract_text_from_image(img_to_ocr)
     except Exception as e:
         return {}, f"Lỗi thư viện OCR: {str(e)}"
         

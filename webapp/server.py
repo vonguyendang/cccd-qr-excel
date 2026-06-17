@@ -355,7 +355,20 @@ async def scan_qr(req: ScanQRRequest):
             print("-> Lỗi: Dữ liệu ảnh không hợp lệ.", flush=True)
             return {"success": False, "error": "Invalid image"}
             
-        # 1. Try decoding directly with pyzbar
+        # 1. Try zxing-cpp FIRST
+        try:
+            import zxingcpp
+            res = zxingcpp.read_barcode(img)
+            if res and res.text:
+                qr_data = res.text
+                import re
+                if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', qr_data):
+                    print(f"-> Quét thành công QR (zxing-cpp): {qr_data[:50]}...", flush=True)
+                    return {"success": True, "data": qr_data}
+        except Exception:
+            pass
+
+        # 2. Try decoding directly with pyzbar
         decoded_objects = decode(img, symbols=[ZBarSymbol.QRCODE])
         
         # 2. Try grayscale and thresholding for blurry/dark images
@@ -370,6 +383,13 @@ async def scan_qr(req: ScanQRRequest):
                 
         if decoded_objects:
             qr_data = decoded_objects[0].data.decode('utf-8')
+            
+            # Kiểm tra thẻ bị in lỗi font (Mojibake Kanji)
+            import re
+            if re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', qr_data):
+                print(f"-> Phát hiện QR lỗi font từ phôi thẻ (Chứa ký tự lạ): {qr_data[:50]}...", flush=True)
+                return {"success": False, "error": "Mã QR bị hỏng font, chuyển sang OCR"}
+                
             if '|' in qr_data and len(qr_data.split('|')) >= 6:
                 print(f"-> Quét thành công QR (pyzbar): {qr_data[:50]}...", flush=True)
                 return {"success": True, "data": qr_data}
@@ -380,8 +400,13 @@ async def scan_qr(req: ScanQRRequest):
         if detector:
             res, _ = detector.detectAndDecode(img)
             if res and len(res) > 0:
-                print(f"-> Quét thành công QR (WeChat): {res[0][:50]}...", flush=True)
-                return {"success": True, "data": res[0]}
+                qr_data = res[0]
+                import re
+                if re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', qr_data):
+                    print(f"-> Phát hiện QR lỗi font từ phôi thẻ (WeChat): {qr_data[:50]}...", flush=True)
+                    return {"success": False, "error": "Mã QR bị hỏng font, chuyển sang OCR"}
+                print(f"-> Quét thành công QR (WeChat): {qr_data[:50]}...", flush=True)
+                return {"success": True, "data": qr_data}
             
         print("-> Không tìm thấy mã QR trong ảnh.", flush=True)
         return {"success": False, "error": "QR not found"}
