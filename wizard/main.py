@@ -818,10 +818,35 @@ def run_wizard(input_dir):
     console.print("\n")
     console.print(Panel("[bold cyan]✨ CHUẨN BỊ XUẤT FILE EXCEL ✨[/bold cyan]", border_style="green"))
     
-    exports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports')
-    if not os.path.exists(exports_dir):
-        os.makedirs(exports_dir)
-        
+    console.print("\n[bold yellow]Chọn vị trí lưu thư mục export (chứa các file kết quả):[/bold yellow]")
+    console.print("  [cyan]1[/cyan]. Lưu ở cùng cấp thư mục với thư mục đang xử lý (Ví dụ: Thu_muc_anh_exports)")
+    console.print("  [cyan]2[/cyan]. Lưu mặc định ở thư mục export của dự án (mặc định)")
+    console.print("  [cyan]3[/cyan]. Nhập địa chỉ thư mục mong muốn")
+    
+    export_option = Prompt.ask("[bold cyan]Nhập lựa chọn của bạn[/bold cyan]", choices=["1", "2", "3"], default="2")
+    
+    if export_option == "1":
+        clean_input_dir = os.path.normpath(input_dir)
+        exports_dir = clean_input_dir + "_exports"
+    elif export_option == "3":
+        custom_dir = Prompt.ask("[bold cyan]Nhập đường dẫn thư mục mong muốn lưu kết quả[/bold cyan]").strip().strip('\'"')
+        if not custom_dir:
+            console.print("[yellow]Đường dẫn rỗng, quay về mặc định.[/yellow]")
+            exports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports')
+        else:
+            exports_dir = custom_dir
+    else:
+        exports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports')
+
+    try:
+        if not os.path.exists(exports_dir):
+            os.makedirs(exports_dir)
+    except Exception as e:
+        console.print(f"[bold red]❌ Lỗi tạo thư mục {exports_dir}: {e}. Quay về mặc định.[/bold red]")
+        exports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports')
+        if not os.path.exists(exports_dir):
+            os.makedirs(exports_dir)
+            
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     default_filename = f"ket_qua_{timestamp}.xlsx"
     
