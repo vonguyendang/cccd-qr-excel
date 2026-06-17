@@ -167,7 +167,7 @@ def extract_qr_data(image_path):
             cx, cy = center
             h, w = img.shape[:2]
             # Chỉ xoay nếu QR nằm rõ ràng ở 1 trong 4 góc (không phải ở giữa ảnh/crop quá bé)
-            if abs(cx - w/2) > w/6 and abs(cy - h/2) > h/6:
+            if abs(cx - w/2) > w/10 and abs(cy - h/2) > h/10:
                 if cx > w/2 and cy > h/2:
                     rotated_img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
                 elif cx < w/2 and cy < h/2:
@@ -331,8 +331,7 @@ def parse_ocr_text(text):
                             data['Ngày sinh'] = first_date
                     except: pass
 
-
-                    return data
+                return data
 
 def extract_ocr_data(image_path_or_cv2img):
     """
@@ -352,10 +351,15 @@ def extract_ocr_data(image_path_or_cv2img):
         return {}, f"Lỗi thư viện OCR: {str(e)}", None
         
     try:
-        text = extract_text_from_image(img_to_ocr)
+        text, is_vertical = extract_text_from_image(img_to_ocr, return_orientation=True)
         data = parse_ocr_text(text)
         if data['CCCD'] or (not data['CCCD'] and data['OCR Side'] == 'Front' and data['Họ tên']): 
             # If we found CCCD, or it's clearly front and has name, return it
+            # Nhưng nếu chữ bị dọc (do chụp dọc thẻ nằm ngang), ta tự động xoay lại 90 độ
+            if is_vertical:
+                import cv2
+                rotated_img = cv2.rotate(img_to_ocr, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                return data, "Lấy bằng OCR (Đã tự xoay chữ dọc)", rotated_img
             return data, "Lấy bằng OCR", None
             
         # Fallback rotations

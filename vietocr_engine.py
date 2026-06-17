@@ -21,7 +21,7 @@ def get_ocr_engine():
         _ocr_instance = OCR()
     return _ocr_instance
 
-def extract_text_from_image(img):
+def extract_text_from_image(img, return_orientation=False):
     """
     Trích xuất text tiếng Việt từ ảnh (numpy array hoặc PIL Image)
     """
@@ -34,10 +34,26 @@ def extract_text_from_image(img):
         ocr = get_ocr_engine()
         bxs = ocr(img_array, 0) # device_id = 0
         if not bxs:
-            return ""
-        # bxs là list các tuple: (box, (text, score))
+            return ("", False) if return_orientation else ""
+            
         lines = [item[1][0] for item in bxs]
-        return "\n".join(lines)
+        text = "\n".join(lines)
+        
+        if return_orientation:
+            # Kiểm tra xem chữ trong ảnh có bị nằm dọc không (ví dụ do xoay 90 độ)
+            # Nếu hộp thoại chữ (box) có chiều cao lớn hơn chiều rộng -> Chữ dọc
+            vertical_count = 0
+            for box, _ in bxs:
+                pts = box
+                w = ((pts[0][0] - pts[1][0])**2 + (pts[0][1] - pts[1][1])**2)**0.5
+                h = ((pts[0][0] - pts[3][0])**2 + (pts[0][1] - pts[3][1])**2)**0.5
+                if h > w * 1.5: # Chiều cao gấp 1.5 lần chiều rộng -> Dọc
+                    vertical_count += 1
+            
+            is_vertical = vertical_count > len(bxs) * 0.5 # Nếu quá nửa số dòng chữ là dọc
+            return text, is_vertical
+            
+        return text
     except Exception as e:
         print(f"Lỗi khi chạy OCR: {e}")
-        return ""
+        return ("", False) if return_orientation else ""
