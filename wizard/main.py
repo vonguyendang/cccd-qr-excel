@@ -353,11 +353,9 @@ def fetch_single_address(addr):
     try:
         import json, time
         payload = json.dumps({"address": addr})
-        )
+        response = requests.post('https://tienich.vnhub.com/api/convert-address', headers=headers, data=payload, timeout=10)
         response.raise_for_status()
         res_data = response.json()
-        print(f"Received JSON: {json.dumps(res_data, ensure_ascii=False)}")
-        print(f"-----------------")
         if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
             return {
                 "original": addr,
@@ -392,27 +390,33 @@ def call_address_api(address_list, max_workers=20):
             
     return results
 
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
+from rich.prompt import Prompt, Confirm
+
+console = Console()
+
 def main():
-    print("="*60)
-    print("   PHẦN MỀM TRÍCH XUẤT MÃ QR TỪ ẢNH CCCD RA EXCEL   ")
-    print("="*60)
+    console.print(Panel.fit("[bold green]🚀 PHẦN MỀM TRÍCH XUẤT MÃ QR TỪ ẢNH CCCD RA EXCEL[/bold green]", border_style="cyan", padding=(1, 5)))
+
     
     input_dir = ""
     if len(sys.argv) >= 2:
         input_dir = sys.argv[1]
     else:
-        print("\n[Hướng dẫn]: Kéo thả thư mục chứa ảnh vào cửa sổ này,")
-        print("hoặc copy đường dẫn thư mục và dán vào đây.\n")
-        input_dir = input("\nNhập đường dẫn thư mục chứa ảnh CCCD: ").strip()
+        console.print("\n[yellow][Hướng dẫn][/yellow]: Kéo thả thư mục chứa ảnh vào cửa sổ này, hoặc copy đường dẫn thư mục và dán vào đây.\n")
+        input_dir = Prompt.ask("[bold cyan]Nhập đường dẫn thư mục chứa ảnh CCCD[/bold cyan]").strip()
     
-    init_models()
+    with console.status("[bold green]Đang khởi tạo model AI...", spinner="dots"):
+        init_models()
 
     # Xóa dấu nháy đơn/kép nếu người dùng kéo thả thư mục vào terminal có sinh ra
     input_dir = input_dir.strip('\'"')
 
     if not input_dir or not os.path.isdir(input_dir):
-        print(f"\n❌ Lỗi: Thư mục '{input_dir}' không tồn tại hoặc đường dẫn không đúng.")
-        input("Nhấn Enter để thoát...")
+        console.print(f"\n[bold red]❌ Lỗi:[/bold red] Thư mục '{input_dir}' không tồn tại hoặc đường dẫn không đúng.")
+        Prompt.ask("[dim]Nhấn Enter để thoát...[/dim]")
         sys.exit(1)
 
     # Search for common image formats
@@ -421,51 +425,45 @@ def main():
         image_paths.extend(glob.glob(os.path.join(input_dir, ext)))
 
     if not image_paths:
-        print("\n❌ Thật tiếc, không tìm thấy file ảnh nào (.jpg, .png) trong thư mục này.")
-        input("Nhấn Enter để thoát...")
+        console.print("\n[bold red]❌ Thật tiếc, không tìm thấy file ảnh nào (.jpg, .png) trong thư mục này.[/bold red]")
+        Prompt.ask("[dim]Nhấn Enter để thoát...[/dim]")
         sys.exit(0)
 
-    print(f"\n✅ Đã quét thư mục và tìm thấy tổng cộng {len(image_paths)} file ảnh.")
+    console.print(f"\n[bold green]✅ Đã quét thư mục và tìm thấy tổng cộng {len(image_paths)} file ảnh.[/bold green]")
     
     # Cấu hình luồng xử lý
-    num_threads_input = input("\nNhập số luồng xử lý ảnh song song (Enter để mặc định là 4): ").strip()
+    num_threads_input = Prompt.ask("\n[cyan]Nhập số luồng xử lý ảnh song song[/cyan] (Enter để mặc định là 4)", default="4").strip()
     try:
         num_threads = int(num_threads_input) if num_threads_input else 4
     except ValueError:
-        print("⚠️ Giá trị không hợp lệ, sử dụng mặc định: 4 luồng.")
+        console.print("[yellow]⚠️ Giá trị không hợp lệ, sử dụng mặc định: 4 luồng.[/yellow]")
         num_threads = 4
 
-    api_threads_input = input("Nhập số luồng gọi API địa chỉ song song (Enter để mặc định là 20): ").strip()
+    api_threads_input = Prompt.ask("[cyan]Nhập số luồng gọi API địa chỉ song song[/cyan] (Enter để mặc định là 20)", default="20").strip()
     try:
         api_threads = int(api_threads_input) if api_threads_input else 20
     except ValueError:
-        print("⚠️ Giá trị không hợp lệ, sử dụng mặc định: 20 luồng.")
+        console.print("[yellow]⚠️ Giá trị không hợp lệ, sử dụng mặc định: 20 luồng.[/yellow]")
         api_threads = 20
 
     # Wizard confirmation
-    while True:
-        confirm = input("\nBạn có muốn bắt đầu xử lý ngay bây giờ không? (y/n): ").strip().lower()
-        if confirm == 'y' or confirm == '':
-            break
-        elif confirm == 'n':
-            print("Đã hủy quá trình.")
-            sys.exit(0)
-        else:
-            print("Vui lòng nhập 'y' (có) hoặc 'n' (không).")
+    confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu xử lý ngay bây giờ không?[/bold yellow]")
+    if not confirm:
+        console.print("[yellow]Đã hủy quá trình.[/yellow]")
+        sys.exit(0)
 
-    print("\n" + "-"*40)
-    print(f"🚀 BẮT ĐẦU XỬ LÝ {len(image_paths)} ẢNH VỚI {num_threads} LUỒNG...")
-    print("-" * 40)
+    console.print("\n")
+    console.print(Panel(f"[bold cyan]🚀 BẮT ĐẦU XỬ LÝ {len(image_paths)} ẢNH VỚI {num_threads} LUỒNG...[/bold cyan]", border_style="green"))
 
     processed_data = []
     seen_cccds = set()
     
-    def process_single_image(img_path, idx, total):
-        print(f"[{idx+1}/{total}] Đang đọc {os.path.basename(img_path)}...")
+    def process_single_image(img_path):
         qr_string, engine, err, img = extract_qr_data(img_path)
         
+        log_msgs = []
         if qr_string:
-            print(f"   -> [{os.path.basename(img_path)}] Đã quét được mã QR (bằng {engine}): {qr_string}")
+            log_msgs.append(f"[green]✅ [Đã quét mã QR bằng {engine}]:[/green] {qr_string}")
             
         row_data = {
             'Họ tên': '', 'CCCD': '', 'CMND': '', 'Giới tính': '',
@@ -489,7 +487,7 @@ def main():
             
             # Fallback to OCR
             if img is not None:
-                print(f"   -> [{os.path.basename(img_path)}] Không đọc được QR, đang thử quét OCR...")
+                log_msgs.append(f"[yellow]⚠️ Không đọc được QR, đang thử quét OCR...[/yellow]")
                 ocr_data, ocr_note = extract_ocr_data(img)
                 
                 # In thông tin OCR ra màn hình
@@ -501,7 +499,7 @@ def main():
                 if ocr_data.get('Ngày cấp CCCD'): parts.append(f"Ngày cấp: {ocr_data['Ngày cấp CCCD']}")
                 
                 ocr_print_info = ", ".join(parts) if parts else "Không nhận diện được chữ"
-                print(f"   -> [{os.path.basename(img_path)}] Kết quả OCR: {ocr_print_info}")
+                log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info}")
                 
                 if ocr_data.get('CCCD'):
                     row_data['Scan Type'] = 'OCR_scanned'
@@ -512,7 +510,7 @@ def main():
         row_data['Ngày hết hạn'] = calculate_expiry_date(row_data.get('Ngày sinh', ''))
         row_data['Phân loại'] = get_card_type(row_data.get('QR Raw', ''))
         row_data['Ghi chú'] = '; '.join(notes)
-        return row_data
+        return row_data, log_msgs
 
     import re
     # Grouping and Merging Logic
@@ -520,15 +518,36 @@ def main():
     
     # Process images in parallel and collect all returned raw data
     extracted_items = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-        future_to_img = {executor.submit(process_single_image, path, idx, len(image_paths)): path for idx, path in enumerate(image_paths)}
-        for future in concurrent.futures.as_completed(future_to_img):
-            try:
-                extracted_items.append(future.result())
-            except Exception as exc:
-                print(f"❌ Lỗi khi xử lý ảnh {os.path.basename(future_to_img[future])}: {exc}")
+    
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    )
+    
+    with progress:
+        task_id = progress.add_task("[cyan]Đang quét ảnh...", total=len(image_paths))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            future_to_img = {executor.submit(process_single_image, path): path for path in image_paths}
+            for future in concurrent.futures.as_completed(future_to_img):
+                img_path = future_to_img[future]
+                try:
+                    row_data, log_msgs = future.result()
+                    extracted_items.append(row_data)
+                    
+                    # Print logs for this image above the progress bar
+                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold]")
+                    for msg in log_msgs:
+                        progress.console.print(f"  {msg}")
+                except Exception as exc:
+                    progress.console.print(f"[bold red]❌ Lỗi khi xử lý ảnh {os.path.basename(img_path)}:[/bold red] {exc}")
+                finally:
+                    progress.advance(task_id)
                 
-    # Pass 1 & 2: Merge logic based on CCCD
+    console.print(Panel(f"[bold cyan]🔄 BẮT ĐẦU GỘP DỮ LIỆU...[/bold cyan]", border_style="green"))
     for item in extracted_items:
         cccd = item.get('CCCD')
         if not cccd: continue
@@ -562,9 +581,9 @@ def main():
         if is_qr:
             if not is_new_record:
                 if record['has_ocr_data'] and not record['has_qr_data']:
-                    print(f"   -> [GỘP DỮ LIỆU] GHI ĐÈ thông tin từ ảnh {item['Image Path']} (Đọc mã QR) lên thông tin OCR trước đó của CCCD {cccd}")
+                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] GHI ĐÈ thông tin từ ảnh {item['Image Path']} (Đọc mã QR) lên thông tin OCR trước đó của CCCD {cccd}")
                 elif record['has_qr_data']:
-                    print(f"   -> [GỘP DỮ LIỆU] Bỏ qua thông tin từ ảnh {item['Image Path']} vì đã quét mã QR thành công trước đó cho CCCD {cccd}")
+                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin từ ảnh {item['Image Path']} vì đã quét mã QR thành công trước đó cho CCCD {cccd}")
             
             record['has_qr_data'] = True
             # Overwrite text fields with QR accuracy
@@ -585,9 +604,9 @@ def main():
         else: # OCR
             if not is_new_record:
                 if record['has_qr_data']:
-                    print(f"   -> [GỘP DỮ LIỆU] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã có dữ liệu QR chuẩn xác của CCCD {cccd}")
+                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã có dữ liệu QR chuẩn xác của CCCD {cccd}")
                 elif record['has_ocr_data']:
-                    print(f"   -> [GỘP DỮ LIỆU] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã xử lý ảnh OCR trước đó cho CCCD {cccd}")
+                    console.print(f"   [yellow]→ [GỘP DỮ LIỆU][/yellow] Bỏ qua thông tin trùng lặp từ ảnh {item['Image Path']} (OCR) vì đã xử lý ảnh OCR trước đó cho CCCD {cccd}")
             
             record['has_ocr_data'] = True
             
@@ -651,21 +670,31 @@ def main():
 
     processed_data = list(records.values())
     # Lấy danh sách địa chỉ duy nhất
-    print("Đang chuẩn bị gửi dữ liệu lên API...")
     unique_addresses = list(set([item['Nơi thường trú gốc'] for item in processed_data if item.get('Nơi thường trú gốc')]))
+    console.print(Panel(f"[bold cyan]🌐 ĐANG CHUẨN BỊ GỌI API CHUẨN HÓA CHO {len(unique_addresses)} ĐỊA CHỈ DUY NHẤT VỚI {api_threads} LUỒNG...[/bold cyan]", border_style="green"))
     address_map = {}
 
     # Gọi API chuẩn hóa địa chỉ theo batch
     if unique_addresses:
-        print(f"Đang gọi API chuẩn hóa cho {len(unique_addresses)} địa chỉ duy nhất (với {api_threads} luồng)...")
         batch_size = 100
-        for i in range(0, len(unique_addresses), batch_size):
-            batch = unique_addresses[i:i+batch_size]
-            api_results = call_address_api(batch, max_workers=api_threads)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=console,
+        ) as api_progress:
+            api_task = api_progress.add_task("[cyan]Đang gọi API VNHub...", total=len(unique_addresses))
             
-            for result in api_results:
-                if result and 'original' in result:
-                    address_map[result['original']] = result
+            for i in range(0, len(unique_addresses), batch_size):
+                batch = unique_addresses[i:i+batch_size]
+                api_results = call_address_api(batch, max_workers=api_threads)
+                
+                for result in api_results:
+                    if result and 'original' in result:
+                        address_map[result['original']] = result
+                        api_progress.advance(api_task)
 
     # Cập nhật kết quả API vào dữ liệu
     for row in processed_data:
