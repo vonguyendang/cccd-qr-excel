@@ -35,9 +35,26 @@ web-app/node_modules/
 *.xls
 *.csv
 
-# Web App Exports
-web-app/exports/*
-!web-app/exports/.gitkeep
+# Images
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.heic
+*.gif
+
+# Web App Exports & Sessions
+webapp/exports/*
+!webapp/exports/.gitkeep
+webapp/sessions/*
+!webapp/sessions/.gitkeep
+
+# Wizard Exports
+wizard/exports/*
+!wizard/exports/.gitkeep
+
+# ZIP Files
+*.zip
 
 # Samples
 samples/*
