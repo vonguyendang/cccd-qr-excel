@@ -516,7 +516,7 @@ async def fetch_single_address_async(client, addr):
         import json
         response = await client.post(
             'https://tienich.vnhub.com/api/wards',
-            data=json.dumps({"address": addr}),
+            content=json.dumps({"address": addr}),
             headers=headers,
             timeout=15.0
         )
