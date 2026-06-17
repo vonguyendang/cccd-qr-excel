@@ -18,18 +18,26 @@ Dữ liệu được map theo các index sau (từ 0):
 
 ## Quy tắc xuất file Excel
 
-File Excel bắt buộc phải có đủ 10 cột theo đúng thứ tự sau:
+File Excel tự động xuất ra với đầy đủ **18 cột** theo đúng thứ tự sau:
 
 1. **STT**: Tự tăng từ 1
 2. **Họ tên**: Giữ nguyên tiếng Việt có dấu
-3. **CCCD**: Giữ nguyên chuỗi số
-4. **CMND**: Có thì ghi, không có thì để trống
-5. **Giới tính**: Giữ nguyên
+3. **CCCD**: Giữ nguyên chuỗi 12 số
+4. **CMND**: Chứa 9 số CMND cũ (nếu có, không có sẽ ghi "Không có")
+5. **Giới tính**: Nam hoặc Nữ
 6. **Ngày sinh**: Định dạng `dd/mm/yyyy` (chuyển từ `ddmmyyyy`)
-7. **Nơi thường trú gốc**: Giữ nguyên gốc từ QR
+7. **Nơi thường trú gốc**: Giữ nguyên gốc từ QR hoặc OCR
 8. **Địa chỉ chuẩn hóa mới**: Kết quả trả về từ API chuẩn hóa (`success = true`)
 9. **Ngày cấp CCCD**: Định dạng `dd/mm/yyyy` (chuyển từ `ddmmyyyy`)
-10. **Ghi chú**: Chứa lỗi ảnh không đọc được, dữ liệu trống, hoặc cảnh báo từ API. Các ghi chú nối với nhau bằng dấu `; `.
+10. **Nơi cấp**: Tự động nhận diện (VD: BỘ CÔNG AN)
+11. **Ngày hết hạn**: Tự động tính toán theo mốc tuổi (25, 40, 60 tuổi)
+12. **Phân loại**: Xác định loại thẻ (Căn cước / Căn cước công dân)
+13. **Ghi chú**: Chứa log lỗi, dữ liệu trống, cảnh báo từ API, hoặc đánh dấu thẻ lấy bằng OCR. Các ghi chú nối với nhau bằng dấu `; `
+14. **QR Raw**: Chuỗi gốc nguyên bản lấy từ QR code
+15. **Ảnh mặt trước CCCD/CC**: Tên file ảnh mặt trước gốc
+16. **Ảnh mặt sau CCCD/CC**: Tên file ảnh mặt sau gốc
+17. **Đổi tên Ảnh mặt trước CCCD/CC**: Tên chuẩn mực sau khi đổi (VD: `Nguyễn Văn A_012345678912_Mặt trước.jpg`)
+18. **Đổi tên Ảnh mặt sau CCCD/CC**: Tên chuẩn mực sau khi đổi (VD: `Nguyễn Văn A_012345678912_Mặt sau.jpg`)
 ## Quy tắc Gộp Dữ Liệu 2 Mặt Thẻ (Merging)
 
 Hệ thống sử dụng cơ chế gộp thông minh dựa trên "Số CCCD" làm khóa chính (Primary Key) để gom dữ liệu 2 mặt thẻ rời rạc thành một dòng duy nhất:
