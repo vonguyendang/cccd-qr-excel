@@ -17,6 +17,10 @@ from vietocr_engine import extract_text_from_image
 import re
 import concurrent.futures
 import zipfile
+import threading
+
+# Global locks
+ocr_lock = threading.Lock()
 
 # Global AI Models
 detector = None
@@ -784,7 +788,11 @@ def run_wizard(input_dir):
             # Fallback to OCR
             if img is not None:
                 log_msgs.append(f"[yellow]⚠️ Không đọc được QR, đang thử quét OCR...[/yellow]")
-                ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
+                
+                # Use lock for thread safety because deep learning models (PyTorch/ONNX) inside extract_ocr_data
+                # might cause Segmentation Faults when run concurrently across multiple threads in the same process.
+                with ocr_lock:
+                    ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
                 
                 if rotated_img is not None:
                     # Lưu lại ảnh đã xoay chuẩn vào thư mục tạm thay vì ghi đè file gốc
