@@ -1322,6 +1322,13 @@ def run_wizard(input_dir):
             else:
                 record['Phân loại'] = 'Khác'
                 
+        # Tự động suy luận Nơi cấp dựa vào Phân loại (dành cho các thẻ hỏng QR)
+        if not record.get('Nơi cấp'):
+            if record['Phân loại'] == 'Căn cước công dân':
+                record['Nơi cấp'] = 'CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI'
+            elif record['Phân loại'] == 'Căn cước':
+                record['Nơi cấp'] = 'BỘ CÔNG AN'
+                
         # Deduplicate notes and convert to string
         unique_notes = []
         for note in final_notes:
