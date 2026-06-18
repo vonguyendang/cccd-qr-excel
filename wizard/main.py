@@ -325,7 +325,7 @@ def parse_ocr_text(text):
                 if data['OCR Side'] == 'Back' and not data['Họ tên']:
                     def _extract_mrz_name_words(s):
                         """Tách các từ tên thực sự từ chuỗi MRZ bằng thuật toán Greedy Match với từ điển."""
-                        s = re.sub(r'[CKE<S]{3,}$', '', s)
+                        s = re.sub(r'[CKEA<S]{3,}$', '', s)
                         
                         # Sửa các lỗi OCR kinh điển làm biến dạng từ
                         ocr_fixes = {
@@ -335,13 +335,18 @@ def parse_ocr_text(text):
                             "TRUEC": "TRUC",
                             "EVINH": "VINH",
                             "STRAN": " TRAN",
-                            "NGOCNUOI": "NGOC NUOI"
+                            "NGOCNUOI": "NGOC NUOI",
+                            "HUYNE": "HUYNH",
+                            "THUYKHANG": "THUY HANG",
+                            "THUCTRANGCA": "THU TRANG",
+                            "THUCTRANG": "THU TRANG",
+                            "CHUYNH": "HUYNH"
                         }
                         for bad, good in ocr_fixes.items():
                             s = s.replace(bad, good)
                         
                         # Danh sách âm tiết tên Tiếng Việt phổ biến (không dấu)
-                        common_names = "AN ANH BA BAC BAN BANG BAO BE BEN BICH BINH BO BON CA CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUE KHUYEN KIEN KIEU KIM KY LA LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LUA LUAN LUC LUONG LUU LY MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGOC NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAN TOAI TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UYEN VAN VANG VY VI VIEN VIET VINH VO VONG VU VUONG VY XUAN Y YEN"
+                        common_names = "AN ANH BA BAC BAN BANG BAO BE BEN BICH BINH BO BON CA CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUE KHUYEN KIEN KIEU KIM KY LA LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LUA LUAN LUC LUONG LUU LY MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGOC NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAN TOAI TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UYEN VAN VANG VY VI VIEN VIET VINH VO VONG VU VUONG VY XUA XUAN Y YEN"
                         names_list = sorted(list(set(common_names.split())), key=len, reverse=True)
                         pattern = r'(' + '|'.join(names_list) + r')'
                         
@@ -353,18 +358,19 @@ def parse_ocr_text(text):
                         ls = line.replace(' ', '').strip()
                         
                         # Chặn các dòng tiếng Anh hoặc tiếng Việt không dấu bị nhận diện nhầm
-                        if any(bad in ls for bad in ['IDEN', 'NATIO', 'SONAL', 'CANCUOC', 'CONGDAN', 'TRUONG', 'GIAMDOC']):
+                        if any(bad in ls for bad in ['IDEN', 'NATIO', 'SONAL', 'CANCUOC', 'CONGDAN', 'TRUONG', 'GIAMDOC', 'INDEX', 'FINGER', 'ADMIN', 'POLICE', 'DIRECTOR', 'ORDER']):
                             continue
                             
-                        # MRZ Line 3 chứa tên, kết thúc bằng dãy padding (nhận diện nhầm thành E,S,C,K)
+                        # MRZ Line 3 chứa tên, KHÔNG có số, KHÔNG có dấu tiếng Việt
+                        # OCR đọc dấu << thành CK, CC, CE, KCK...
                         if (15 <= len(ls) <= 40
-                            and re.match(r'^[A-Z0-9<]+$', ls.replace('C','<').replace('K','<').replace('E','<').replace('S','<'))
-                            and re.search(r'[<CKE]{2,}$', ls)
+                            and re.match(r'^[A-Z<]+$', ls)  # Chỉ gồm chữ cái A-Z và < (không có số, không dấu)
+                            and re.search(r'[<CKE]{2}', ls) # Chắc chắn có ít nhất 1 cụm 2 ký tự độn (CK, CC, CE...) thay cho <<
                             and not ls.startswith('IDVN')
                             and not ls.startswith('VNM')
                         ):
                             # Tách Họ và Đệm+Tên dựa trên 2 dấu << liên tiếp (OCR -> CC, CK, CE, CEC...)
-                            split_parts = re.split(r'CK|CEC|KCK|CC(?=[A-Z])', ls, maxsplit=1)
+                            split_parts = re.split(r'CK|CEC|KCK|CC|CE|CS|EK(?=[A-Z])', ls, maxsplit=1)
                             if len(split_parts) == 2:
                                 surname_words = _extract_mrz_name_words(split_parts[0])
                                 given_words   = _extract_mrz_name_words(split_parts[1])
@@ -386,15 +392,18 @@ def parse_ocr_text(text):
                     line_lower = line.lower()
     
                     # 1. Name
-                    if "họ và tên" in line_lower or "họ chữ đệm và tên" in line_lower or "full name" in line_lower or "ho ten" in line_lower:
+                    if any(kw in line_lower for kw in ["họ và tên", "họ chữ đệm và tên", "full name", "ho ten", "kho và tên", "fui nam"]):
                         if ":" in line:
                             name_part = line.split(":", 1)[1].strip()
                             name_part = name_part.rstrip('.') # Loại bỏ dấu chấm cuối câu (như trong SMS)
                             if (name_part.isupper() or name_part.istitle()) and len(name_part) > 3 and not re.search(r'\d', name_part):
                                 data['Họ tên'] = name_part
+                        
+                        # Nếu không có dấu 2 chấm, thử lấy dòng tiếp theo
                         if not data['Họ tên'] and i + 1 < len(lines):
                             next_line = lines[i+1].replace('|', '').strip()
-                            if (next_line.isupper() or next_line.istitle()) and len(next_line) > 3 and not re.search(r'\d', next_line):
+                            # Tên thường viết hoa, nhưng OCR có thể viết thường. Chỉ cần dài >3 và không chứa số
+                            if len(next_line) > 3 and not re.search(r'\d', next_line) and not any(kw in next_line.lower() for kw in ['ngày', 'sinh', 'quốc', 'tịch', 'giới', 'tính']):
                                 data['Họ tên'] = next_line
                 
                     # 2. DOB
@@ -406,14 +415,18 @@ def parse_ocr_text(text):
                                 break
                 
                     # --- BƯỚC 4.3: TRÍCH XUẤT ĐỊA CHỈ (NƠI THƯỜNG TRÚ/CƯ TRÚ) ---
-                    if "nơi thường trú" in line_lower or "nơi cư trú" in line_lower or "residence" in line_lower or "thuong tru" in line_lower:
+                    if "nơi thường trú" in line_lower or "nơi cư trú" in line_lower or "residence" in line_lower or "thuong tru" in line_lower or "trương vú" in line_lower:
                         addr_parts = []
                         if ":" in line:
                             val = line.split(":", 1)[1].strip()
-                            # Loại bỏ các chuỗi nhiễu có thể bám ngay cùng dòng
-                            val = re.sub(r'(?i)(giới tính|quốc tịch|sex|nationality|có giá trị đến|expiry).*', '', val).strip()
-                            if len(val) >= 2:
-                                addr_parts.append(val)
+                        else:
+                            m = re.split(r'(?i)(nơi thường trú|nơi cư trú|place of residence|residence|thuong tru|trương vú)[^a-z0-9]*', line)
+                            val = m[-1].strip() if len(m) > 2 else ""
+                            
+                        # Loại bỏ các chuỗi nhiễu có thể bám ngay cùng dòng
+                        val = re.sub(r'(?i)(giới tính|quốc tịch|sex|nationality|có giá trị đến|giá trị đến|expiry|date).*', '', val).strip()
+                        if len(val) >= 2:
+                            addr_parts.append(val)
         
                         # Quét các dòng tiếp theo để nối đuôi địa chỉ do địa chỉ thường rất dài và bị rớt dòng.
                         for j in range(i + 1, min(i + 7, len(lines))):
@@ -426,25 +439,25 @@ def parse_ocr_text(text):
                             ]):
                                 break
                                 
-                            # CÁC TỪ KHOÁ BỎ QUA DÒNG NÀY (SKIP) - Các nhãn bị OCR đọc lộn xộn hoặc thông tin không phải địa chỉ
-                            if any(skip_word in next_lower for skip_word in [
-                                "giá trị đến", "expiry", "date", "nơi cấp", "ngày cấp",
-                                "bộ công an", "cục cảnh sát", "giới tính", "quốc tịch", "sex", "nationality", 
-                                "quê quán", "quê quan", "que quan", "khai sinh", "birth"
-                            ]):
-                                continue
-                                
-                            # Bỏ qua dòng chỉ chứa ngày tháng nếu lọt qua
-                            if re.search(r'\b\d{2}/\d{2}/\d{4}\b', next_line):
-                                continue
+                            clean_line = next_line
+                            # Xóa các nhãn bị dính vào địa chỉ (thay vì skip toàn bộ dòng)
+                            clean_line = re.sub(r'(?i)(có giá trị đến|giá trị đến|expiry|date|nơi cấp|ngày cấp|bộ công an|cục cảnh sát|giới tính|quốc tịch|sex|nationality|quê quán|quê quan|que quan|khai sinh|birth|data ofespry)', '', clean_line).strip()
+                            
+                            # Xóa ngày tháng năm
+                            clean_line = re.sub(r'\b\d{2}/\d{2}/\d{4}\b', '', clean_line).strip()
                                 
                             # CẮT BỎ CÁC TỪ TIẾNG ANH ẢO GIÁC DO OCR NHẬN DIỆN MỜ VÀ CÁC NHÃN
-                            # Bổ sung thêm các cụm từ rác như "Họ và tên 1 Full name", "Số 1 Noi", "CON MINH GIAN, MOROOT"
-                            clean_line = re.sub(r'(?i)\b(place of residence|place of origin|place oforging|transervating|daleoroxic|deleofexpin|overstreeter|residence|origin|họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|sedest|ingave|1tho|nams|cang 10/000020|notter)\b', '', next_line).strip()
-                            clean_line = re.sub(r'(?i)(họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter)', '', clean_line).strip()
+                            clean_line = re.sub(r'(?i)\b(place of residence|place of origin|place oforging|transervating|daleoroxic|deleofexpin|overstreeter|residence|origin|họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of)\b', '', clean_line).strip()
+                            clean_line = re.sub(r'(?i)(họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of)', '', clean_line).strip()
                             
-                            # Cắt bỏ rác là số CCCD (12 số) hoặc số điện thoại lọt vào địa chỉ
+                            # Loại bỏ chữ 'Có' rớt lại do cắt cụm 'Có giá trị đến' bị thiếu
+                            # Xử lý các dạng: 'Có :', 'Có', 'Có ,' đứng 1 mình hoặc kẹp ở đầu/cuối chuỗi
+                            clean_line = re.sub(r'(?i)^(c[oó]|co\u0301)\s*[:.,]*\s*', '', clean_line).strip()
+                            clean_line = re.sub(r'(?i)\s+(c[oó]|co\u0301)\s*[:.,]*$', '', clean_line).strip()
+                            
+                            # Cắt bỏ rác là số CCCD (12 số) hoặc số điện thoại lọt vào địa chỉ, và ngày tháng bị dính (vd 1010/2037)
                             clean_line = re.sub(r'\b\d{10,12}\b', '', clean_line).strip()
+                            clean_line = re.sub(r'\b\d{4}/\d{4}\b', '', clean_line).strip()
                             
                             # Không lấy vào địa chỉ nếu dòng này lọt Họ Tên vào
                             if data.get('Họ tên') and clean_line == data['Họ tên']:
@@ -464,9 +477,12 @@ def parse_ocr_text(text):
                             "Cần Thơng": "Cần Thơ",
                             "Cần Thợ": "Cần Thơ",
                             "Bình Thủy Thơ": "Bình Thủy, Cần Thơ",
+                            "BẦN THỚ": "Bình Thủy, Cần Thơ",
+                            "Bần Thớ": "Bình Thủy, Cần Thơ",
                             "CẦN THO": "CẦN THƠ",
                             "Ấp Trà Canh AL": "Ấp Trà Canh A1",
-                            " AL,": " A1,"  # Đề phòng trường hợp chung chung số 1 bị đọc thành L
+                            " AL,": " A1,",  # Đề phòng trường hợp chung chung số 1 bị đọc thành L
+                            "Đồng Nai Thu": "Đồng Nai"
                         }
                         for wrong, right in typo_fixes.items():
                             addr = addr.replace(wrong, right)
