@@ -489,7 +489,8 @@ def process_qr_string(qr_str):
     parts = qr_str.split('|')
     import re
     addr_raw = parts[5] if len(parts) > 5 else ''
-    addr_clean = re.sub(r',\s*,', ',', addr_raw) # Thay thế ', ,' hoặc ',,' bằng ','
+    addr_clean = re.sub(r',\s*-\s*', ' ', addr_raw) # Xóa ', -' (vd: KDC, - Hưng Phú 1 -> KDC Hưng Phú 1)
+    addr_clean = re.sub(r',\s*,', ',', addr_clean) # Thay thế ', ,' hoặc ',,' bằng ','
     addr_clean = re.sub(r'\s+', ' ', addr_clean).strip(', ')
 
     data = {
