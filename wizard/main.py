@@ -447,8 +447,8 @@ def parse_ocr_text(text):
                             clean_line = re.sub(r'\b\d{2}/\d{2}/\d{4}\b', '', clean_line).strip()
                                 
                             # CẮT BỎ CÁC TỪ TIẾNG ANH ẢO GIÁC DO OCR NHẬN DIỆN MỜ VÀ CÁC NHÃN
-                            clean_line = re.sub(r'(?i)\b(place of residence|place of origin|place oforging|transervating|daleoroxic|deleofexpin|overstreeter|residence|origin|họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of)\b', '', clean_line).strip()
-                            clean_line = re.sub(r'(?i)(họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of)', '', clean_line).strip()
+                            clean_line = re.sub(r'(?i)\b(place of residence|place of origin|place oforging|transervating|daleoroxic|deleofexpin|overstreeter|residence|origin|họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b', '', clean_line).strip()
+                            clean_line = re.sub(r'(?i)(họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)', '', clean_line).strip()
                             
                             # Loại bỏ chữ 'Có' rớt lại do cắt cụm 'Có giá trị đến' bị thiếu
                             # Xử lý các dạng: 'Có :', 'Có', 'Có ,' đứng 1 mình hoặc kẹp ở đầu/cuối chuỗi
@@ -467,6 +467,13 @@ def parse_ocr_text(text):
                                 addr_parts.append(clean_line)
                 
                         addr = ", ".join(filter(bool, addr_parts))
+                        
+                        # Dọn rác cứng đầu có thể lọt vào cuối đuôi địa chỉ (như CCCD, Có, dấu phẩy thừa)
+                        addr = re.sub(r'(?i)[,.\s]+(cccd|có|co\u0301|of)\s*[:.,]*\s*$', '', addr).strip()
+                        addr = re.sub(r'(?i)\b(cccd)\b', '', addr).strip()
+                        
+                        # Xóa các từ viết tắt hành chính: X. P. Q. H. T. TP. TX. TT. (có hoặc không có dấu chấm)
+                        addr = re.sub(r'(?i)\b(x|p|q|h|t|tp|tx|tt)[\.\s]+', '', addr)
                         
                         # Fix các lỗi typo kinh điển của VietOCR khi đọc thẻ mờ ở Cần Thơ
                         typo_fixes = {
