@@ -465,7 +465,7 @@ def extract_ocr_data(image_path_or_cv2img):
             import cv2
             img_to_ocr = cv2.imread(image_path_or_cv2img)
             if img_to_ocr is None:
-                return {"CCCD": "", "CMND": "", "Họ tên": "", "Ngày sinh": "", "Giới tính": "", "Nơi thường trú gốc": "", "Ngày cấp CCCD": "", "OCR Side": ""}, "Không thể đọc file ảnh"
+                return {"CCCD": "", "CMND": "", "Họ tên": "", "Ngày sinh": "", "Giới tính": "", "Nơi thường trú gốc": "", "Ngày cấp CCCD": "", "OCR Side": ""}, "Không thể đọc file ảnh", None
         else:
             img_to_ocr = image_path_or_cv2img
             
@@ -475,6 +475,19 @@ def extract_ocr_data(image_path_or_cv2img):
     try:
         import cv2
         import numpy as np
+        import warnings
+        
+        has_glare_warning = False
+        
+        def safe_extract_text(*args, **kwargs):
+            nonlocal has_glare_warning
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                result = extract_text_from_image(*args, **kwargs)
+                for warning in w:
+                    if issubclass(warning.category, RuntimeWarning) and "invalid value encountered in divide" in str(warning.message):
+                        has_glare_warning = True
+                return result
         
         # --- PASS 1: TÌM CHIỀU ẢNH TỐT NHẤT ---
         best_img = img_to_ocr
@@ -482,7 +495,7 @@ def extract_ocr_data(image_path_or_cv2img):
         best_note = "Ảnh mờ hoặc không thể nhận diện được"
         rotated_return = None
         
-        text, is_vertical = extract_text_from_image(img_to_ocr, return_orientation=True)
+        text, is_vertical = safe_extract_text(img_to_ocr, return_orientation=True)
         data = parse_ocr_text(text)
         
         if data['CCCD'] or (not data['CCCD'] and data['OCR Side'] == 'Front' and data['Họ tên']):
@@ -491,7 +504,7 @@ def extract_ocr_data(image_path_or_cv2img):
                 best_img = cv2.rotate(img_to_ocr, cv2.ROTATE_90_COUNTERCLOCKWISE)
                 rotated_return = best_img
                 # Cập nhật lại data cho ảnh đã xoay để chính xác hơn (đôi khi xoay lại đọc tốt hơn)
-                text_rot, _ = extract_text_from_image(best_img, return_orientation=True)
+                text_rot, _ = safe_extract_text(best_img, return_orientation=True)
                 data_rot = parse_ocr_text(text_rot)
                 for k, v in data_rot.items():
                     if v and not best_data.get(k): best_data[k] = v
@@ -830,6 +843,10 @@ def run_wizard(input_dir):
                 
                 ocr_print_info = ", ".join(parts)
                 log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info}")
+                
+                # In ra màn hình cảnh báo chói lóa nếu có
+                if "chói/lóa" in ocr_note:
+                    log_msgs.append(f"[red]⚠️ Ảnh bị chói/lóa sáng hoặc quá mờ không thể xử lý tốt[/red]")
                 
                 if ocr_data.get('CCCD'):
                     row_data['Scan Type'] = 'OCR_scanned'
