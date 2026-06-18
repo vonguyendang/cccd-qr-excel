@@ -424,7 +424,7 @@ def parse_ocr_text(text):
                             val = m[-1].strip() if len(m) > 2 else ""
                             
                         # Loại bỏ các chuỗi nhiễu có thể bám ngay cùng dòng
-                        val = re.sub(r'(?i)(giới tính|quốc tịch|sex|nationality|có giá trị đến|giá trị đến|expiry|date).*', '', val).strip()
+                        val = re.sub(r'(?i)(giới tính|quốc tịch|sex|nationality|(có )?gi[aáà] trị đ[ếêề]n\s*[:.,]*|expiry|date).*', '', val).strip()
                         if len(val) >= 2:
                             addr_parts.append(val)
         
@@ -441,7 +441,7 @@ def parse_ocr_text(text):
                                 
                             clean_line = next_line
                             # Xóa các nhãn bị dính vào địa chỉ (thay vì skip toàn bộ dòng)
-                            clean_line = re.sub(r'(?i)(có giá trị đến|giá trị đến|expiry|date|nơi cấp|ngày cấp|bộ công an|cục cảnh sát|giới tính|quốc tịch|sex|nationality|quê quán|quê quan|que quan|khai sinh|birth|data ofespry)', '', clean_line).strip()
+                            clean_line = re.sub(r'(?i)((có )?gi[aáà] trị đ[ếêề]n\s*[:.,]*|expiry|date|nơi cấp|ngày cấp|bộ công an|cục cảnh sát|giới tính|quốc tịch|sex|nationality|quê quán|quê quan|que quan|khai sinh|birth|data ofespry)', '', clean_line).strip()
                             
                             # Xóa ngày tháng năm
                             clean_line = re.sub(r'\b\d{2}/\d{2}/\d{4}\b', '', clean_line).strip()
