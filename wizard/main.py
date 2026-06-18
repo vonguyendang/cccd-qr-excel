@@ -313,31 +313,40 @@ def parse_ocr_text(text):
                 # ---------------------------------------------------------
                 if data['OCR Side'] == 'Back' and not data['Họ tên']:
                     def _extract_mrz_name_words(s):
-                        """Tách các từ tên thực sự từ chuỗi MRZ (dừng khi gặp từ rác E/S-only)."""
-                        raw = re.split(r'[CK]+', s)
-                        result = []
-                        for w in raw:
-                            w = w.strip()
-                            if not w or not w.isalpha():
-                                if len(w) <= 1:
-                                    break  # single char = bắt đầu vùng padding
-                                continue
-                            if all(c in 'ES' for c in w):
-                                break  # từ chỉ toàn E/S = OCR của padding '<<<<<'
-                            if len(w) >= 2:
-                                result.append(w)
-                        return result
+                        """Tách các từ tên thực sự từ chuỗi MRZ bằng thuật toán Greedy Match với từ điển."""
+                        s = re.sub(r'[CKE<S]{3,}$', '', s)
+                        
+                        # Sửa các lỗi OCR kinh điển làm biến dạng từ
+                        ocr_fixes = {
+                            "HHONGE": "HONG",
+                            "CIEU": "KIEU",
+                            "TRUECRE": "TRUC",
+                            "TRUEC": "TRUC",
+                            "EVINH": "VINH",
+                            "STRAN": " TRAN",
+                            "NGOCNUOI": "NGOC NUOI"
+                        }
+                        for bad, good in ocr_fixes.items():
+                            s = s.replace(bad, good)
+                        
+                        # Danh sách âm tiết tên Tiếng Việt phổ biến (không dấu)
+                        common_names = "AN ANH BA BAC BAN BANG BAO BE BEN BICH BINH BO BON CA CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUE KHUYEN KIEN KIEU KIM KY LA LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LUA LUAN LUC LUONG LUU LY MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGOC NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAN TOAI TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UYEN VAN VANG VY VI VIEN VIET VINH VO VONG VU VUONG VY XUAN Y YEN"
+                        names_list = sorted(list(set(common_names.split())), key=len, reverse=True)
+                        pattern = r'(' + '|'.join(names_list) + r')'
+                        
+                        matches = re.findall(pattern, s)
+                        return matches
 
                     for line in text_upper.split('\n'):
                         ls = line.strip()
-                        if (len(ls) >= 8
-                            and re.match(r'^[A-Z][A-Z0-9CK<]+$', ls)
+                        # MRZ Line 3 luôn dài khoảng 30 ký tự, kết thúc bằng dãy padding (nhận diện nhầm thành E,S,C,K)
+                        if (28 <= len(ls) <= 32
+                            and re.match(r'^[A-Z0-9<]+$', ls.replace('C','<').replace('K','<').replace('E','<').replace('S','<'))
+                            and re.search(r'[<CKE]{4,}$', ls)
                             and not ls.startswith('IDVN')
                             and not ls.startswith('VNM')
-                            and len(re.findall(r'\d', ls)) < 4
-                            and ('CK' in ls or ls.count('C') >= 2)
                         ):
-                            # Tách tại '<<' (OCR → CK, CEC, CC)
+                            # Tách Họ và Đệm+Tên dựa trên 2 dấu << liên tiếp (OCR -> CC, CK, CE, CEC...)
                             split_parts = re.split(r'CK|CEC|KCK|CC(?=[A-Z])', ls, maxsplit=1)
                             if len(split_parts) == 2:
                                 surname_words = _extract_mrz_name_words(split_parts[0])
