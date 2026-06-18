@@ -1082,6 +1082,8 @@ def run_wizard(input_dir):
     # Gọi API chuẩn hóa địa chỉ theo batch, advance progress bar theo từng kết quả
     if unique_addresses:
         batch_size = 100
+        total_addrs = len(unique_addresses)
+        processed_count = 0
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -1093,24 +1095,32 @@ def run_wizard(input_dir):
         ) as api_progress:
             api_task = api_progress.add_task(
                 "[cyan]Đang chuẩn hóa địa chỉ...",
-                total=len(unique_addresses),
+                total=total_addrs,
                 status=""
             )
             
-            for i in range(0, len(unique_addresses), batch_size):
+            for i in range(0, total_addrs, batch_size):
                 batch = unique_addresses[i:i+batch_size]
                 
                 with concurrent.futures.ThreadPoolExecutor(max_workers=api_threads) as executor:
                     future_to_addr = {executor.submit(fetch_single_address, addr): addr for addr in batch}
                     for future in concurrent.futures.as_completed(future_to_addr):
                         result = future.result()
+                        processed_count += 1
                         if result and 'original' in result:
-                            address_map[result['original']] = result
-                            short_addr = result['original'][:45]
+                            orig_addr = result['original']
+                            address_map[orig_addr] = result
+                            short_addr = orig_addr[:45]
+                            
                             if result.get('success'):
+                                new_addr = result.get('converted', '')
                                 status_text = f"[green]✓[/green] {short_addr}"
+                                api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold green]{new_addr}[/bold green]")
                             else:
+                                err_msg = result.get('error', 'Lỗi không xác định')
                                 status_text = f"[red]✗[/red] {short_addr}"
+                                api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold red]{err_msg}[/bold red]")
+                                
                             api_progress.update(api_task, advance=1, status=status_text)
 
     # Cập nhật kết quả API vào dữ liệu
