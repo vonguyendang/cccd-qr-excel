@@ -305,6 +305,51 @@ def parse_ocr_text(text):
                     elif re.search(r'\bn[uưứữ][\s]*\b', text_lower) or re.search(r'\bnữ\b', text_lower):
                         data['Giới tính'] = 'Nữ'
         
+                # ---------------------------------------------------------
+                # 3b. TRÍCH XUẤT TÊN TỪ MRZ LINE 3 (BACK SIDE)
+                # MRZ line 3 có format: SURNAME<<GIVEN<NAMES<<<
+                # OCR đọc nhầm: '<' → 'C'/'K', '<<' → 'CK'/'CC', padding → 'ES'/'CECCES'...
+                # Ví dụ: TRAN<LE<THAO<<NGUYEN<<< → TRANCKLECTHAOCNGUYENCECCES
+                # ---------------------------------------------------------
+                if data['OCR Side'] == 'Back' and not data['Họ tên']:
+                    def _extract_mrz_name_words(s):
+                        """Tách các từ tên thực sự từ chuỗi MRZ (dừng khi gặp từ rác E/S-only)."""
+                        raw = re.split(r'[CK]+', s)
+                        result = []
+                        for w in raw:
+                            w = w.strip()
+                            if not w or not w.isalpha():
+                                if len(w) <= 1:
+                                    break  # single char = bắt đầu vùng padding
+                                continue
+                            if all(c in 'ES' for c in w):
+                                break  # từ chỉ toàn E/S = OCR của padding '<<<<<'
+                            if len(w) >= 2:
+                                result.append(w)
+                        return result
+
+                    for line in text_upper.split('\n'):
+                        ls = line.strip()
+                        if (len(ls) >= 8
+                            and re.match(r'^[A-Z][A-Z0-9CK<]+$', ls)
+                            and not ls.startswith('IDVN')
+                            and not ls.startswith('VNM')
+                            and len(re.findall(r'\d', ls)) < 4
+                            and ('CK' in ls or ls.count('C') >= 2)
+                        ):
+                            # Tách tại '<<' (OCR → CK, CEC, CC)
+                            split_parts = re.split(r'CK|CEC|KCK|CC(?=[A-Z])', ls, maxsplit=1)
+                            if len(split_parts) == 2:
+                                surname_words = _extract_mrz_name_words(split_parts[0])
+                                given_words   = _extract_mrz_name_words(split_parts[1])
+                                words = surname_words + given_words
+                            else:
+                                words = _extract_mrz_name_words(split_parts[0])
+                            if len(words) >= 2:
+                                data['Họ tên'] = ' '.join(words)
+                                break
+
+
                 lines = [line.strip() for line in text.split('\n') if line.strip()]
 
                 # ---------------------------------------------------------
