@@ -699,6 +699,23 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
 
     processed_data = list(records.values())
 
+    # Thu thập danh sách ảnh "không thuộc dòng nào" (unknown)
+    # = ảnh có trong phiên nhưng không có CCCD nào được trích xuất
+    all_matched_filenames = set()
+    for row in processed_data:
+        for field in ['Ảnh mặt trước CCCD/CC', 'Ảnh mặt sau CCCD/CC']:
+            f = row.get(field)
+            if f:
+                all_matched_filenames.add(f)
+
+    unknown_filenames = []
+    if room_id:
+        room_img_dir = os.path.join(SESSIONS_DIR, room_id, "images")
+        if os.path.isdir(room_img_dir):
+            for fname in sorted(os.listdir(room_img_dir)):
+                if fname not in all_matched_filenames:
+                    unknown_filenames.append(fname)
+
     unique_addresses = list(set([row['Nơi thường trú gốc'] for row in processed_data if row.get('Nơi thường trú gốc')]))
     print(f"-> Phát hiện {len(unique_addresses)} địa chỉ độc nhất cần chuẩn hóa qua VNHub.", flush=True)
     
@@ -746,6 +763,15 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
             row['Ghi chú'] = '; '.join(unique_notes)
             
     print(f"-> Hoàn tất xử lý dữ liệu. Đang đóng gói file Excel...", flush=True)
+
+    # Xác định dòng "chưa đầy đủ thông tin" để đưa vào review
+    REQUIRED_FIELDS = ['Họ tên', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD',
+                       'Ảnh mặt trước CCCD/CC', 'Ảnh mặt sau CCCD/CC']
+    review_rows = []
+    for row in processed_data:
+        missing = [f for f in REQUIRED_FIELDS if not row.get(f)]
+        if missing:
+            review_rows.append((row, missing))
     
     # Generate Excel
     wb = openpyxl.Workbook()
@@ -808,6 +834,34 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
     for col in ws_dup.columns:
         ws_dup.column_dimensions[col[0].column_letter].width = 30
 
+    # --- Sheet "Review": dòng dữ liệu chưa đầy đủ ---
+    ws_review = wb.create_sheet(title="Review")
+    review_headers = ["STT", "CCCD", "Họ tên", "Ảnh mặt trước", "Ảnh mặt sau", "Trường còn thiếu"]
+    for col_idx, h in enumerate(review_headers, 1):
+        cell = ws_review.cell(row=1, column=col_idx, value=h)
+        cell.font = Font(bold=True)
+    for stt, (row, missing) in enumerate(review_rows, 1):
+        ws_review.cell(row=stt+1, column=1, value=stt)
+        ws_review.cell(row=stt+1, column=2, value=row.get('CCCD', ''))
+        ws_review.cell(row=stt+1, column=3, value=row.get('Họ tên', ''))
+        ws_review.cell(row=stt+1, column=4, value=row.get('Ảnh mặt trước CCCD/CC', ''))
+        ws_review.cell(row=stt+1, column=5, value=row.get('Ảnh mặt sau CCCD/CC', ''))
+        ws_review.cell(row=stt+1, column=6, value=', '.join(missing))
+    for col in ws_review.columns:
+        ws_review.column_dimensions[col[0].column_letter].width = 30
+
+    # --- Sheet "Unknown": ảnh không thuộc dòng nào ---
+    ws_unknown = wb.create_sheet(title="Unknown")
+    unknown_headers = ["STT", "Tên file gốc"]
+    for col_idx, h in enumerate(unknown_headers, 1):
+        cell = ws_unknown.cell(row=1, column=col_idx, value=h)
+        cell.font = Font(bold=True)
+    for stt, fname in enumerate(unknown_filenames, 1):
+        ws_unknown.cell(row=stt+1, column=1, value=stt)
+        ws_unknown.cell(row=stt+1, column=2, value=fname)
+    for col in ws_unknown.columns:
+        ws_unknown.column_dimensions[col[0].column_letter].width = 40
+
     stream = BytesIO()
     wb.save(stream)
     stream.seek(0)
@@ -824,17 +878,18 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
     except Exception as e:
         print(f"-> Lỗi khi lưu backup file Excel: {e}", flush=True)
     
-    # Create a zip containing the excel and 2 sub zips (original and rename)
+    # Create a zip containing the excel and sub zips
     import zipfile
     
     zip_stream = BytesIO()
     with zipfile.ZipFile(zip_stream, 'w') as main_zip:
         main_zip.writestr('ket_qua.xlsx', stream.getvalue())
         
-        # 1. original.zip
         if room_id:
-            original_zip_stream = BytesIO()
             room_img_dir = os.path.join(SESSIONS_DIR, room_id, "images")
+
+            # 1. original.zip
+            original_zip_stream = BytesIO()
             with zipfile.ZipFile(original_zip_stream, 'w') as sub_zip:
                 for fname in original_filenames:
                     img_path = os.path.join(room_img_dir, fname)
@@ -862,6 +917,31 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
                         if os.path.exists(img_path):
                             sub_zip.write(img_path, f"{folder}/{back_renamed}")
             main_zip.writestr('rename.zip', rename_zip_stream.getvalue())
+
+            # 3. review.zip: ảnh của các dòng chưa đầy đủ thông tin
+            if review_rows:
+                review_zip_stream = BytesIO()
+                with zipfile.ZipFile(review_zip_stream, 'w') as sub_zip:
+                    added = set()
+                    for row, _ in review_rows:
+                        for field in ['Ảnh mặt trước CCCD/CC', 'Ảnh mặt sau CCCD/CC']:
+                            fname = row.get(field)
+                            if fname and fname not in added:
+                                img_path = os.path.join(room_img_dir, fname)
+                                if os.path.exists(img_path):
+                                    sub_zip.write(img_path, fname)
+                                    added.add(fname)
+                main_zip.writestr('review.zip', review_zip_stream.getvalue())
+
+            # 4. unknown.zip: ảnh không thuộc dòng nào
+            if unknown_filenames:
+                unknown_zip_stream = BytesIO()
+                with zipfile.ZipFile(unknown_zip_stream, 'w') as sub_zip:
+                    for fname in unknown_filenames:
+                        img_path = os.path.join(room_img_dir, fname)
+                        if os.path.exists(img_path):
+                            sub_zip.write(img_path, fname)
+                main_zip.writestr('unknown.zip', unknown_zip_stream.getvalue())
         
     zip_stream.seek(0)
     
@@ -871,6 +951,7 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
         'Access-Control-Expose-Headers': 'Content-Disposition'
     }
     return StreamingResponse(iter([zip_stream.getvalue()]), media_type="application/zip", headers=headers_dict)
+
 
 
 class ExportRequest(BaseModel):
