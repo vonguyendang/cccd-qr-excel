@@ -833,13 +833,25 @@ def run_wizard(input_dir):
                     cv2.imwrite(temp_path, rotated_img)
                     row_data['Full Image Path'] = temp_path
                 
-                # In thông tin OCR ra màn hình
+                # In thông tin OCR ra màn hình tùy theo mặt thẻ
                 parts = []
-                if ocr_data.get('OCR Side'): parts.append(f"[{ocr_data['OCR Side']}]")
+                side = ocr_data.get('OCR Side')
+                if side: parts.append(f"[{side}]")
                 parts.append(f"CCCD: {ocr_data.get('CCCD') or '[Trống]'}")
                 parts.append(f"Tên: {ocr_data.get('Họ tên') or '[Trống]'}")
-                parts.append(f"NS: {ocr_data.get('Ngày sinh') or '[Trống]'}")
-                parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD') or '[Trống]'}")
+                
+                if side == 'Front':
+                    parts.append(f"NS: {ocr_data.get('Ngày sinh') or '[Trống]'}")
+                    # Rút gọn địa chỉ để không chiếm quá nhiều không gian console
+                    addr = ocr_data.get('Nơi thường trú gốc') or '[Trống]'
+                    if len(addr) > 40: addr = addr[:37] + '...'
+                    parts.append(f"Địa chỉ: {addr}")
+                elif side == 'Back':
+                    parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD') or '[Trống]'}")
+                else:
+                    # Nếu không xác định được mặt, in tất cả
+                    parts.append(f"NS: {ocr_data.get('Ngày sinh') or '[Trống]'}")
+                    parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD') or '[Trống]'}")
                 
                 ocr_print_info = ", ".join(parts)
                 log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info}")
