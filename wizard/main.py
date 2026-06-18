@@ -383,14 +383,15 @@ def parse_ocr_text(text):
                     line_lower = line.lower()
     
                     # 1. Name
-                    if "họ và tên" in line_lower or "họ chữ đệm và tên" in line_lower or "full name" in line_lower:
+                    if "họ và tên" in line_lower or "họ chữ đệm và tên" in line_lower or "full name" in line_lower or "ho ten" in line_lower:
                         if ":" in line:
                             name_part = line.split(":", 1)[1].strip()
-                            if name_part.isupper() and len(name_part) > 3:
+                            name_part = name_part.rstrip('.') # Loại bỏ dấu chấm cuối câu (như trong SMS)
+                            if (name_part.isupper() or name_part.istitle()) and len(name_part) > 3:
                                 data['Họ tên'] = name_part
                         if not data['Họ tên'] and i + 1 < len(lines):
                             next_line = lines[i+1].replace('|', '').strip()
-                            if next_line.isupper() and len(next_line) > 3:
+                            if (next_line.isupper() or next_line.istitle()) and len(next_line) > 3:
                                 data['Họ tên'] = next_line
                 
                     # 2. DOB
@@ -402,14 +403,12 @@ def parse_ocr_text(text):
                                 break
                 
                     # --- BƯỚC 4.3: TRÍCH XUẤT ĐỊA CHỈ (NƠI THƯỜNG TRÚ/CƯ TRÚ) ---
-                    if "nơi thường trú" in line_lower or "nơi cư trú" in line_lower or "residence" in line_lower:
+                    if "nơi thường trú" in line_lower or "nơi cư trú" in line_lower or "residence" in line_lower or "thuong tru" in line_lower:
                         addr_parts = []
                         if ":" in line:
                             addr_parts.append(line.split(":", 1)[1].strip())
         
                         # Quét các dòng tiếp theo để nối đuôi địa chỉ do địa chỉ thường rất dài và bị rớt dòng.
-                        # Bỏ qua các dòng rác bị AI đọc đan xen vào (như 'giá trị đến', 'date') do layout 2 cột của thẻ.
-                        # Ngắt ngay (break) nếu gặp 'nơi đăng ký khai sinh' (tránh gộp quê quán vào nơi ở của thẻ mới).
                         for j in range(i + 1, min(i + 5, len(lines))):
                             next_line = lines[j].replace('|', '').strip()
                             next_lower = next_line.lower()
@@ -423,19 +422,17 @@ def parse_ocr_text(text):
                                 addr_parts.append(next_line)
                 
                         addr = ", ".join(filter(bool, addr_parts))
-                        data['Nơi thường trú gốc'] = re.sub(r',\s*,', ',', addr).lstrip(', ')
+                        data['Nơi thường trú gốc'] = re.sub(r',\s*,', ',', addr).lstrip(', ').rstrip('.')
         
                     # --- BƯỚC 4.4: TRÍCH XUẤT GIỚI TÍNH (Chính xác từ dòng ghi Giới tính) ---
-                    if "giới tính" in line_lower or "sex" in line_lower:
-                        if "nữ" in line_lower or "nư" in line_lower or "nu " in line_lower:
+                    if "giới tính" in line_lower or "sex" in line_lower or "gioi tinh" in line_lower:
+                        if "nữ" in line_lower or "nư" in line_lower or "nu" in line_lower:
                             data['Giới tính'] = 'Nữ'
                         elif "nam" in line_lower:
                             data['Giới tính'] = 'Nam'
         
                     # --- BƯỚC 4.5: TRÍCH XUẤT NGÀY CẤP ---
-                    # Chỉ quét tìm Ngày cấp khi có từ khóa.
-                    # Phải lọc bỏ 'sinh', 'hết hạn' để tránh bắt nhầm Ngày sinh (ở thẻ mới) hoặc Ngày hết hạn (ở thẻ cũ)
-                    if ("ngày, tháng, năm" in line_lower or "date, month, year" in line_lower or "date of issue" in line_lower or "cấp" in line_lower) and "sinh" not in line_lower and "hết hạn" not in line_lower and "expiry" not in line_lower and "birth" not in line_lower:
+                    if ("ngày, tháng, năm" in line_lower or "date, month, year" in line_lower or "date of issue" in line_lower or "cấp" in line_lower or "ngay cap" in line_lower) and "sinh" not in line_lower and "hết hạn" not in line_lower and "expiry" not in line_lower and "birth" not in line_lower:
                         for j in range(i, min(i+3, len(lines))):
                             m = re.search(r'\b\d{2}/\d{2}/\d{4}\b', lines[j])
                             if m:
@@ -851,6 +848,8 @@ def run_wizard(input_dir):
                     parts.append(f"NS: {ocr_data.get('Ngày sinh') or '[Trống]'}")
                     addr = ocr_data.get('Nơi thường trú gốc') or '[Trống]'
                     parts.append(f"Địa chỉ: {addr}")
+                    if ocr_data.get('Ngày cấp CCCD'):
+                        parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD')}")
                 elif side == 'Back':
                     parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD') or '[Trống]'}")
                 else:
