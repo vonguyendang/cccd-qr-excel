@@ -632,12 +632,12 @@ def fetch_single_address(addr):
     
     payload = json.dumps({"address": clean_addr})
     
-    # Retry vô hạn với delay 2s đối với lỗi mạng/500
+    # Retry tối đa 50 lần đối với lỗi mạng/500
     # Retry tối đa 5 lần nếu API trả về thành công nhưng data = []
     empty_data_retries = 0
     max_empty_retries = 5
     
-    while True:
+    for attempt in range(50):
         try:
             response = requests.post(
                 'https://tienich.vnhub.com/api/wards',
@@ -668,10 +668,17 @@ def fetch_single_address(addr):
                 "error": "Không tìm thấy địa chỉ tương ứng"
             }
             
-        except Exception:
+        except Exception as e:
             # Lỗi 500 hoặc mạng → thử lại sau 2s
-            time.sleep(2)
-            continue
+            if attempt < 49:
+                time.sleep(2)
+                continue
+            else:
+                return {
+                    "original": addr,
+                    "success": False,
+                    "error": f"Lỗi kết nối API sau 50 lần thử ({str(e)})"
+                }
 
 def call_address_api(address_list, max_workers=4):
     if not address_list:
