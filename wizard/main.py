@@ -342,11 +342,17 @@ def parse_ocr_text(text):
                         return matches
 
                     for line in text_upper.split('\n'):
-                        ls = line.strip()
-                        # MRZ Line 3 luôn dài khoảng 30 ký tự, kết thúc bằng dãy padding (nhận diện nhầm thành E,S,C,K)
-                        if (28 <= len(ls) <= 32
+                        # OCR đôi khi sinh ra khoảng trắng giữa các chữ trong MRZ -> Xóa toàn bộ khoảng trắng
+                        ls = line.replace(' ', '').strip()
+                        
+                        # Chặn các dòng tiếng Anh hoặc tiếng Việt không dấu bị nhận diện nhầm
+                        if any(bad in ls for bad in ['IDEN', 'NATIO', 'SONAL', 'CANCUOC', 'CONGDAN', 'TRUONG', 'GIAMDOC']):
+                            continue
+                            
+                        # MRZ Line 3 chứa tên, kết thúc bằng dãy padding (nhận diện nhầm thành E,S,C,K)
+                        if (15 <= len(ls) <= 40
                             and re.match(r'^[A-Z0-9<]+$', ls.replace('C','<').replace('K','<').replace('E','<').replace('S','<'))
-                            and re.search(r'[<CKE]{4,}$', ls)
+                            and re.search(r'[<CKE]{2,}$', ls)
                             and not ls.startswith('IDVN')
                             and not ls.startswith('VNM')
                         ):
@@ -813,12 +819,12 @@ def run_wizard(input_dir):
                 # In thông tin OCR ra màn hình
                 parts = []
                 if ocr_data.get('OCR Side'): parts.append(f"[{ocr_data['OCR Side']}]")
-                if ocr_data.get('CCCD'): parts.append(f"CCCD: {ocr_data['CCCD']}")
-                if ocr_data.get('Họ tên'): parts.append(f"Tên: {ocr_data['Họ tên']}")
-                if ocr_data.get('Ngày sinh'): parts.append(f"NS: {ocr_data['Ngày sinh']}")
-                if ocr_data.get('Ngày cấp CCCD'): parts.append(f"Ngày cấp: {ocr_data['Ngày cấp CCCD']}")
+                parts.append(f"CCCD: {ocr_data.get('CCCD') or '[Trống]'}")
+                parts.append(f"Tên: {ocr_data.get('Họ tên') or '[Trống]'}")
+                parts.append(f"NS: {ocr_data.get('Ngày sinh') or '[Trống]'}")
+                parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD') or '[Trống]'}")
                 
-                ocr_print_info = ", ".join(parts) if parts else "Không nhận diện được chữ"
+                ocr_print_info = ", ".join(parts)
                 log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info}")
                 
                 if ocr_data.get('CCCD'):
