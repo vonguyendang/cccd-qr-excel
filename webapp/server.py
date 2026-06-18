@@ -717,19 +717,27 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
                     unknown_filenames.append(fname)
 
     unique_addresses = list(set([row['Nơi thường trú gốc'] for row in processed_data if row.get('Nơi thường trú gốc')]))
-    print(f"-> Phát hiện {len(unique_addresses)} địa chỉ độc nhất cần chuẩn hóa qua VNHub.", flush=True)
+    total_addr = len(unique_addresses)
+    print(f"-> Phát hiện {total_addr} địa chỉ độc nhất cần chuẩn hóa qua VNHub.", flush=True)
     
-    # Run async API calls
+    # Run async API calls - dùng as_completed để in tiến trình từng địa chỉ
     address_map = {}
-    async with httpx.AsyncClient() as client:
-        tasks = [fetch_single_address_async(client, addr) for addr in unique_addresses]
-        results = await asyncio.gather(*tasks)
-        for res in results:
-            address_map[res['original']] = res
-            if res['success']:
-                print(f"  + Thành công: '{res['original']}' -> '{res['converted']}'", flush=True)
-            else:
-                print(f"  + Thất bại ({res['original']}): {res.get('error')}", flush=True)
+    if unique_addresses:
+        async with httpx.AsyncClient() as client:
+            tasks = {asyncio.ensure_future(fetch_single_address_async(client, addr)): addr for addr in unique_addresses}
+            done_count = 0
+            pending = set(tasks.keys())
+            while pending:
+                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                for fut in done:
+                    res = fut.result()
+                    done_count += 1
+                    address_map[res['original']] = res
+                    short = res['original'][:50]
+                    if res['success']:
+                        print(f"  [{done_count}/{total_addr}] ✓ {short} -> {res['converted']}", flush=True)
+                    else:
+                        print(f"  [{done_count}/{total_addr}] ✗ {short}: {res.get('error')}", flush=True)
             
     # Map back
     for row in processed_data:

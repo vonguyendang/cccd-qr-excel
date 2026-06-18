@@ -919,7 +919,7 @@ def run_wizard(input_dir):
     console.print(Panel(f"[bold cyan]🌐 ĐANG CHUẨN BỊ GỌI API CHUẨN HÓA CHO {len(unique_addresses)} ĐỊA CHỈ DUY NHẤT VỚI {api_threads} LUỒNG...[/bold cyan]", border_style="green"))
     address_map = {}
 
-    # Gọi API chuẩn hóa địa chỉ theo batch
+    # Gọi API chuẩn hóa địa chỉ theo batch, advance progress bar theo từng kết quả
     if unique_addresses:
         batch_size = 100
         with Progress(
@@ -927,19 +927,31 @@ def run_wizard(input_dir):
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TaskProgressColumn(),
+            TextColumn("[bold]{task.fields[status]}"),
             TimeElapsedColumn(),
             console=console,
         ) as api_progress:
-            api_task = api_progress.add_task("[cyan]Đang gọi API VNHub...", total=len(unique_addresses))
+            api_task = api_progress.add_task(
+                "[cyan]Đang chuẩn hóa địa chỉ...",
+                total=len(unique_addresses),
+                status=""
+            )
             
             for i in range(0, len(unique_addresses), batch_size):
                 batch = unique_addresses[i:i+batch_size]
-                api_results = call_address_api(batch, max_workers=api_threads)
                 
-                for result in api_results:
-                    if result and 'original' in result:
-                        address_map[result['original']] = result
-                        api_progress.advance(api_task)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=api_threads) as executor:
+                    future_to_addr = {executor.submit(fetch_single_address, addr): addr for addr in batch}
+                    for future in concurrent.futures.as_completed(future_to_addr):
+                        result = future.result()
+                        if result and 'original' in result:
+                            address_map[result['original']] = result
+                            short_addr = result['original'][:45]
+                            if result.get('success'):
+                                status_text = f"[green]✓[/green] {short_addr}"
+                            else:
+                                status_text = f"[red]✗[/red] {short_addr}"
+                            api_progress.update(api_task, advance=1, status=status_text)
 
     # Cập nhật kết quả API vào dữ liệu
     for row in processed_data:
