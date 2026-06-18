@@ -519,8 +519,14 @@ async def fetch_single_address_async(client, addr):
         'Origin': 'https://tienich.vnhub.com',
         'Referer': 'https://tienich.vnhub.com/'
     }
-    import json, asyncio
-    payload = json.dumps({"address": addr})
+    import json, asyncio, re
+    
+    # Tiền xử lý: API VNHub rất nhạy cảm với khoảng trắng thừa, đặc biệt là khoảng trắng trước dấu phẩy
+    # Ví dụ: "Số Nhà 137B , Trần Hưng Đạo ," -> lỗi data: []
+    clean_addr = re.sub(r'\s+,', ',', addr)
+    clean_addr = re.sub(r'\s+', ' ', clean_addr).strip()
+    
+    payload = json.dumps({"address": clean_addr})
     
     # Retry vô hạn với delay 2s cho đến khi thành công hoặc API trả về "không tìm thấy" hợp lệ
     while True:
@@ -630,6 +636,58 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
             
             record['Ghi chú'].append("Lấy bằng OCR")
             
+    # ---------- FUZZY MATCH: GỘP MẶT SAU OCR VÀO ĐÚNG BẢN GHI (2/3 TRƯỜNG) ----------
+    import unicodedata
+
+    def _norm_for_match(text):
+        if not text: return ''
+        text = text.upper().strip()
+        nfkd = unicodedata.normalize('NFKD', text)
+        return ' '.join(''.join(c for c in nfkd if not unicodedata.combining(c)).split())
+
+    orphan_cccds = [
+        c for c, rec in records.items()
+        if (not rec.get('QR Raw')
+            and rec.get('OCR Image Path Back')
+            and not rec.get('Ảnh mặt trước CCCD/CC')
+            and not rec.get('OCR Image Path Front'))
+    ]
+
+    for orphan_cccd in orphan_cccds:
+        orphan = records[orphan_cccd]
+        o_cccd = orphan.get('CCCD', '')
+        o_name = _norm_for_match(orphan.get('Họ tên', ''))
+        o_date = orphan.get('Ngày cấp CCCD', '')
+
+        best_cccd = None
+        for r_cccd, r_rec in records.items():
+            if r_cccd == orphan_cccd:
+                continue
+            if not (r_rec.get('QR Raw')
+                    or r_rec.get('Ảnh mặt trước CCCD/CC')
+                    or r_rec.get('OCR Image Path Front')):
+                continue
+            r_name = _norm_for_match(r_rec.get('Họ tên', ''))
+            r_date = r_rec.get('Ngày cấp CCCD', '')
+
+            score = 0
+            if o_cccd and o_cccd == r_cccd:              score += 1
+            if o_name and r_name and o_name == r_name:   score += 1
+            if o_date and r_date and o_date == r_date:   score += 1
+            if score >= 2:
+                best_cccd = r_cccd
+                break
+
+        if best_cccd:
+            target = records[best_cccd]
+            if not target.get('OCR Image Path Back'):
+                target['OCR Image Path Back'] = orphan.get('OCR Image Path Back', '')
+            for k in ['Họ tên', 'Ngày cấp CCCD']:
+                if orphan.get(k) and not target.get(k):
+                    target[k] = orphan[k]
+            print(f"   [FUZZY MATCH] Ghép mặt sau (CCCD OCR: {orphan_cccd}) vào bản ghi {best_cccd} (khớp 2/3 trường).")
+            del records[orphan_cccd]
+
     # -------------------------------------------------------------------------
     # BƯỚC QUAN TRỌNG: GÁN ẢNH OCR VÀO ĐÚNG MẶT THẺ & MERGE DỮ LIỆU
     # Nếu ảnh quét QR bị mờ/khuyết, nhưng ảnh OCR (không quét được QR) có dữ liệu
@@ -738,6 +796,12 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
                         print(f"  [{done_count}/{total_addr}] ✓ {short} -> {res['converted']}", flush=True)
                     else:
                         print(f"  [{done_count}/{total_addr}] ✗ {short}: {res.get('error')}", flush=True)
+                    if room_id:
+                        await manager.broadcast({
+                            'type': 'api_progress',
+                            'current': done_count,
+                            'total': total_addr
+                        }, room_id)
             
     # Map back
     for row in processed_data:

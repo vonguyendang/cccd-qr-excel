@@ -262,6 +262,17 @@
                             id="serverSpinner"></div>
                         <h3 id="serverStatusText" class="text-sm font-semibold text-indigo-300">Đang đồng bộ và chuẩn
                             hóa API...</h3>
+                        <!-- Address API Progress Bar -->
+                        <div id="apiProgressContainer" class="hidden mt-3 text-left">
+                            <div class="flex justify-between items-center text-xs text-indigo-300 mb-1">
+                                <span>Chuẩn hóa địa chỉ</span>
+                                <span id="apiProgressText" class="font-bold">0/0</span>
+                            </div>
+                            <div class="w-full bg-slate-800/50 rounded-full h-1.5 border border-indigo-500/30 overflow-hidden">
+                                <div class="bg-gradient-to-r from-blue-400 to-indigo-400 h-1.5 rounded-full transition-all duration-300"
+                                    id="apiProgressFill" style="width: 0%"></div>
+                            </div>
+                        </div>
                         <div id="downloadArea" class="hidden mt-4">
                             <a href="#" id="downloadLink"
                                 class="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-6 rounded-xl shadow-lg shadow-indigo-500/25 transition-all text-sm w-full">

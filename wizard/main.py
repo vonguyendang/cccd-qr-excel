@@ -586,8 +586,14 @@ def fetch_single_address(addr):
         'Origin': 'https://tienich.vnhub.com',
         'Referer': 'https://tienich.vnhub.com/'
     }
-    import json, time
-    payload = json.dumps({"address": addr})
+    import json, time, re
+    
+    # Tiền xử lý: API VNHub rất nhạy cảm với khoảng trắng thừa, đặc biệt là khoảng trắng trước dấu phẩy
+    # Ví dụ: "Số Nhà 137B , Trần Hưng Đạo ," -> lỗi data: []
+    clean_addr = re.sub(r'\s+,', ',', addr)
+    clean_addr = re.sub(r'\s+', ' ', clean_addr).strip()
+    
+    payload = json.dumps({"address": clean_addr})
     
     # Retry vô hạn với delay 2s cho đến khi thành công hoặc API trả về "không tìm thấy" hợp lệ
     while True:
@@ -916,6 +922,70 @@ def run_wizard(input_dir):
             
             if item.get('Ghi chú'):
                 record['Ghi chú'].append(item['Ghi chú'])
+
+    # ---------- FUZZY MATCH: GỘP MẶT SAU OCR VÀO ĐÚNG BẢN GHI (2/3 TRƯỜNG) ----------
+    # Mặt sau quét bằng OCR có thể đọc sai CCCD (ví dụ: 086... → 080...)
+    # Nếu 2/3 trong {CCCD, Họ tên không dấu, Ngày cấp} khớp với bản ghi đã có → ghép vào đó
+    import unicodedata
+
+    def _norm_for_match(text):
+        """Chuẩn hóa để so khớp: xóa dấu, in hoa, rút gọn khoảng trắng."""
+        if not text: return ''
+        text = text.upper().strip()
+        nfkd = unicodedata.normalize('NFKD', text)
+        return ' '.join(''.join(c for c in nfkd if not unicodedata.combining(c)).split())
+
+    # Tìm các bản ghi "mặt sau mồ côi": chỉ có OCR Back, không có QR, không có mặt trước
+    orphan_cccds = [
+        cccd for cccd, rec in records.items()
+        if (not rec['has_qr_data']
+            and (rec.get('OCR Image Path Back') or rec.get('Full OCR Image Path Back'))
+            and not rec.get('Full Image Path Front')
+            and not rec.get('OCR Image Path Front'))
+    ]
+
+    for orphan_cccd in orphan_cccds:
+        orphan = records[orphan_cccd]
+        o_cccd = orphan.get('CCCD', '')
+        o_name = _norm_for_match(orphan.get('Họ tên', ''))
+        o_date = orphan.get('Ngày cấp CCCD', '')
+
+        best_cccd = None
+        for r_cccd, r_rec in records.items():
+            if r_cccd == orphan_cccd:
+                continue
+            # Chỉ so với bản ghi đã có mặt trước hoặc QR
+            if not (r_rec['has_qr_data']
+                    or r_rec.get('Full Image Path Front')
+                    or r_rec.get('OCR Image Path Front')):
+                continue
+            r_name = _norm_for_match(r_rec.get('Họ tên', ''))
+            r_date = r_rec.get('Ngày cấp CCCD', '')
+
+            score = 0
+            if o_cccd and o_cccd == r_cccd:              score += 1
+            if o_name and r_name and o_name == r_name:   score += 1
+            if o_date and r_date and o_date == r_date:   score += 1
+            if score >= 2:
+                best_cccd = r_cccd
+                break
+
+        if best_cccd:
+            target = records[best_cccd]
+            # Ghép back-side image vào bản ghi đúng
+            if not target.get('OCR Image Path Back'):
+                target['OCR Image Path Back'] = orphan.get('OCR Image Path Back', '')
+            if not target.get('Full OCR Image Path Back'):
+                target['Full OCR Image Path Back'] = orphan.get('Full OCR Image Path Back', '')
+            # Bổ sung thông tin còn thiếu từ OCR mặt sau
+            for k in ['Họ tên', 'Ngày cấp CCCD']:
+                if orphan.get(k) and not target.get(k):
+                    target[k] = orphan[k]
+            console.print(
+                f"   [bold green]→ [FUZZY MATCH][/bold green] Ghép mặt sau (CCCD OCR: {orphan_cccd}) "
+                f"vào bản ghi {best_cccd} (khớp 2/3 trường: tên/ngày cấp/cccd)."
+            )
+            del records[orphan_cccd]
 
     # Pass 3: Assign OCR images to empty slots and Rename logic
     for cccd, record in records.items():

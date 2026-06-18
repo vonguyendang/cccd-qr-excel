@@ -127,6 +127,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     scannedUl.innerHTML = '';
                     const temp = [...scannedResults];
                     temp.reverse().forEach(item => renderScannedItemDOM(item));
+                } else if (data.type === 'api_progress') {
+                    const apiProgressContainer = document.getElementById('apiProgressContainer');
+                    const apiProgressText = document.getElementById('apiProgressText');
+                    const apiProgressFill = document.getElementById('apiProgressFill');
+                    if (apiProgressContainer) {
+                        apiProgressContainer.classList.remove('hidden');
+                        apiProgressText.textContent = `${data.current}/${data.total}`;
+                        const percentage = data.total > 0 ? (data.current / data.total) * 100 : 0;
+                        apiProgressFill.style.width = `${percentage}%`;
+                    }
                 } else if (data.type === 'clear') {
                     scannedResults = [];
                     saveToCache();
@@ -792,6 +802,8 @@ document.addEventListener('DOMContentLoaded', () => {
         serverSpinner.classList.remove('hidden');
         serverStatusText.textContent = 'Đang gửi dữ liệu lên server xử lý API chuẩn hóa và tạo Excel...';
         downloadArea.classList.add('hidden');
+        const apiProgressContainer = document.getElementById('apiProgressContainer');
+        if (apiProgressContainer) apiProgressContainer.classList.add('hidden');
         
         try {
             const response = await fetch('/api/room/export', {
