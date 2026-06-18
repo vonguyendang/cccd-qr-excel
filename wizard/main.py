@@ -635,7 +635,7 @@ def fetch_single_address(addr):
             # API thành công nhưng data rỗng = không tìm thấy địa chỉ
             if empty_data_retries < max_empty_retries:
                 empty_data_retries += 1
-                time.sleep(1)
+                time.sleep(2)
                 continue
                 
             # Đã thử 5 lần vẫn rỗng → từ bỏ
