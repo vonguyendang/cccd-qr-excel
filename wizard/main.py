@@ -209,7 +209,7 @@ def parse_ocr_text(text):
                 data = {
                     'CCCD': '', 'CMND': '', 'Họ tên': '', 'Ngày sinh': '',
                     'Giới tính': '', 'Nơi thường trú gốc': '', 'Ngày cấp CCCD': '',
-                    'OCR Side': ''
+                    'OCR Side': '', 'Raw Text Upper': text.upper() if text else ''
                 }
 
                 if not text.strip():
@@ -219,9 +219,7 @@ def parse_ocr_text(text):
 
                 # ---------------------------------------------------------
                 # 1. NHẬN DIỆN MẶT THẺ (FRONT / BACK)
-                # Dựa vào các từ khóa đặc trưng xuất hiện trên từng mặt thẻ
-                # ---------------------------------------------------------
-                if "<<" in text_upper or "IDVNM" in text_upper or "ĐẶC ĐIỂM NHẬN DẠNG" in text_upper or "NGÓN TRỎ" in text_upper or "CỤC TRƯỞNG" in text_upper:
+                if "<<" in text_upper or "IDVNM" in text_upper or "ĐẶC ĐIỂM NHẬN DẠNG" in text_upper or "NGÓN TRỎ" in text_upper or "CỤC TRƯỞNG" in text_upper or "BỘ CÔNG AN" in text_upper:
                     data['OCR Side'] = 'Back'
                 # Các từ khóa đặc trưng của Mặt Trước
                 elif "CĂN CƯỚC" in text_upper or "CẦN CƯỚC" in text_upper or "CÔNG DÂN" in text_upper or "ĐỘC LẬP" in text_upper or "TỰ DO" in text_upper or "HỌ VÀ TÊN" in text_upper:
@@ -238,6 +236,7 @@ def parse_ocr_text(text):
                     candidate = mrz_m.group(1)
                     if candidate.startswith('0'):
                         data['CCCD'] = candidate
+                        data['OCR Side'] = 'Back'
                         break
 
                 # Nếu không tìm thấy pattern <, thử lắp ráp từ VNM chuẩn ICAO
@@ -247,6 +246,7 @@ def parse_ocr_text(text):
                         assembled = mrz_match.group(2) + mrz_match.group(1)
                         if assembled.startswith('0') and len(assembled) == 12:
                             data['CCCD'] = assembled
+                            data['OCR Side'] = 'Back'
 
                 # Nếu vẫn chưa có: tìm dòng/khối IDVNM, gom ký tự số + '<' từ khối đó
                 # Bỏ 3 ký tự cuối (<<X), lấy 12 ký tự cuối còn lại = CCCD
@@ -269,6 +269,7 @@ def parse_ocr_text(text):
                                 candidate = cleaned[:-3][-12:]  # bỏ 3 cuối, lấy 12 cuối
                                 if len(candidate) == 12 and candidate.startswith('0'):
                                     data['CCCD'] = candidate
+                                    data['OCR Side'] = 'Back'
                             break
 
                 # ------- MẶT TRƯỚC (Front): không có MRZ, quét số trực tiếp -------
@@ -288,6 +289,7 @@ def parse_ocr_text(text):
                     if valid_cccds:
                         # Ưu tiên cụm nằm trên dòng có chứa từ khóa 'SỐ'/'CƯỚC' (nhãn số thẻ)
                         data['CCCD'] = valid_cccds[0]
+                        data['OCR Side'] = 'Front'
                         for line in text_upper.split('\n'):
                             if 'SỐ' in line or 'CƯỚC' in line:
                                 m = re.search(r'\b(0[\d\s]{11,15})\b', line.replace('O','0'))
@@ -295,6 +297,7 @@ def parse_ocr_text(text):
                                     val = re.sub(r'\s+', '', m.group(1))
                                     if len(val) == 12:
                                         data['CCCD'] = val
+                                        data['OCR Side'] = 'Front'
                                         break
                 all_dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
     
@@ -387,11 +390,11 @@ def parse_ocr_text(text):
                         if ":" in line:
                             name_part = line.split(":", 1)[1].strip()
                             name_part = name_part.rstrip('.') # Loại bỏ dấu chấm cuối câu (như trong SMS)
-                            if (name_part.isupper() or name_part.istitle()) and len(name_part) > 3:
+                            if (name_part.isupper() or name_part.istitle()) and len(name_part) > 3 and not re.search(r'\d', name_part):
                                 data['Họ tên'] = name_part
                         if not data['Họ tên'] and i + 1 < len(lines):
                             next_line = lines[i+1].replace('|', '').strip()
-                            if (next_line.isupper() or next_line.istitle()) and len(next_line) > 3:
+                            if (next_line.isupper() or next_line.istitle()) and len(next_line) > 3 and not re.search(r'\d', next_line):
                                 data['Họ tên'] = next_line
                 
                     # 2. DOB
@@ -406,23 +409,70 @@ def parse_ocr_text(text):
                     if "nơi thường trú" in line_lower or "nơi cư trú" in line_lower or "residence" in line_lower or "thuong tru" in line_lower:
                         addr_parts = []
                         if ":" in line:
-                            addr_parts.append(line.split(":", 1)[1].strip())
+                            val = line.split(":", 1)[1].strip()
+                            # Loại bỏ các chuỗi nhiễu có thể bám ngay cùng dòng
+                            val = re.sub(r'(?i)(giới tính|quốc tịch|sex|nationality|có giá trị đến|expiry).*', '', val).strip()
+                            if len(val) >= 2:
+                                addr_parts.append(val)
         
                         # Quét các dòng tiếp theo để nối đuôi địa chỉ do địa chỉ thường rất dài và bị rớt dòng.
-                        for j in range(i + 1, min(i + 5, len(lines))):
+                        for j in range(i + 1, min(i + 7, len(lines))):
                             next_line = lines[j].replace('|', '').strip()
                             next_lower = next_line.lower()
-                            if "giá trị đến" in next_lower or "expiry" in next_lower or "date" in next_lower:
-                                continue
-                            if "khai sinh" in next_lower or "birth" in next_lower or "nơi cấp" in next_lower or "bộ công an" in next_lower or "cục cảnh sát" in next_lower:
+                            
+                            # CÁC TỪ KHOÁ NGẮT (BREAK) - Rác ngoài thẻ hoặc Mặt sau
+                            if any(stop_word in next_lower for stop_word in [
+                                "zalo", "chữ ký", "qr", "từ mã", "đặc điểm nhận dạng", "ngón trỏ", "trái", "phải"
+                            ]):
                                 break
+                                
+                            # CÁC TỪ KHOÁ BỎ QUA DÒNG NÀY (SKIP) - Các nhãn bị OCR đọc lộn xộn hoặc thông tin không phải địa chỉ
+                            if any(skip_word in next_lower for skip_word in [
+                                "giá trị đến", "expiry", "date", "nơi cấp", "ngày cấp",
+                                "bộ công an", "cục cảnh sát", "giới tính", "quốc tịch", "sex", "nationality", 
+                                "quê quán", "quê quan", "que quan", "khai sinh", "birth"
+                            ]):
+                                continue
+                                
+                            # Bỏ qua dòng chỉ chứa ngày tháng nếu lọt qua
                             if re.search(r'\b\d{2}/\d{2}/\d{4}\b', next_line):
                                 continue
-                            if len(next_line) > 3:
-                                addr_parts.append(next_line)
+                                
+                            # CẮT BỎ CÁC TỪ TIẾNG ANH ẢO GIÁC DO OCR NHẬN DIỆN MỜ VÀ CÁC NHÃN
+                            # Bổ sung thêm các cụm từ rác như "Họ và tên 1 Full name", "Số 1 Noi", "CON MINH GIAN, MOROOT"
+                            clean_line = re.sub(r'(?i)\b(place of residence|place of origin|place oforging|transervating|daleoroxic|deleofexpin|overstreeter|residence|origin|họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|sedest|ingave|1tho|nams|cang 10/000020|notter)\b', '', next_line).strip()
+                            clean_line = re.sub(r'(?i)(họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter)', '', clean_line).strip()
+                            
+                            # Cắt bỏ rác là số CCCD (12 số) hoặc số điện thoại lọt vào địa chỉ
+                            clean_line = re.sub(r'\b\d{10,12}\b', '', clean_line).strip()
+                            
+                            # Không lấy vào địa chỉ nếu dòng này lọt Họ Tên vào
+                            if data.get('Họ tên') and clean_line == data['Họ tên']:
+                                continue
+
+                            if len(clean_line) >= 2:
+                                addr_parts.append(clean_line)
                 
                         addr = ", ".join(filter(bool, addr_parts))
-                        data['Nơi thường trú gốc'] = re.sub(r',\s*,', ',', addr).lstrip(', ').rstrip('.')
+                        
+                        # Fix các lỗi typo kinh điển của VietOCR khi đọc thẻ mờ ở Cần Thơ
+                        typo_fixes = {
+                            "Ninh Kiơu Thơ": "Ninh Kiều, Cần Thơ",
+                            "Ninh Kiơn Thơ": "Ninh Kiều, Cần Thơ",
+                            "Ninh Kiểu": "Ninh Kiều",
+                            "Ninh ciều": "Ninh Kiều",
+                            "Cần Thơng": "Cần Thơ",
+                            "Cần Thợ": "Cần Thơ",
+                            "Bình Thủy Thơ": "Bình Thủy, Cần Thơ",
+                            "CẦN THO": "CẦN THƠ",
+                            "Ấp Trà Canh AL": "Ấp Trà Canh A1",
+                            " AL,": " A1,"  # Đề phòng trường hợp chung chung số 1 bị đọc thành L
+                        }
+                        for wrong, right in typo_fixes.items():
+                            addr = addr.replace(wrong, right)
+                            
+                        # Tẩy sạch dấu phẩy thừa do nối chuỗi
+                        data['Nơi thường trú gốc'] = re.sub(r',\s*,', ',', addr).lstrip(', ').rstrip('., ')
         
                     # --- BƯỚC 4.4: TRÍCH XUẤT GIỚI TÍNH (Chính xác từ dòng ghi Giới tính) ---
                     if "giới tính" in line_lower or "sex" in line_lower or "gioi tinh" in line_lower:
@@ -449,6 +499,11 @@ def parse_ocr_text(text):
                         if int(first_date.split('/')[-1]) < 2020:
                             data['Ngày sinh'] = first_date
                     except: pass
+
+                # Hậu xử lý (Post-processing) làm sạch rác do OCR đọc lem viền
+                if data.get('Họ tên'):
+                    # Xoá các phụ âm đứng trơ trọi ở cuối tên do vết xước (VD: TRẦN NGỌC MUỘI T -> TRẦN NGỌC MUỘI)
+                    data['Họ tên'] = re.sub(r'\s+[BCDGHKLMNPQRSTVX]$', '', data['Họ tên'], flags=re.IGNORECASE).strip()
 
                 return data
 
@@ -488,7 +543,7 @@ def extract_ocr_data(image_path_or_cv2img):
         
         # --- PASS 1: TÌM CHIỀU ẢNH TỐT NHẤT ---
         best_img = img_to_ocr
-        best_data = {'CCCD': '', 'Họ tên': '', 'Ngày sinh': '', 'OCR Side': ''}
+        best_data = {'CCCD': '', 'Họ tên': '', 'Ngày sinh': '', 'OCR Side': '', 'Raw Text Upper': ''}
         best_note = "Ảnh mờ hoặc không thể nhận diện được"
         rotated_return = None
         
@@ -935,7 +990,12 @@ def run_wizard(input_dir):
                 'OCR Image Path Unknown': '',
                 'Full OCR Image Path Unknown': '',
                 'has_qr_data': False,
-                'has_ocr_data': False
+                'has_ocr_data': False,
+                'has_cong_dan_front': False,
+                'has_address_front': False,
+                'has_address_back': False,
+                'has_cuc_truong_back': False,
+                'has_bo_cong_an_back': False
             }
             is_new_record = True
         
@@ -981,12 +1041,18 @@ def run_wizard(input_dir):
             for k in ['Họ tên', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD']:
                 if item.get(k) and not record.get(k): record[k] = item[k]
                 
+            raw_text = item.get('Raw Text Upper', '')
             if item.get('OCR Side') == 'Front':
                 record['OCR Image Path Front'] = item['Image Path']
                 record['Full OCR Image Path Front'] = item['Full Image Path']
+                if "CÔNG DÂN" in raw_text: record['has_cong_dan_front'] = True
+                if item.get('Nơi thường trú gốc'): record['has_address_front'] = True
             elif item.get('OCR Side') == 'Back':
                 record['OCR Image Path Back'] = item['Image Path']
                 record['Full OCR Image Path Back'] = item['Full Image Path']
+                if "CỤC TRƯỞNG" in raw_text: record['has_cuc_truong_back'] = True
+                if "BỘ CÔNG AN" in raw_text: record['has_bo_cong_an_back'] = True
+                if item.get('Nơi thường trú gốc'): record['has_address_back'] = True
             else:
                 record['OCR Image Path Unknown'] = item['Image Path']
                 record['Full OCR Image Path Unknown'] = item['Full Image Path']
@@ -1224,7 +1290,14 @@ def run_wizard(input_dir):
         # Tính toán ngày hết hạn dựa trên ngày sinh nếu bị khuyết (rất hay gặp ở luồng OCR)
         if not record['Ngày hết hạn'] and record.get('Ngày sinh'):
             record['Ngày hết hạn'] = calculate_expiry_date(record['Ngày sinh'])
-            record['Phân loại'] = 'Căn cước / CCCD'
+            
+        if not record.get('QR Raw'):
+            if record['has_cong_dan_front'] or record['has_address_front'] or record['has_cuc_truong_back']:
+                record['Phân loại'] = 'Căn cước công dân'
+            elif record['has_address_back'] and not record['has_cong_dan_front'] and record['has_bo_cong_an_back']:
+                record['Phân loại'] = 'Căn cước'
+            else:
+                record['Phân loại'] = 'Khác'
                 
         # Deduplicate notes and convert to string
         unique_notes = []
