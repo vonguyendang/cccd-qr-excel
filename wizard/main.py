@@ -609,7 +609,11 @@ def fetch_single_address(addr):
     
     payload = json.dumps({"address": clean_addr})
     
-    # Retry vô hạn với delay 2s cho đến khi thành công hoặc API trả về "không tìm thấy" hợp lệ
+    # Retry vô hạn với delay 2s đối với lỗi mạng/500
+    # Retry tối đa 5 lần nếu API trả về thành công nhưng data = []
+    empty_data_retries = 0
+    max_empty_retries = 5
+    
     while True:
         try:
             response = requests.post(
@@ -628,7 +632,13 @@ def fetch_single_address(addr):
                     "converted": res_data['data'][0]['address']
                 }
             
-            # API thành công nhưng data rỗng = không tìm thấy địa chỉ → dừng
+            # API thành công nhưng data rỗng = không tìm thấy địa chỉ
+            if empty_data_retries < max_empty_retries:
+                empty_data_retries += 1
+                time.sleep(1)
+                continue
+                
+            # Đã thử 5 lần vẫn rỗng → từ bỏ
             return {
                 "original": addr,
                 "success": False,
