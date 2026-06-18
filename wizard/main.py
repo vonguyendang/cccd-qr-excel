@@ -1216,7 +1216,7 @@ def run_wizard(input_dir):
         if not os.path.exists(exports_dir):
             os.makedirs(exports_dir)
             
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
     default_filename = f"ket_qua_{timestamp}.xlsx"
     
     custom_name = Prompt.ask(f"[bold cyan]Nhập tên file Excel muốn lưu[/bold cyan] (nhấn Enter để dùng tên mặc định [yellow]'{default_filename}'[/yellow])").strip()

@@ -943,7 +943,7 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         exports_dir = os.path.join(project_dir, 'webapp', 'exports')
         os.makedirs(exports_dir, exist_ok=True)
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
         backup_filepath = os.path.join(exports_dir, f"backup_ket_qua_{timestamp}.xlsx")
         wb.save(backup_filepath)
         print(f"-> Đã tự động backup file Excel tại: {backup_filepath}", flush=True)
