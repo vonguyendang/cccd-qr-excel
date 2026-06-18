@@ -970,6 +970,33 @@ def run_wizard(input_dir):
                 best_cccd = r_cccd
                 break
 
+        # Tùy chọn 2: Nếu chưa tìm được, kiểm tra 8 số liên tiếp hoặc khớp ngày cấp cho bản ghi đang thiếu mặt sau
+        if not best_cccd:
+            for r_cccd, r_rec in records.items():
+                if r_cccd == orphan_cccd:
+                    continue
+                if not (r_rec['has_qr_data']
+                        or r_rec.get('Full Image Path Front')
+                        or r_rec.get('OCR Image Path Front')):
+                    continue
+                # Bản ghi đích phải thiếu mặt sau
+                if r_rec.get('OCR Image Path Back') or r_rec.get('Full OCR Image Path Back') or r_rec.get('Ảnh mặt sau CCCD/CC') or r_rec.get('Full Image Path Back'):
+                    continue
+                
+                match_8_digits = False
+                if len(o_cccd) >= 8 and len(r_cccd) >= 8:
+                    for i in range(len(r_cccd) - 7):
+                        if r_cccd[i:i+8] in o_cccd:
+                            match_8_digits = True
+                            break
+                            
+                r_date = r_rec.get('Ngày cấp CCCD', '')
+                match_date = (o_date and r_date and o_date == r_date)
+                
+                if match_8_digits or match_date:
+                    best_cccd = r_cccd
+                    break
+
         if best_cccd:
             target = records[best_cccd]
             # Ghép back-side image vào bản ghi đúng

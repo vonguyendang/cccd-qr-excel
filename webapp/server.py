@@ -678,6 +678,35 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
                 best_cccd = r_cccd
                 break
 
+        # Nếu không tìm thấy bằng tiêu chí 2/3 trường, thử tiêu chí linh động hơn:
+        # Cần 8 số liên tiếp của CCCD HOẶC trùng khớp Ngày cấp
+        # VÀ dòng đích phải ĐANG THIẾU mặt sau
+        if not best_cccd:
+            for r_cccd, r_rec in records.items():
+                if r_cccd == orphan_cccd:
+                    continue
+                if not (r_rec.get('QR Raw')
+                        or r_rec.get('Ảnh mặt trước CCCD/CC')
+                        or r_rec.get('OCR Image Path Front')):
+                    continue
+                # Bắt buộc dòng đích phải thiếu mặt sau mới được ghép bù vào
+                if r_rec.get('OCR Image Path Back') or r_rec.get('Ảnh mặt sau CCCD/CC'):
+                    continue
+
+                match_8_digits = False
+                if len(o_cccd) >= 8 and len(r_cccd) >= 8:
+                    for i in range(len(r_cccd) - 7):
+                        if r_cccd[i:i+8] in o_cccd:
+                            match_8_digits = True
+                            break
+
+                r_date = r_rec.get('Ngày cấp CCCD', '')
+                match_date = (o_date and r_date and o_date == r_date)
+
+                if match_8_digits or match_date:
+                    best_cccd = r_cccd
+                    break
+
         if best_cccd:
             target = records[best_cccd]
             if not target.get('OCR Image Path Back'):
