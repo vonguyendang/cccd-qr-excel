@@ -842,9 +842,7 @@ def run_wizard(input_dir):
                 
                 if side == 'Front':
                     parts.append(f"NS: {ocr_data.get('Ngày sinh') or '[Trống]'}")
-                    # Rút gọn địa chỉ để không chiếm quá nhiều không gian console
                     addr = ocr_data.get('Nơi thường trú gốc') or '[Trống]'
-                    if len(addr) > 40: addr = addr[:37] + '...'
                     parts.append(f"Địa chỉ: {addr}")
                 elif side == 'Back':
                     parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD') or '[Trống]'}")
