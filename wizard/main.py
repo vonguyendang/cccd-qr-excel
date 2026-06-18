@@ -264,8 +264,9 @@ def parse_ocr_text(text):
                             break
 
                 # ------- MẶT TRƯỚC (Front): không có MRZ, quét số trực tiếp -------
-                # Chỉ chạy nếu chưa có CCCD từ MRZ
-                if not data['CCCD']:
+                # Chỉ chạy nếu chưa có CCCD từ MRZ VÀ thẻ không phải mặt sau
+                # Tránh tình trạng mặt sau bị OCR rác ra ngẫu nhiên 12 chữ số
+                if not data['CCCD'] and data['OCR Side'] != 'Back':
                     text_numbers = text_upper.replace('O', '0')
                     # Lấy tất cả cụm 12 số đứng độc lập bắt đầu bằng 0
                     # Dùng re.sub loại toàn bộ whitespace (kể cả \n \t) để tránh đếm sai độ dài
@@ -1158,7 +1159,49 @@ def run_wizard(input_dir):
     ws_dup.append(["STT", "Tên file", "Trùng lặp với"])
     for i, item in enumerate(duplicate_files, 1):
         ws_dup.append([i, item['Image Path'], item.get('Duplicate With', '')])
-    
+
+    # --- Sheet "Review": dòng dữ liệu chưa đầy đủ thông tin ---
+    REQUIRED_FIELDS = ['Họ tên', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD',
+                       'Ảnh mặt trước CCCD/CC', 'Ảnh mặt sau CCCD/CC']
+    review_rows = []
+    for row in processed_data:
+        missing = [f for f in REQUIRED_FIELDS if not row.get(f)]
+        if missing:
+            review_rows.append((row, missing))
+
+    ws_review = wb.create_sheet(title="Review")
+    ws_review.append(["STT", "CCCD", "Họ tên", "Ảnh mặt trước", "Ảnh mặt sau", "Trường còn thiếu"])
+    for cell in ws_review[1]:
+        cell.font = Font(bold=True)
+    for stt, (row, missing) in enumerate(review_rows, 1):
+        ws_review.append([
+            stt,
+            row.get('CCCD', ''),
+            row.get('Họ tên', ''),
+            row.get('Ảnh mặt trước CCCD/CC', ''),
+            row.get('Ảnh mặt sau CCCD/CC', ''),
+            ', '.join(missing)
+        ])
+    for col in ws_review.columns:
+        ws_review.column_dimensions[col[0].column_letter].width = 30
+
+    # --- Sheet "Unknown": ảnh không thuộc dòng nào (không đọc được CCCD) ---
+    all_matched_paths = set()
+    for row in processed_data:
+        if row.get('Full Image Path Front'): all_matched_paths.add(row['Full Image Path Front'])
+        if row.get('Full Image Path Back'): all_matched_paths.add(row['Full Image Path Back'])
+
+    unknown_image_paths = [p for p in image_paths if p not in all_matched_paths]
+
+    ws_unknown = wb.create_sheet(title="Unknown")
+    ws_unknown.append(["STT", "Tên file gốc"])
+    for cell in ws_unknown[1]:
+        cell.font = Font(bold=True)
+    for stt, fpath in enumerate(unknown_image_paths, 1):
+        ws_unknown.append([stt, os.path.basename(fpath)])
+    for col in ws_unknown.columns:
+        ws_unknown.column_dimensions[col[0].column_letter].width = 40
+
     wb.save(output_filename)
     
     with console.status("[bold green]Đang tạo các file nén zip phân loại ảnh...", spinner="dots"):
@@ -1209,6 +1252,20 @@ def run_wizard(input_dir):
     create_zip_helper('QR_scanned.zip', qr_files)
     create_zip_helper('OCR_scanned.zip', ocr_files)
     create_zip_helper('duplicate.zip', dup_files)
+
+    # 3. review.zip: ảnh của các dòng chưa đầy đủ thông tin
+    review_image_paths = []
+    added_review = set()
+    for row, _ in review_rows:
+        for field in ['Full Image Path Front', 'Full Image Path Back']:
+            p = row.get(field)
+            if p and p not in added_review:
+                review_image_paths.append(p)
+                added_review.add(p)
+    create_zip_helper('review.zip', review_image_paths)
+
+    # 4. unknown.zip: ảnh không thuộc dòng nào
+    create_zip_helper('unknown.zip', unknown_image_paths)
     
     console.print("\n" + "🎉"*15)
     console.print(f"[bold green]ĐÃ HOÀN TẤT THÀNH CÔNG![/bold green]")
