@@ -18,6 +18,10 @@ import re
 import concurrent.futures
 import zipfile
 import threading
+import warnings
+
+# Tắt cảnh báo chia cho 0 của numpy bên trong thư viện VietOCR
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in divide")
 
 # Global locks
 ocr_lock = threading.Lock()
