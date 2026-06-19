@@ -2221,6 +2221,7 @@ def run_reprocess(excel_path, normalize_address=True):
 
 
 def main():
+    global DEBUG_MODE
     console.print(Panel.fit("[bold green]🚀 PHẦN MỀM TRÍCH XUẤT MÃ QR TỪ ẢNH CCCD RA EXCEL[/bold green]", border_style="cyan", padding=(1, 5)))
     
     with console.status("[bold green]Đang khởi tạo model AI...", spinner="dots"):
@@ -2236,17 +2237,20 @@ def main():
         if first_run and len(args) >= 2:
             input_dir = args[1]
             first_run = False
+            
+            DEBUG_MODE = Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=DEBUG_MODE)
+            do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng) không?[/bold yellow]", default=True)
+            
             if input_dir.endswith('.xlsx') and os.path.isfile(input_dir):
-                run_reprocess(input_dir, normalize_address=True)
+                run_reprocess(input_dir, normalize_address=do_normalize)
                 if not Confirm.ask("\n[bold yellow]Bạn có muốn tiếp tục xử lý thư mục khác không?[/bold yellow]"):
                     console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
                     break
                 continue
             else:
-                run_wizard(input_dir, normalize_address=True)
+                run_wizard(input_dir, normalize_address=do_normalize)
         else:
             is_reprocess = Confirm.ask("\n[bold yellow]Bạn có muốn TÁI XỬ LÝ (chỉ quét lại các ảnh cũ bị lỗi/thiếu thông tin trong file Excel) không?\n👉 Chọn 'n' (No) nếu bạn muốn quét Thư mục mới hoặc Quét nối tiếp ảnh mới.[/bold yellow]", default=False)
-            global DEBUG_MODE
             
             if is_reprocess:
                 excel_path = Prompt.ask("[bold cyan]Nhập đường dẫn file Excel cũ (hoặc gõ 'q' để thoát)[/bold cyan]").strip().strip('\'"')
@@ -2257,9 +2261,7 @@ def main():
                     console.print(f"\n[bold red]❌ Lỗi: File '{excel_path}' không hợp lệ hoặc không tồn tại.[/bold red]")
                     continue
                     
-                if not DEBUG_MODE:
-                    if Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=False):
-                        DEBUG_MODE = True
+                DEBUG_MODE = Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=DEBUG_MODE)
                 do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng) không?[/bold yellow]", default=True)
                 
                 run_reprocess(excel_path, normalize_address=do_normalize)
@@ -2271,9 +2273,7 @@ def main():
                     console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
                     break
                     
-                if not DEBUG_MODE:
-                    if Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=False):
-                        DEBUG_MODE = True
+                DEBUG_MODE = Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=DEBUG_MODE)
                         
                 do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng và tốn thêm thời gian) không?[/bold yellow]", default=True)
                 
