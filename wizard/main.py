@@ -24,6 +24,8 @@ import warnings
 # Tắt cảnh báo chia cho 0 của numpy bên trong thư viện VietOCR
 warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in divide")
 
+DEBUG_MODE = '--debug' in sys.argv
+
 # Danh sách 300 họ phổ biến tiếng Việt (không dấu, lowercase)
 _VN_SURNAMES = {
     'a', 'an', 'au', 'ba', 'bach', 'ban', 'bang', 'banh', 'bao', 'be',
@@ -260,7 +262,8 @@ def parse_ocr_text(text):
                 data = {
                     'CCCD': '', 'CMND': '', 'Họ tên': '', 'Ngày sinh': '',
                     'Giới tính': '', 'Nơi thường trú gốc': '', 'Ngày cấp CCCD': '',
-                    'OCR Side': '', 'Raw Text Upper': text.upper() if text else ''
+                    'OCR Side': '', 'Raw Text Upper': text.upper() if text else '',
+                    'Raw Text': text if text else ''
                 }
 
                 if not text.strip():
@@ -1137,6 +1140,9 @@ def run_wizard(input_dir):
                 ocr_print_info = ", ".join(parts)
                 log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info}")
                 
+                if DEBUG_MODE and ocr_data.get('Raw Text'):
+                    log_msgs.append(f"[magenta]🐛 DEBUG RAW OCR TEXT:\n{ocr_data['Raw Text']}[/magenta]")
+                
                 # In ra màn hình cảnh báo chói lóa nếu có
                 if "chói/lóa" in ocr_note:
                     log_msgs.append(f"[red]⚠️ Ảnh bị chói/lóa sáng hoặc quá mờ không thể xử lý tốt[/red]")
@@ -1824,8 +1830,10 @@ def main():
 
     while True:
         input_dir = ""
-        if first_run and len(sys.argv) >= 2:
-            input_dir = sys.argv[1]
+        # Bỏ tham số --debug khỏi sys.argv để không bị nhầm thành thư mục đầu vào
+        args = [a for a in sys.argv if a != '--debug']
+        if first_run and len(args) >= 2:
+            input_dir = args[1]
             first_run = False
         else:
             console.print("\n[yellow][Hướng dẫn][/yellow]: Kéo thả thư mục chứa ảnh vào cửa sổ này, hoặc copy đường dẫn thư mục và dán vào đây.")
