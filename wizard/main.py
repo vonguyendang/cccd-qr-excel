@@ -819,8 +819,8 @@ def extract_ocr_data(image_path_or_cv2img):
         # --- KIỂM TRA ĐIỀU KIỆN RETRY ---
         def missing_critical(d):
             if d.get('OCR Side') == 'Back':
-                return not d.get('CCCD') or not d.get('Ngày cấp CCCD')
-            return not d.get('CCCD') or not d.get('Họ tên') or not d.get('Ngày sinh')
+                return not d.get('CCCD') or not d.get('Ngày cấp CCCD') or not d.get('Nơi thường trú gốc')
+            return not d.get('CCCD') or not d.get('Họ tên') or not d.get('Ngày sinh') or not d.get('Nơi thường trú gốc')
             
         if missing_critical(best_data):
             # --- PASS 2: BỘ LỌC TƯƠNG PHẢN (CLAHE) ---
