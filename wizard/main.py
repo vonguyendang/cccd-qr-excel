@@ -974,9 +974,12 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
 from rich.prompt import Prompt, Confirm
 
-console = Console(record=True)
+console = Console()
 
 def run_wizard(input_dir):
+    from rich.text import Text
+    file_logs = []
+    
     # Xóa dấu nháy đơn/kép nếu người dùng kéo thả thư mục vào terminal có sinh ra
     input_dir = input_dir.strip('\'"')
 
@@ -1186,10 +1189,14 @@ def run_wizard(input_dir):
                     
                     # Print logs for this image above the progress bar
                     progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold]")
+                    file_logs.append(f"[{os.path.basename(img_path)}]")
                     for msg in log_msgs:
                         progress.console.print(f"  {msg}")
+                        file_logs.append("  " + Text.from_markup(msg).plain)
                 except Exception as exc:
-                    progress.console.print(f"[bold red]❌ Lỗi khi xử lý ảnh {os.path.basename(img_path)}:[/bold red] {exc}")
+                    err = f"❌ Lỗi khi xử lý ảnh {os.path.basename(img_path)}: {exc}"
+                    progress.console.print(f"[bold red]{err}[/bold red]")
+                    file_logs.append(err)
                 finally:
                     progress.advance(task_id)
                 
@@ -1816,7 +1823,10 @@ def run_wizard(input_dir):
     
     # Xuất file log
     log_filename = os.path.join(exports_dir, f"log_{timestamp}.txt")
-    console.save_text(log_filename)
+    file_logs.append("\nĐÃ HOÀN TẤT THÀNH CÔNG!")
+    file_logs.append(f"File kết quả: {os.path.abspath(output_filename)}")
+    with open(log_filename, "w", encoding="utf-8") as f:
+        f.write("\n".join(file_logs))
     console.print(f"File log chi tiết được lưu tại: [yellow]{os.path.abspath(log_filename)}[/yellow]")
     console.print("🎉"*15 + "\n")
 
