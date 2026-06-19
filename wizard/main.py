@@ -479,11 +479,16 @@ def parse_ocr_text(text):
                             next_line = lines[j].replace('|', '').strip()
                             next_lower = next_line.lower()
                             
+                            current_addr = ", ".join(filter(bool, addr_parts))
+                            commas_count = current_addr.count(',')
+                            
                             # CÁC TỪ KHOÁ NGẮT (BREAK) - Rác ngoài thẻ hoặc Mặt sau
-                            if any(stop_word in next_lower for stop_word in [
+                            hard_stops = [
                                 "zalo", "chữ ký", "qr", "từ mã", "đặc điểm nhận dạng",
                                 "ngón trỏ trái", "ngón trỏ phải", "ngón trỏ",  # cụ thể hơn "trái"/"phải"
-                                "vân tay trái", "vân tay phải",
+                                "vân tay trái", "vân tay phải"
+                            ]
+                            soft_stops = [
                                 "ngày sinh", "date of birth", "ngày, tháng, năm", "date, month",
                                 "ngày cấp", "date of issue", "date issue", "ddate", "ddate issue",
                                 "nơi cấp", "place of issue", "place ofresic",
@@ -491,8 +496,19 @@ def parse_ocr_text(text):
                                 "giá trị đến", "có giá trị",
                                 "gia tri đến", "gia tri đen",  # biến thể không dấu OCR
                                 "giới tính", "quốc tịch",
-                            ]):
+                            ]
+                            
+                            if any(stop_word in next_lower for stop_word in hard_stops):
                                 break
+                            
+                            if any(stop_word in next_lower for stop_word in soft_stops):
+                                # Nếu địa chỉ chưa đủ dài (dưới 4 dấu phẩy, địa chỉ VN thường 2-5 dấu phẩy),
+                                # có thể đang quét thẻ 2 cột (layout "giá trị đến" nằm song song với địa chỉ).
+                                # Bỏ qua break để cho phép regex bên dưới xóa nhãn này và lấy phần địa chỉ còn lại.
+                                if commas_count < 4:
+                                    pass
+                                else:
+                                    break
                                 
                             clean_line = next_line
                             # Xóa cụm "giá trị đến" và mọi biến thể OCR (có/không dấu)
