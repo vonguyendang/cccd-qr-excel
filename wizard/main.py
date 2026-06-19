@@ -1,6 +1,8 @@
 import os
 import sys
 import glob
+import tempfile
+import uuid
 import cv2
 from pyzbar.pyzbar import decode
 from pyzbar.pyzbar import ZBarSymbol
@@ -1011,7 +1013,6 @@ def run_wizard(input_dir, normalize_address=True):
     exports_dir = os.path.join(input_dir, "exports")
     
     if os.path.isdir(exports_dir):
-        import glob
         old_excels = glob.glob(os.path.join(exports_dir, "*.xlsx"))
         if old_excels:
             latest_excel = max(old_excels, key=os.path.getmtime)
@@ -1019,7 +1020,6 @@ def run_wizard(input_dir, normalize_address=True):
             if incremental_scan:
                 console.print("[cyan]Đang đọc file Excel cũ để lọc ra các ảnh mới...[/cyan]")
                 try:
-                    import openpyxl
                     wb = openpyxl.load_workbook(latest_excel)
                     ws = wb.active
                     headers = [cell.value for cell in ws[1]]
@@ -1081,8 +1081,6 @@ def run_wizard(input_dir, normalize_address=True):
         image_paths = new_image_paths
 
     # --- AUTO BACKUP AND RENAME LOGIC ---
-    import zipfile
-    import uuid
     zip_path = os.path.join(input_dir, "original.zip")
     
     if not os.path.exists(zip_path) or incremental_scan:
@@ -1153,8 +1151,6 @@ def run_wizard(input_dir, normalize_address=True):
     console.print("\n")
     console.print(Panel(f"[bold cyan]🚀 BẮT ĐẦU XỬ LÝ {len(image_paths)} ẢNH VỚI {num_threads} LUỒNG...[/bold cyan]", border_style="green"))
 
-    import tempfile
-    import uuid
     temp_rotated_dir = os.path.join(tempfile.gettempdir(), f"cccd_exports_{uuid.uuid4().hex[:8]}")
     os.makedirs(temp_rotated_dir, exist_ok=True)
 
