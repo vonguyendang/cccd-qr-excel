@@ -393,17 +393,46 @@ def parse_ocr_text(text):
     
                     # 1. Name
                     if any(kw in line_lower for kw in ["họ và tên", "họ chữ đệm và tên", "full name", "ho ten", "kho và tên", "fui nam"]):
+                        
+                        # Danh sách họ phổ biến tiếng Việt (không dấu, lowercase) để xác thực tên
+                        _VN_SURNAMES = {
+                            'nguyen', 'tran', 'le', 'pham', 'huynh', 'hoang', 'phan',
+                            'vu', 'vo', 'dang', 'bui', 'do', 'ho', 'ngo', 'duong',
+                            'ly', 'dinh', 'to', 'mai', 'truong', 'luong', 'luu',
+                            'lam', 'quach', 'ha', 'chau', 'cao', 'tang', 'lai',
+                            'kim', 'thach', 'tong', 'trieu', 'nhan', 'hua', 'can',
+                            'khuu', 'ly', 'giang', 'thi',  # Thi/Thị đứng đầu trong một số tên
+                        }
+                        def _is_valid_name(s):
+                            """Tên hợp lệ: 2-5 từ, bắt đầu bằng họ VN phổ biến, không số."""
+                            import unicodedata
+                            if not s or re.search(r'\d', s):
+                                return False
+                            words = s.strip().split()
+                            if not (2 <= len(words) <= 5):
+                                return False
+                            # Chuẩn hóa họ: xóa dấu để so sánh
+                            first = unicodedata.normalize('NFD', words[0].lower())
+                            first_ascii = ''.join(c for c in first if unicodedata.category(c) != 'Mn')
+                            return first_ascii in _VN_SURNAMES
+                        
                         if ":" in line:
                             name_part = line.split(":", 1)[1].strip()
-                            name_part = name_part.rstrip('.') # Loại bỏ dấu chấm cuối câu (như trong SMS)
-                            if (name_part.isupper() or name_part.istitle()) and len(name_part) > 3 and not re.search(r'\d', name_part):
+                            name_part = name_part.rstrip('.')
+                            # Cắt tại dấu phẩy đầu tiên để loại bỏ phần dính sau (VD: "Nguyen Thi Diem Truc, Ngay sinh:")
+                            name_part = name_part.split(',')[0].strip()
+                            if (name_part.isupper() or name_part.istitle()) and len(name_part) > 3 and _is_valid_name(name_part):
                                 data['Họ tên'] = name_part
                         
                         # Nếu không có dấu 2 chấm, thử lấy dòng tiếp theo
                         if not data['Họ tên'] and i + 1 < len(lines):
                             next_line = lines[i+1].replace('|', '').strip()
-                            # Tên thường viết hoa, nhưng OCR có thể viết thường. Chỉ cần dài >3 và không chứa số
-                            if len(next_line) > 3 and not re.search(r'\d', next_line) and not any(kw in next_line.lower() for kw in ['ngày', 'sinh', 'quốc', 'tịch', 'giới', 'tính']):
+                            # Phải viết hoa (ALLCAPS hoặc Title Case) VÀ bắt đầu bằng họ VN hợp lệ
+                            if ((next_line.isupper() or next_line.istitle())
+                                    and len(next_line) > 3
+                                    and not re.search(r'\d', next_line)
+                                    and _is_valid_name(next_line)
+                                    and not any(kw in next_line.lower() for kw in ['ngày', 'sinh', 'quốc', 'tịch', 'giới', 'tính'])):
                                 data['Họ tên'] = next_line
                 
                     # 2. DOB
@@ -435,7 +464,9 @@ def parse_ocr_text(text):
                             
                             # CÁC TỪ KHOÁ NGẮT (BREAK) - Rác ngoài thẻ hoặc Mặt sau
                             if any(stop_word in next_lower for stop_word in [
-                                "zalo", "chữ ký", "qr", "từ mã", "đặc điểm nhận dạng", "ngón trỏ", "trái", "phải",
+                                "zalo", "chữ ký", "qr", "từ mã", "đặc điểm nhận dạng",
+                                "ngón trỏ trái", "ngón trỏ phải", "ngón trỏ",  # cụ thể hơn "trái"/"phải"
+                                "vân tay trái", "vân tay phải",
                                 "ngày sinh", "date of birth", "ngày, tháng, năm", "date, month",
                                 "ngày cấp", "date of issue", "date issue", "ddate", "ddate issue",
                                 "nơi cấp", "place of issue", "place ofresic",
@@ -488,9 +519,10 @@ def parse_ocr_text(text):
                                 continue
 
                             if len(clean_line) >= 2:
-                                # Chống lặp: không thêm nếu đã có phần giống hệt hoặc bị bao trong
+                                # Chống lặp: chỉ skip nếu giống HỆT dòng đã có (case-insensitive)
+                                # KHÔNG dùng substring check — sẽ bỏ sót dòng địa chỉ dài hơn
                                 is_dup = any(
-                                    clean_line == p or clean_line in p or p in clean_line
+                                    clean_line.lower() == p.lower()
                                     for p in addr_parts
                                 )
                                 if not is_dup:
