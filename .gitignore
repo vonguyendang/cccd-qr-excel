@@ -19,6 +19,7 @@ __pycache__/
 *$py.class
 python-app/venv/
 venv/
+.venv/
 env/
 ENV/
 .env
@@ -49,9 +50,11 @@ webapp/exports/*
 webapp/sessions/*
 !webapp/sessions/.gitkeep
 
-# Wizard Exports
+# Wizard Exports & Debug
 wizard/exports/*
 !wizard/exports/.gitkeep
+wizard/debug/*
+!wizard/debug/.gitkeep
 
 # ZIP Files
 *.zip
@@ -59,3 +62,14 @@ wizard/exports/*
 # Samples
 samples/*
 !samples/.gitkeep
+
+#Test file
+test*.py
+*test.py
+
+#Patch file
+patch*.py
+*log.txt
+scratch*.py
+
+

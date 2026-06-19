@@ -20,25 +20,20 @@ Toàn bộ hệ thống Web App và AI (bao gồm Deepdoc_VietOCR) nay đã đư
 Bạn cần mở Terminal ở thư mục gốc của dự án (`cccd-qr-excel`) và lần lượt làm theo các bước sau:
 
 ```bash
-# 1. Di chuyển vào thư mục webapp
+# 1. Kích hoạt môi trường ảo chung của toàn dự án (nằm ở thư mục gốc)
+# Nếu bạn chưa cài đặt môi trường, hãy xem README ở thư mục gốc.
+# Trên Mac/Linux:
+source .venv/bin/activate
+# Trên Windows:
+# .\.venv\Scripts\activate
+
+# 2. Di chuyển vào thư mục webapp
 cd webapp
 
-# 2. Tạo môi trường ảo riêng biệt (để cài đặt các thư viện AI không bị xung đột)
-python3 -m venv venv
-
-# 3. Kích hoạt môi trường ảo
-# Trên Mac/Linux:
-source venv/bin/activate
-# Trên Windows:
-# .\venv\Scripts\activate
-
-# 4. Cài đặt toàn bộ thư viện cần thiết (Bao gồm cả Numpy, Torch cho Deepdoc_VietOCR)
-pip install -r requirements.txt
-
-# 5. Dọn dẹp cổng 8000 nếu đang bị kẹt (Chỉ dành cho máy Mac/Linux, có thể bỏ qua trên Windows)
+# 3. Dọn dẹp cổng 8000 nếu đang bị kẹt (Chỉ dành cho máy Mac/Linux, có thể bỏ qua trên Windows)
 lsof -ti:8000 | xargs kill -9 2>/dev/null || true
 
-# 6. Khởi động máy chủ Web App
+# 4. Khởi động máy chủ Web App
 uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 

@@ -529,8 +529,8 @@ async def fetch_single_address_async(client, addr):
     
     payload = json.dumps({"address": clean_addr})
     
-    # Retry vô hạn với delay 2s cho đến khi thành công hoặc API trả về "không tìm thấy" hợp lệ
-    while True:
+    # Retry tối đa 100 lần với delay 1s cho đến khi thành công hoặc API trả về "không tìm thấy" hợp lệ
+    for attempt in range(100):
         try:
             response = await client.post(
                 'https://tienich.vnhub.com/api/wards',
@@ -556,9 +556,16 @@ async def fetch_single_address_async(client, addr):
             }
             
         except Exception:
-            # Lỗi 500 hoặc mạng → thử lại sau 2s
-            await asyncio.sleep(2)
-            continue
+            # Lỗi 500 hoặc mạng → thử lại sau 1s
+            if attempt < 99:
+                await asyncio.sleep(1)
+                continue
+    
+    return {
+        "original": addr,
+        "success": False,
+        "error": "Lỗi kết nối API sau 100 lần thử"
+    }
 
 
 async def generate_excel_for_items(items: List[ExportItem], room_id: str = None, duplicate_files: List[str] = None):
@@ -1044,6 +1051,38 @@ async def generate_excel_for_items(items: List[ExportItem], room_id: str = None,
                         if os.path.exists(img_path):
                             sub_zip.write(img_path, fname)
                 main_zip.writestr('unknown.zip', unknown_zip_stream.getvalue())
+
+            # 5. ReadQR.zip: ảnh có dòng Ghi chú chứa "Đọc mã QR"
+            qr_rows = [row for row in processed_data if 'Đọc mã QR' in row.get('Ghi chú', '')]
+            if qr_rows:
+                qr_zip_stream = BytesIO()
+                with zipfile.ZipFile(qr_zip_stream, 'w') as sub_zip:
+                    added = set()
+                    for row in qr_rows:
+                        for field in ['Ảnh mặt trước CCCD/CC', 'Ảnh mặt sau CCCD/CC']:
+                            fname = row.get(field)
+                            if fname and fname not in added:
+                                img_path = os.path.join(room_img_dir, fname)
+                                if os.path.exists(img_path):
+                                    sub_zip.write(img_path, fname)
+                                    added.add(fname)
+                main_zip.writestr('ReadQR.zip', qr_zip_stream.getvalue())
+
+            # 6. ReadOCR.zip: ảnh có dòng Ghi chú chứa "Lấy bằng OCR"
+            ocr_rows = [row for row in processed_data if 'Lấy bằng OCR' in row.get('Ghi chú', '')]
+            if ocr_rows:
+                ocr_zip_stream = BytesIO()
+                with zipfile.ZipFile(ocr_zip_stream, 'w') as sub_zip:
+                    added = set()
+                    for row in ocr_rows:
+                        for field in ['Ảnh mặt trước CCCD/CC', 'Ảnh mặt sau CCCD/CC']:
+                            fname = row.get(field)
+                            if fname and fname not in added:
+                                img_path = os.path.join(room_img_dir, fname)
+                                if os.path.exists(img_path):
+                                    sub_zip.write(img_path, fname)
+                                    added.add(fname)
+                main_zip.writestr('ReadOCR.zip', ocr_zip_stream.getvalue())
         
     zip_stream.seek(0)
     

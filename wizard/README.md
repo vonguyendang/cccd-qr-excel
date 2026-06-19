@@ -24,17 +24,14 @@ Lưu ý: Giống như Web App, **bạn không cần phải cài đặt hay chạ
 Bạn mở Terminal ở thư mục gốc (`cccd-qr-excel`) và gõ lần lượt các lệnh:
 
 ```bash
-# 1. Di chuyển vào thư mục wizard
-cd wizard
-
-# 2. Kích hoạt môi trường ảo chung của phần webapp (nơi đã cài sẵn mọi AI)
+# 1. Kích hoạt môi trường ảo chung của toàn dự án (nằm ở thư mục gốc)
 # Trên Mac/Linux:
-source ../webapp/venv/bin/activate
+source .venv/bin/activate
 # Trên Windows:
-# ..\webapp\venv\Scripts\activate
+# .\.venv\Scripts\activate
 
-# 3. (Tuỳ chọn) Nếu bạn chưa cài đặt requirements ở Web App, bạn có thể cài tại đây:
-pip install -r requirements.txt
+# 2. Di chuyển vào thư mục wizard
+cd wizard
 ```
 
 ## ⚙️ Bước 2: Chạy Phần Mềm Quét Tự Động
@@ -60,8 +57,9 @@ python3 main.py
 - **Nguyên nhân:** Các hệ điều hành Mac/Linux mới chặn cài đặt thư viện tuỳ tiện để bảo vệ hệ thống.
 - **Cách sửa:** Bạn cần tạo và dùng "môi trường ảo" thay vì cài trực tiếp. Hãy đảm bảo bạn đã chạy hai lệnh sau trước khi cài đặt:
   ```bash
-  python3 -m venv venv
-  source venv/bin/activate
+  cd ..
+  python3 -m venv .venv
+  source .venv/bin/activate
   ```
 
 **2. Lỗi `ImportError: Unable to find zbar shared library` khi chạy chương trình**
@@ -77,13 +75,13 @@ python3 main.py
 **3. Phần mềm báo lỗi đỏ "Cannot find module cv2 / pyzbar" khi đang mở file code**
 
 - **Nguyên nhân:** Do bạn đang mở source code bằng các phần mềm viết code (như VS Code), phần mềm này chưa nhận diện được "môi trường ảo" mà bạn đã tạo ở Bước 1.
-- **Cách sửa:** Bạn hoàn toàn có thể **bỏ qua các vạch báo lỗi đỏ này**. Chỉ cần bạn thao tác đúng Bước 3 (chạy `source venv/bin/activate` trong Terminal) thì phần mềm vẫn sẽ chạy thành công 100%.
+- **Cách sửa:** Bạn hoàn toàn có thể **bỏ qua các vạch báo lỗi đỏ này**. Chỉ cần bạn thao tác đúng Bước 3 (chạy `source .venv/bin/activate` trong Terminal) thì phần mềm vẫn sẽ chạy thành công 100%.
 - **Nếu bạn mắc chứng "sợ màu đỏ" và muốn vạch đỏ biến mất trong VS Code, hãy làm như sau:**
   1. Nhấn tổ hợp phím `Cmd + Shift + P` (trên Mac) hoặc `Ctrl + Shift + P` (trên Windows).
   2. Gõ chữ `Python: Select Interpreter` và nhấn Enter.
   3. Chọn dòng `Enter interpreter path...` (Nhập đường dẫn...).
   4. Chọn tiếp `Find...` (Tìm kiếm...).
-  5. Cửa sổ chọn file hiện ra, bạn hãy duyệt tìm đến thư mục chứa phần mềm này (`wizard`), mở tiếp thư mục `venv`, mở tiếp thư mục `bin` (hoặc `Scripts` trên Windows), và chọn file có tên là `python` (hoặc `python.exe`). Nhấn OK.
+  5. Cửa sổ chọn file hiện ra, bạn hãy duyệt tìm đến thư mục gốc chứa phần mềm này, mở thư mục `.venv`, mở tiếp thư mục `bin` (hoặc `Scripts` trên Windows), và chọn file có tên là `python` (hoặc `python.exe`). Nhấn OK.
   6. Các vạch đỏ sẽ tự động biến mất!
 
 **4. Lần chạy đầu tiên bị chậm / Có thông báo tải file**
