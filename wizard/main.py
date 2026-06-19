@@ -527,6 +527,10 @@ def parse_ocr_text(text):
                             "TP-Sóc Trăng": "TP. Sóc Trăng",
                             "TP-": "TP. ",
                         }
+                        # Thêm khoảng trắng khi TP/TX/TT dính liền vào tên tỉnh/thành không có dấu phân cách
+                        # VD: "TPCần Thơ" → "TP Cần Thơ", "TXTân An" → "TX Tân An"
+                        addr = re.sub(r'\b(TP|TX|TT)([A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂẮẶẦẤƠỜƯỚƯỪ])',
+                                      r'\1 \2', addr)
                         for wrong, right in typo_fixes.items():
                             addr = addr.replace(wrong, right)
                         
@@ -555,8 +559,14 @@ def parse_ocr_text(text):
                             r'(?i)\b(pplace|ppace|i\s*place|place\s*ofresic|ofresic|'
                             r'ddate|ddte|ddate\s*issue|date\s*issue|'
                             r'nam\s+linh|indent|'
+                            r'disconning|nterting|interting|disconnected|'
                             r'issue|noi\s*dang\s*ky)\b',
                             '', addr).strip()
+                        # Xóa cụm ALL-CAPS >= 6 ký tự không phải địa danh VN hợp lệ
+                        # (rác OCR thường viết hoa toàn bộ, không có dấu tiếng Việt)
+                        addr = re.sub(r'(?<![A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂẮẶẦẤƠỜƯỚƯỪ])'  # không đứng sau chữ hoa VN
+                                      r'\b[A-Z]{6,}\b',  # chuỗi 6+ chữ cái Latin hoa liên tiếp
+                                      '', addr).strip()
                         # Lưu ý: KHÔNG xóa "Viễn/Viên" vì là địa danh thật
                         # (Thị trấn Vĩnh Viễn, Long Mỹ, Hậu Giang)
                         # Xóa nhãn tiếng Việt còn sót
