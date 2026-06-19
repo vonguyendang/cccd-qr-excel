@@ -1196,7 +1196,8 @@ def run_wizard(input_dir, normalize_address=True):
     if incremental_scan:
         new_image_paths = [p for p in image_paths if os.path.basename(p) not in processed_images_set]
         
-        for p in image_paths:
+        # Chỉ lấy max_renamed_idx từ danh sách ảnh ĐÃ XỬ LÝ thành công trong file Excel cũ
+        for p in processed_images_set:
             base = os.path.splitext(os.path.basename(p))[0]
             if base.isdigit() and int(base) > max_renamed_idx:
                 max_renamed_idx = int(base)
@@ -1213,41 +1214,67 @@ def run_wizard(input_dir, normalize_address=True):
     if not os.path.exists(zip_path) or incremental_scan:
         action_word = "bổ sung" if incremental_scan else "gốc"
         mode = 'a' if incremental_scan else 'w'
-        start_idx = max_renamed_idx + 1 if incremental_scan else 1
         
-        console.print(f"[cyan]📦 Đang nén {action_word} các file ảnh vào original.zip...[/cyan]")
-        try:
-            with zipfile.ZipFile(zip_path, mode, zipfile.ZIP_DEFLATED) as zipf:
-                for file_path in image_paths:
-                    zipf.write(file_path, os.path.basename(file_path))
-            
-            if incremental_scan:
-                console.print(f"[cyan]🔄 Đang đổi tên các file ảnh mới nối tiếp (từ số {start_idx})...[/cyan]")
+        # Lọc những ảnh thực sự cần zip/rename (bỏ qua những ảnh đã bị đổi tên ở lần crash trước)
+        files_to_process = []
+        for p in image_paths:
+            base = os.path.splitext(os.path.basename(p))[0]
+            if incremental_scan and base.isdigit() and int(base) > max_renamed_idx:
+                pass # Bỏ qua ảnh đã được đổi tên do crash
             else:
-                console.print("[cyan]🔄 Đang đổi tên các file ảnh theo số thứ tự...[/cyan]")
+                files_to_process.append(p)
+
+        if files_to_process:
+            start_idx = max_renamed_idx + 1 if incremental_scan else 1
+            
+            console.print(f"[cyan]📦 Đang nén {action_word} {len(files_to_process)} file ảnh vào original.zip...[/cyan]")
+            try:
+                with zipfile.ZipFile(zip_path, mode, zipfile.ZIP_DEFLATED) as zipf:
+                    existing_in_zip = set(zipf.namelist()) if mode == 'a' else set()
+                    for file_path in files_to_process:
+                        bname = os.path.basename(file_path)
+                        if bname not in existing_in_zip:
+                            zipf.write(file_path, bname)
+                            existing_in_zip.add(bname)
                 
-            # Bước 1: Đổi tên thành tên tạm (để tránh ghi đè ngẫu nhiên)
-            temp_paths = []
-            for file_path in image_paths:
-                ext = os.path.splitext(file_path)[1]
-                temp_name = f"temp_{uuid.uuid4().hex[:8]}{ext}"
-                temp_path = os.path.join(input_dir, temp_name)
-                os.rename(file_path, temp_path)
-                temp_paths.append((temp_path, ext))
-                
-            # Bước 2: Đổi tên thành số thứ tự
-            new_image_paths = []
-            for i, (temp_path, ext) in enumerate(temp_paths, start_idx):
-                new_name = f"{i}{ext}"
-                new_path = os.path.join(input_dir, new_name)
-                os.rename(temp_path, new_path)
-                new_image_paths.append(new_path)
-                
-            image_paths = new_image_paths
-            console.print("[bold green]✅ Đã sao lưu và đổi tên thành công![/bold green]")
-        except Exception as e:
-            console.print(f"[bold red]❌ Lỗi trong quá trình sao lưu/đổi tên: {e}[/bold red]")
-            return
+                if incremental_scan:
+                    console.print(f"[cyan]🔄 Đang đổi tên các file ảnh mới nối tiếp (từ số {start_idx})...[/cyan]")
+                else:
+                    console.print("[cyan]🔄 Đang đổi tên các file ảnh theo số thứ tự...[/cyan]")
+                    
+                # Bước 1: Đổi tên thành tên tạm (để tránh ghi đè ngẫu nhiên)
+                temp_paths = []
+                for file_path in files_to_process:
+                    ext = os.path.splitext(file_path)[1]
+                    temp_name = f"temp_{uuid.uuid4().hex[:8]}{ext}"
+                    temp_path = os.path.join(input_dir, temp_name)
+                    os.rename(file_path, temp_path)
+                    temp_paths.append((temp_path, ext))
+                    
+                # Bước 2: Đổi tên thành số thứ tự
+                new_image_paths = []
+                for i, (temp_path, ext) in enumerate(temp_paths, start_idx):
+                    new_name = f"{i}{ext}"
+                    new_path = os.path.join(input_dir, new_name)
+                    os.rename(temp_path, new_path)
+                    new_image_paths.append(new_path)
+                    
+                # Cập nhật lại list image_paths
+                final_image_paths = []
+                renamed_idx = 0
+                for p in image_paths:
+                    if p in files_to_process:
+                        final_image_paths.append(new_image_paths[renamed_idx])
+                        renamed_idx += 1
+                    else:
+                        final_image_paths.append(p)
+                image_paths = final_image_paths
+                console.print("[bold green]✅ Đã sao lưu và đổi tên thành công![/bold green]")
+            except Exception as e:
+                console.print(f"[bold red]❌ Lỗi trong quá trình sao lưu/đổi tên: {e}[/bold red]")
+                return
+        else:
+            console.print("[yellow]⚠️ Các ảnh mới đều đã được đánh số ở lần chạy trước, bỏ qua bước sao lưu và đổi tên.[/yellow]")
     else:
         console.print("[yellow]⚠️ Bỏ qua bước sao lưu và đổi tên do file original.zip đã tồn tại trong thư mục này.[/yellow]")
     # ------------------------------------
