@@ -15,6 +15,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from vietocr_engine import extract_text_from_image
 import re
+import unicodedata
 import concurrent.futures
 import zipfile
 import threading
@@ -22,6 +23,45 @@ import warnings
 
 # Tắt cảnh báo chia cho 0 của numpy bên trong thư viện VietOCR
 warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in divide")
+
+# Danh sách 300 họ phổ biến tiếng Việt (không dấu, lowercase)
+_VN_SURNAMES = {
+    'a', 'an', 'au', 'ba', 'bach', 'ban', 'bang', 'banh', 'bao', 'be',
+    'bien', 'bo', 'bui', 'ca', 'cai', 'cam', 'can', 'cao', 'cap', 'cat',
+    'chao', 'chau', 'che', 'chi', 'chiem', 'chiu', 'chu', 'chuc', 'chung', 'chuong',
+    'co', 'cong', 'cu', 'cung', 'cut', 'dai', 'dam', 'dan', 'dang', 'danh',
+    'dao', 'dau', 'deo', 'diec', 'diem', 'dien', 'diep', 'dieu', 'dinh', 'do',
+    'doan', 'doi', 'dong', 'du', 'duong', 'duy', 'gian', 'giang', 'giap', 'ha',
+    'hac', 'han', 'hang', 'hau', 'ho', 'hoa', 'hoang', 'hong', 'hua', 'hung',
+    'huong', 'huynh', 'ka', 'kha', 'khau', 'khieu', 'khong', 'khuat', 'khuc', 'khuong',
+    'khuu', 'kien', 'kieu', 'kim', 'la', 'lac', 'lai', 'lam', 'lang', 'lanh',
+    'lao', 'lau', 'le', 'leng', 'leu', 'lien', 'lieng', 'lieu', 'linh', 'lo',
+    'loc', 'loi', 'long', 'lu', 'luan', 'luc', 'luong', 'luu', 'luyen', 'ly',
+    'ma', 'mac', 'mach', 'mai', 'man', 'mang', 'manh', 'mau', 'me', 'mo',
+    'mong', 'moong', 'mua', 'nay', 'ngac', 'ngan', 'nghiem', 'ngo', 'ngoc', 'ngon',
+    'ngu', 'nguy', 'nguyen', 'nham', 'nhan', 'nhu', 'nie', 'ninh', 'nong', 'o',
+    'on', 'ong', 'pham', 'phan', 'phi', 'pho', 'phong', 'phu', 'phung', 'phuong',
+    'quach', 'quan', 'quang', 'que', 'quyen', 'ro', 'sa', 'sai', 'sam', 'san',
+    'son', 'su', 'sung', 'ta', 'tac', 'tan', 'tang', 'tao', 'tat', 'thach',
+    'thai', 'tham', 'than', 'thang', 'thanh', 'thao', 'thi', 'thieu', 'tho', 'thoi',
+    'thuong', 'thuy', 'tien', 'tiet', 'tieu', 'to', 'toan', 'ton', 'tong', 'tonnu',
+    'tonthat', 'tra', 'trac', 'tram', 'tran', 'trang', 'tri', 'trieu', 'trinh', 'trung',
+    'truong', 'tu', 'tuong', 'ung', 'uong', 'va', 'van', 'vang', 'vi', 'vien',
+    'vinh', 'vo', 'vong', 'vu', 'vuong', 'vuu', 'vy', 'xa', 'xong', 'y',
+    'yen',
+}
+
+def _is_valid_name(s):
+    """Tên hợp lệ: 2-5 từ, bắt đầu bằng họ VN phổ biến, không số."""
+    if not s or re.search(r'\d', s):
+        return False
+    words = s.strip().split()
+    if not (2 <= len(words) <= 5):
+        return False
+    # Chuẩn hóa họ: xóa dấu để so sánh
+    first = unicodedata.normalize('NFD', words[0].lower())
+    first_ascii = ''.join(c for c in first if unicodedata.category(c) != 'Mn')
+    return first_ascii in _VN_SURNAMES
 
 # Global locks
 ocr_lock = threading.Lock()
@@ -393,29 +433,6 @@ def parse_ocr_text(text):
     
                     # 1. Name
                     if any(kw in line_lower for kw in ["họ và tên", "họ chữ đệm và tên", "full name", "ho ten", "kho và tên", "fui nam"]):
-                        
-                        # Danh sách họ phổ biến tiếng Việt (không dấu, lowercase) để xác thực tên
-                        _VN_SURNAMES = {
-                            'nguyen', 'tran', 'le', 'pham', 'huynh', 'hoang', 'phan',
-                            'vu', 'vo', 'dang', 'bui', 'do', 'ho', 'ngo', 'duong',
-                            'ly', 'dinh', 'to', 'mai', 'truong', 'luong', 'luu',
-                            'lam', 'quach', 'ha', 'chau', 'cao', 'tang', 'lai',
-                            'kim', 'thach', 'tong', 'trieu', 'nhan', 'hua', 'can',
-                            'khuu', 'ly', 'giang', 'thi',  # Thi/Thị đứng đầu trong một số tên
-                        }
-                        def _is_valid_name(s):
-                            """Tên hợp lệ: 2-5 từ, bắt đầu bằng họ VN phổ biến, không số."""
-                            import unicodedata
-                            if not s or re.search(r'\d', s):
-                                return False
-                            words = s.strip().split()
-                            if not (2 <= len(words) <= 5):
-                                return False
-                            # Chuẩn hóa họ: xóa dấu để so sánh
-                            first = unicodedata.normalize('NFD', words[0].lower())
-                            first_ascii = ''.join(c for c in first if unicodedata.category(c) != 'Mn')
-                            return first_ascii in _VN_SURNAMES
-                        
                         if ":" in line:
                             name_part = line.split(":", 1)[1].strip()
                             name_part = name_part.rstrip('.')
