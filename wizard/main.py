@@ -398,7 +398,8 @@ def parse_ocr_text(text):
                             "THUYKHANG": "THUY HANG",
                             "THUCTRANGCA": "THU TRANG",
                             "THUCTRANG": "THU TRANG",
-                            "CHUYNH": "HUYNH"
+                            "CHUYNH": "HUYNH",
+                            "CHUY": "THUY"
                         }
                         for bad, good in ocr_fixes.items():
                             s = s.replace(bad, good)
@@ -472,6 +473,10 @@ def parse_ocr_text(text):
                             name_words.append(cw)
                     clean_name = " ".join(name_words).upper()
                     
+                    # Fix một số lỗi OCR dính chữ kinh điển TRƯỚC KHI cắt từ rác (để LEDO -> LE DO không bị chém mất)
+                    clean_name = clean_name.replace('BICHINHIEN', 'BICH NHIEN')
+                    clean_name = re.sub(r'^(LE|TRAN|NGUYEN|PHAM|VU|VO|DANG|BUI|DO|HO|PHAN|LY|HUYNH|HOANG|NGO)(THI|VAN|DO|NGOC|XUAN|HUU|MINH|DUY|QUOC|BAO|TRUNG)\b', r'\1 \2', clean_name)
+                    
                     # Loại bỏ các từ rác ở đầu chuỗi do OCR ảo giác (vd: KILL Vu Thuc Uyen -> Vu Thuc Uyen)
                     words_upper = clean_name.split()
                     while len(words_upper) > 2:
@@ -482,9 +487,8 @@ def parse_ocr_text(text):
                         words_upper.pop(0)
                     clean_name = " ".join(words_upper)
                     
-                    # Fix một số lỗi OCR dính chữ kinh điển
-                    clean_name = clean_name.replace('BICHINHIEN', 'BICH NHIEN')
-                    clean_name = re.sub(r'^(LE|TRAN|NGUYEN|PHAM|VU|VO|DANG|BUI|DO|HO|PHAN|LY|HUYNH|HOANG|NGO)(THI|VAN|DO|NGOC|XUAN|HUU|MINH|DUY|QUOC|BAO|TRUNG)\b', r'\1 \2', clean_name)
+                    # Dọn dẹp từ rác dính ở cuối tên (VD: NGUYEN THI NGOC TRANG NGAY)
+                    clean_name = re.sub(r'\b(?:NGAY|DATE|SINH|BIRTH)\b.*$', '', clean_name).strip()
                     
                     if len(clean_name) > 3 and _is_valid_name(clean_name):
                         data['Họ tên'] = clean_name
