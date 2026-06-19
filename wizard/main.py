@@ -601,7 +601,7 @@ def parse_ocr_text(text):
                                 
                             # CẮT BỎ CÁC TỪ TIẾNG ANH ẢO GIÁC DO OCR NHẬN DIỆN MỜ VÀ CÁC NHÃN
                             clean_line = re.sub(
-                                r'(?i)\b(substates|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
+                                r'(?i)\b(substates|date|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
                                 r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
                                 r'indent|vi[eê][nǹ]|nam\s+linh|'
                                 r'place of residence|place of origin|place oforging|transervating|daleoroxic|'
