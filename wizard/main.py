@@ -1848,6 +1848,13 @@ def main():
         else:
             console.print("\n[yellow][Hướng dẫn][/yellow]: Kéo thả thư mục chứa ảnh vào cửa sổ này, hoặc copy đường dẫn thư mục và dán vào đây.")
             input_dir = Prompt.ask("[bold cyan]Nhập đường dẫn thư mục chứa ảnh CCCD (hoặc gõ 'q' để thoát)[/bold cyan]").strip()
+            
+            # Hỏi bật debug mode nếu người dùng chạy tương tác và chưa bật
+            global DEBUG_MODE
+            if not DEBUG_MODE and input_dir.lower() not in ('q', 'quit', 'exit'):
+                if Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=False):
+                    DEBUG_MODE = True
+                    
             first_run = False
             
         if input_dir.lower() in ('q', 'quit', 'exit'):
