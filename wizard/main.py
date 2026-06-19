@@ -976,7 +976,7 @@ from rich.prompt import Prompt, Confirm
 
 console = Console()
 
-def run_wizard(input_dir):
+def run_wizard(input_dir, normalize_address=True):
     from rich.text import Text
     file_logs = []
     
@@ -1430,11 +1430,11 @@ def run_wizard(input_dir):
     processed_data = list(records.values())
     # Lấy danh sách địa chỉ duy nhất
     unique_addresses = list(set([item['Nơi thường trú gốc'] for item in processed_data if item.get('Nơi thường trú gốc')]))
-    console.print(Panel(f"[bold cyan]🌐 ĐANG CHUẨN BỊ GỌI API CHUẨN HÓA CHO {len(unique_addresses)} ĐỊA CHỈ DUY NHẤT VỚI {api_threads} LUỒNG...[/bold cyan]", border_style="green"))
     address_map = {}
 
     # Gọi API chuẩn hóa địa chỉ theo batch, advance progress bar theo từng kết quả
-    if unique_addresses:
+    if normalize_address and unique_addresses:
+        console.print(Panel(f"[bold cyan]🌐 ĐANG CHUẨN BỊ GỌI API CHUẨN HÓA CHO {len(unique_addresses)} ĐỊA CHỈ DUY NHẤT VỚI {api_threads} LUỒNG...[/bold cyan]", border_style="green"))
         batch_size = 100
         total_addrs = len(unique_addresses)
         processed_count = 0
@@ -1840,6 +1840,7 @@ def main():
 
     while True:
         input_dir = ""
+        do_normalize = True
         # Bỏ tham số --debug khỏi sys.argv để không bị nhầm thành thư mục đầu vào
         args = [a for a in sys.argv if a != '--debug']
         if first_run and len(args) >= 2:
@@ -1855,13 +1856,16 @@ def main():
                 if Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=False):
                     DEBUG_MODE = True
                     
+            if input_dir.lower() not in ('q', 'quit', 'exit'):
+                do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng và tốn thêm thời gian) không?[/bold yellow]", default=True)
+                    
             first_run = False
             
         if input_dir.lower() in ('q', 'quit', 'exit'):
             console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
             break
             
-        run_wizard(input_dir)
+        run_wizard(input_dir, normalize_address=do_normalize)
         
         if not Confirm.ask("\n[bold yellow]Bạn có muốn tiếp tục xử lý thư mục khác không?[/bold yellow]"):
             console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
