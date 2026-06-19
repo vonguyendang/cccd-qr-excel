@@ -1965,7 +1965,37 @@ def run_wizard(input_dir, normalize_address=True):
     console.print(f"File log chi tiết được lưu tại: [yellow]{os.path.abspath(log_filename)}[/yellow]")
     console.print("🎉"*15 + "\n")
 
+
+def clean_address_string(addr):
+    if not addr: return ""
+    import re
+    clean_line = str(addr)
+    clean_line = re.sub(r'(?i)(c[oó]\s+)?gi[aáà]\s*tr[iị]\s*(đ[ếeêề]n|den|đen)\s*[:.,]*', '', clean_line)
+    clean_line = re.sub(r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|date\s*ferpiry|date\s*ferp[a-z]*|'
+                        r'n[oơ]i\s*c[aấ]p|ng[aà]y\s*c[aấ]p|b[oộ]\s*c[oô]ng\s*an|c[uụ]c\s*c[aả]nh\s*s[aá]t|'
+                        r'gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|sex|nationality|'
+                        r'qu[eê]\s*qu[aá]n|khai\s*sinh|birth|data\s*ofespry)', '', clean_line)
+    clean_line = re.sub(r'\b\d{2}/\d{2}/\d{4}\b', '', clean_line)
+    clean_line = re.sub(r'(?i)\b(place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
+                        r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
+                        r'indent|vi[eê][nǹ]|nam\s+linh|'
+                        r'place of residence|place of origin|place oforging|transervating|daleoroxic|'
+                        r'deleofexpin|overstreeter|residence|origin|'
+                        r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
+                        r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b', '', clean_line)
+    clean_line = re.sub(r'(?i)(họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)', '', clean_line)
+    clean_line = re.sub(r'(?i)^(c[oó]|có)\s*[:.,]*\s*', '', clean_line)
+    clean_line = re.sub(r'(?i)\s+(c[oó]|có)\s*[:.,]*$', '', clean_line)
+    clean_line = re.sub(r'\b\d{10,12}\b', '', clean_line)
+    clean_line = re.sub(r'\b\d{4}/\d{4}\b', '', clean_line)
+    clean_line = re.sub(r'\s+', ' ', clean_line).strip(', ')
+    clean_line = re.sub(r',\s*,', ',', clean_line)
+    clean_line = re.sub(r'^\s*,\s*', '', clean_line)
+    clean_line = re.sub(r'\s*,\s*$', '', clean_line)
+    return clean_line
+
 def run_reprocess(excel_path, normalize_address=True):
+
     from rich.text import Text
     import datetime
     file_logs = []
@@ -2032,18 +2062,18 @@ def run_reprocess(excel_path, normalize_address=True):
             })
             
     if not rows_to_process:
-        console.print("[bold green]✅ Tất cả các dòng trong file Excel đều đã đầy đủ thông tin, không cần xử lý lại![/bold green]")
-        return
-        
-    console.print(f"[bold yellow]⚠️ Tìm thấy {len(rows_to_process)} dòng bị thiếu thông tin cần xử lý lại.[/bold yellow]")
-    
-    # Cấu hình luồng xử lý
-    num_threads_input = Prompt.ask("\n[cyan]Nhập số luồng xử lý ảnh song song[/cyan] (Enter để mặc định là 4)", default="4").strip()
-    try:
-        num_threads = int(num_threads_input) if num_threads_input else 4
-    except ValueError:
-        console.print("[yellow]⚠️ Giá trị không hợp lệ, sử dụng mặc định: 4 luồng.[/yellow]")
+        console.print("[bold green]✅ Tất cả các dòng trong file Excel đều đã đầy đủ thông tin, sẽ chuyển thẳng sang làm sạch & chuẩn hóa địa chỉ![/bold green]")
         num_threads = 4
+    else:
+        console.print(f"[bold yellow]⚠️ Tìm thấy {len(rows_to_process)} dòng bị thiếu thông tin cần xử lý lại.[/bold yellow]")
+        
+        # Cấu hình luồng xử lý
+        num_threads_input = Prompt.ask("\n[cyan]Nhập số luồng xử lý ảnh song song[/cyan] (Enter để mặc định là 4)", default="4").strip()
+        try:
+            num_threads = int(num_threads_input) if num_threads_input else 4
+        except ValueError:
+            console.print("[yellow]⚠️ Giá trị không hợp lệ, sử dụng mặc định: 4 luồng.[/yellow]")
+            num_threads = 4
 
     api_threads = 4
     if normalize_address:
@@ -2154,9 +2184,20 @@ def run_reprocess(excel_path, normalize_address=True):
             if new_val:
                 row_info['row_cells'][idx].value = new_val
                 
-                # Nếu là địa chỉ, gom để gửi API chuẩn hóa
-                if col_name == 'Nơi thường trú gốc' and new_val:
-                    address_to_normalize.add(new_val)
+                # Gom để gửi API chuẩn hóa (sẽ được dọn rác ở vòng lặp sau)
+                pass
+
+    # LÀM SẠCH VÀ CHUẨN BỊ GỌI API CHO TOÀN BỘ FILE EXCEL (kể cả những dòng không bị lỗi OCR)
+    address_to_normalize = set()
+    orig_idx = col_idx.get('Nơi thường trú gốc')
+    if orig_idx is not None:
+        # iter_rows đã tiêu thụ hết ws, ta cần lặp lại
+        for row in ws.iter_rows(min_row=2, values_only=False):
+            val = row[orig_idx].value
+            if val and str(val).strip() and str(val).strip() != "None":
+                cleaned_val = clean_address_string(str(val))
+                row[orig_idx].value = cleaned_val
+                address_to_normalize.add(cleaned_val)
 
     # Nơi chuẩn hóa địa chỉ
     if normalize_address and address_to_normalize:
@@ -2197,11 +2238,11 @@ def run_reprocess(excel_path, normalize_address=True):
         norm_idx = col_idx.get('Địa chỉ chuẩn hóa mới')
         orig_idx = col_idx.get('Nơi thường trú gốc')
         if norm_idx is not None and orig_idx is not None:
-            for row_info in rows_to_process:
-                orig_val = row_info['row_cells'][orig_idx].value
+            for row in ws.iter_rows(min_row=2, values_only=False):
+                orig_val = row[orig_idx].value
                 if orig_val and orig_val in address_map and address_map[orig_val].get('success'):
                     # Đè lên luôn vì mình vừa reprocess
-                    row_info['row_cells'][norm_idx].value = address_map[orig_val].get('converted', '')
+                    row[norm_idx].value = address_map[orig_val].get('converted', '')
 
     timestamp = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
     reprocess_out = excel_path.replace('.xlsx', f'_reprocessed_{timestamp}.xlsx')
