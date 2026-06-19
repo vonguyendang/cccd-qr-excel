@@ -7,7 +7,7 @@ import cv2
 from pyzbar.pyzbar import decode
 from pyzbar.pyzbar import ZBarSymbol
 import openpyxl
-from openpyxl.styles import Font
+from openpyxl.styles import Font, PatternFill
 import requests
 import datetime
 import pillow_heif
@@ -43,8 +43,8 @@ _VN_SURNAMES = {
     'loc', 'loi', 'long', 'lu', 'luan', 'luc', 'luong', 'luu', 'luyen', 'ly',
     'ma', 'mac', 'mach', 'mai', 'man', 'mang', 'manh', 'mau', 'me', 'mo',
     'mong', 'moong', 'mua', 'nay', 'ngac', 'ngan', 'nghiem', 'ngo', 'ngoc', 'ngon',
-    'ngu', 'nguy', 'nguyen', 'nham', 'nhan', 'nhu', 'nie', 'ninh', 'nong', 'o',
-    'on', 'ong', 'pham', 'phan', 'phi', 'pho', 'phong', 'phu', 'phung', 'phuong',
+    'ngu', 'nguy', 'nguyen', 'nham', 'nhan', 'nhao', 'nhu', 'nie', 'ninh', 'nong', 'o',
+    'on', 'ong', 'pham', 'phan', 'phi', 'pho', 'phong', 'phu', 'phung', 'phuong', 'ngoi',
     'quach', 'quan', 'quang', 'que', 'quyen', 'ro', 'sa', 'sai', 'sam', 'san',
     'son', 'su', 'sung', 'ta', 'tac', 'tan', 'tang', 'tao', 'tat', 'thach',
     'thai', 'tham', 'than', 'thang', 'thanh', 'thao', 'thi', 'thieu', 'tho', 'thoi',
@@ -277,7 +277,7 @@ def parse_ocr_text(text):
 
                 # ---------------------------------------------------------
                 # 1. NHẬN DIỆN MẶT THẺ (FRONT / BACK)
-                if "<<" in text_upper or "IDVNM" in text_upper or "ĐẶC ĐIỂM NHẬN DẠNG" in text_upper or "NGÓN TRỎ" in text_upper or "CỤC TRƯỞNG" in text_upper or "BỘ CÔNG AN" in text_upper:
+                if "<<" in text_upper or "IDVNM" in text_upper or "VNM" in text_upper or "ĐẶC ĐIỂM NHẬN DẠNG" in text_upper or "NGÓN TRỎ" in text_upper or "CỤC TRƯỞNG" in text_upper or "BỘ CÔNG AN" in text_upper:
                     data['OCR Side'] = 'Back'
                 # Các từ khóa đặc trưng của Mặt Trước
                 elif "CĂN CƯỚC" in text_upper or "CẦN CƯỚC" in text_upper or "CÔNG DÂN" in text_upper or "ĐỘC LẬP" in text_upper or "TỰ DO" in text_upper or "HỌ VÀ TÊN" in text_upper:
@@ -298,7 +298,7 @@ def parse_ocr_text(text):
                         break
 
                 # Nếu không tìm thấy pattern <, thử lắp ráp từ VNM chuẩn ICAO
-                if not data['CCCD']:
+                if not data['CCCD'] and ("IDVNM" in text_upper or "VNM" in text_upper):
                     mrz_match = re.search(r'VNM(\d{9})\d(\d{3})', text_mrz)
                     if mrz_match:
                         assembled = mrz_match.group(2) + mrz_match.group(1)
@@ -314,12 +314,12 @@ def parse_ocr_text(text):
                     mrz_lines = text_mrz.split('\n')  # text_mrz đã replace O→0 rồi
                     for i, line in enumerate(mrz_lines):
                         line_stripped = line.strip()
-                        if line_stripped.startswith('IDVN'):
+                        if line_stripped.startswith('IDVN') or line_stripped.startswith('VNM'):
                             # Gom: dòng IDVNN + tối đa 5 dòng tiếp theo (MRZ có thể wrap)
                             block_lines = mrz_lines[i:i+6]
                             block = ' '.join(block_lines)
-                            # Bỏ tiền tố IDVNM/IDVNN
-                            after_prefix = re.sub(r'^IDVN[NM0]', '', block.strip())
+                            # Bỏ tiền tố IDVNM/IDVNN/VNM
+                            after_prefix = re.sub(r'^(I?D?VNM|I?D?VNN)', '', block.strip())
                             # Chỉ giữ lại chữ số và dấu '<' (MRZ không có chữ O)
                             cleaned = re.sub(r'[^0-9<]', '', after_prefix)
                             # Cần ít nhất 15 ký tự: 3 cuối (<<X) + 12 CCCD
@@ -607,7 +607,7 @@ def parse_ocr_text(text):
                             # Xóa cụm "giá trị đến" và mọi biến thể OCR (có/không dấu)
                             # "gia tri đến", "giá trị đến", "gia tri den", v.v.
                             clean_line = re.sub(
-                                r'(?i)(c[oó]\s+)?gi[aáàảãạ]\s*tr[iị]\s*(đ[ếeêề]n|den|đen)\s*[:.,]*',
+                                r'(?i)(c[oó]\s+)?gi[aáàảãạ]\s*tr[iịeê]*\s*(đ[ếeêề]n|den|đen|en)\s*[:.,]*',
                                 '', clean_line).strip()
                             clean_line = re.sub(
                                 r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|telefoxpir|date\s*ferpiry|date\s*ferp[a-z]*|'
@@ -621,7 +621,7 @@ def parse_ocr_text(text):
                                 
                             # CẮT BỎ CÁC TỪ TIẾNG ANH ẢO GIÁC DO OCR NHẬN DIỆN MỜ VÀ CÁC NHÃN
                             clean_line = re.sub(
-                                r'(?i)\b(substates|date|dater|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
+                                r'(?i)\b(substates|date|dater|datero|eas|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
                                 r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
                                 r'indent|vi[eê][nǹ]|nam\s+linh|'
                                 r'place of residence|place of origin|place oforging|transervating|daleoroxic|dale\s*o|'
@@ -629,7 +629,7 @@ def parse_ocr_text(text):
                                 r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
                                 r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b',
                                 '', clean_line).strip()
-                            clean_line = re.sub(r'(?i)(substates|họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)', '', clean_line).strip()
+                            clean_line = re.sub(r'(?i)(substates|họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd|date)', '', clean_line).strip()
                             
                             # Loại bỏ chữ 'Có' rớt lại do cắt cụm 'Có giá trị đến' bị thiếu
                             # Xử lý các dạng: 'Có :', 'Có', 'Có ,' đứng 1 mình hoặc kẹp ở đầu/cuối chuỗi
@@ -637,7 +637,7 @@ def parse_ocr_text(text):
                             clean_line = re.sub(r'(?i)\s+(c[oó]|co\u0301)\s*[:.,]*$', '', clean_line).strip()
                             
                             # Cắt bỏ rác là số CCCD (12 số) hoặc số điện thoại lọt vào địa chỉ, và ngày tháng bị dính (vd 1010/2037)
-                            clean_line = re.sub(r'\b\d{10,12}\b', '', clean_line).strip()
+                            clean_line = re.sub(r'\b\d{9,15}\b', '', clean_line).strip()
                             clean_line = re.sub(r'\b\d{4}/\d{4}\b', '', clean_line).strip()
                             
                             # Không lấy vào địa chỉ nếu dòng này lọt Họ Tên vào
@@ -698,6 +698,14 @@ def parse_ocr_text(text):
                             # --- Cần Thơ variants ---
                             "Ninh Kiơu Thơ": "Ninh Kiều, Cần Thơ",
                             "Ninh Kiơn Thơ": "Ninh Kiều, Cần Thơ",
+                            "Thới Bình Ninh Kiều": "Thới Bình, Ninh Kiều",
+                            "Bình Thơn Thơng Nhiều Thuyên": "Bình Thủy, Cần Thơ",
+                            "Hung Vương": "Hùng Vương",
+                            "Pham, Ngọc Hưng": "Phạm Ngọc Hưng",
+                            "Pham Ngọc Hưng": "Phạm Ngọc Hưng",
+                            "Bình, Dương B": "Bình Dương B",
+                            "Long Tuyên": "Long Tuyền",
+                            "An Thời": "An Thới",
                             "Ninh Kiểu": "Ninh Kiều",
                             "Ninh ciều": "Ninh Kiều",
                             "Cần Thơng": "Cần Thơ",
@@ -736,7 +744,8 @@ def parse_ocr_text(text):
                         addr = re.sub(r'\bThung\b', 'Cần Thơ', addr)
                         
                         # Dùng regex để xóa các cụm "Cần Thơ" bị lặp lại liên tiếp (có thể cách nhau bằng khoảng trắng hoặc dấu phẩy)
-                        addr = re.sub(r'(?:Cần Thơ[,\s]*){2,}', 'Cần Thơ', addr)
+                        addr = re.sub(r'(?i)(?:(?:Thủ\s*)?Cần Thơ[,\s]*){2,}', 'Cần Thơ, ', addr)
+                        addr = re.sub(r'(?i)(?:Thủ Thơ[,\s]*)+', '', addr)
                         
                         # Regex loại bỏ các pattern lặp lại do OCR đọc cùng 1 đoạn nhiều lần
                         # Ví dụ: "Cần Thơ, Cần Thơ, Cần Thơ" → "Cần Thơ"
@@ -810,10 +819,150 @@ def parse_ocr_text(text):
 
                 return data
 
+def order_points(pts):
+    import numpy as np
+    rect = np.zeros((4, 2), dtype="float32")
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
+    return rect
+
+def align_card(img, target_width=1000, target_height=630):
+    import cv2
+    import numpy as np
+    original = img.copy()
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.bilateralFilter(gray, 11, 17, 17)
+    edged = cv2.Canny(gray, 30, 200)
+    
+    debug_img = original.copy()
+    
+    # 1. Thử Contour 4 góc
+    cnts, _ = cv2.findContours(edged.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:10]
+    
+    screenCnt = None
+    for c in cnts:
+        peri = cv2.arcLength(c, True)
+        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+        if len(approx) == 4:
+            # Kiểm tra tỷ lệ khung hình: thẻ CCCD có tỷ lệ ~3:2 (≈1.58)
+            # Chấp nhận range 1.2 đến 2.2 để bao quát cả ảnh chụp nghiêng
+            pts = approx.reshape(4, 2)
+            rect_pts = order_points(pts.astype("float32"))
+            w_side = (np.linalg.norm(rect_pts[1] - rect_pts[0]) + np.linalg.norm(rect_pts[2] - rect_pts[3])) / 2
+            h_side = (np.linalg.norm(rect_pts[3] - rect_pts[0]) + np.linalg.norm(rect_pts[2] - rect_pts[1])) / 2
+            if h_side < 10: continue
+            ratio = max(w_side, h_side) / min(w_side, h_side)
+            if ratio < 1.2 or ratio > 2.2:
+                continue  # Bỏ qua: không phải hình dạng thẻ (quá vuông hoặc quá dài)
+            screenCnt = approx
+            break
+            
+    if screenCnt is not None:
+        cv2.drawContours(debug_img, [screenCnt], -1, (0, 255, 0), 5)
+        pts = screenCnt.reshape(4, 2)
+        rect = order_points(pts)
+        method = "contour"
+    else:
+        # 2. Thử Fallback bằng OCR clustering
+        scale = 0.5
+        h, w = img.shape[:2]
+        small_img = cv2.resize(img, (int(w * scale), int(h * scale)))
+        
+        from vietocr_engine import get_ocr_engine
+        ocr = get_ocr_engine()
+        bxs = ocr(small_img, 0)
+        
+        if bxs:
+            min_x = float('inf')
+            min_y = float('inf')
+            max_x = 0
+            max_y = 0
+            
+            for box, text in bxs:
+                for pt in box:
+                    x, y = pt
+                    min_x = min(min_x, x)
+                    min_y = min(min_y, y)
+                    max_x = max(max_x, x)
+                    max_y = max(max_y, y)
+                    
+            min_x = int(min_x / scale)
+            min_y = int(min_y / scale)
+            max_x = int(max_x / scale)
+            max_y = int(max_y / scale)
+            
+            margin_x = int((max_x - min_x) * 0.05)
+            margin_y = int((max_y - min_y) * 0.05)
+            
+            min_x = max(0, min_x - margin_x)
+            min_y = max(0, min_y - margin_y)
+            max_x = min(w, max_x + margin_x)
+            max_y = min(h, max_y + margin_y)
+            
+            rect = np.array([
+                [min_x, min_y],
+                [max_x, min_y],
+                [max_x, max_y],
+                [min_x, max_y]
+            ], dtype="float32")
+            
+            cv2.rectangle(debug_img, (min_x, min_y), (max_x, max_y), (255, 0, 0), 5)
+            method = "ocr_cluster"
+        else:
+            # 3. Fallback cuối cùng bằng minAreaRect trên mask
+            _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+            morph = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+            cnts, _ = cv2.findContours(morph.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            if len(cnts) > 0:
+                c = max(cnts, key=cv2.contourArea)
+                min_rect = cv2.minAreaRect(c)
+                box = cv2.boxPoints(min_rect)
+                box = np.intp(box)
+                cv2.drawContours(debug_img, [box], -1, (0, 0, 255), 5)
+                rect = order_points(box.astype("float32"))
+                method = "minAreaRect"
+            else:
+                return original, debug_img, "failed"
+
+    # Xử lý Warp Perspective
+    w1 = np.linalg.norm(rect[2] - rect[3])
+    w2 = np.linalg.norm(rect[1] - rect[0])
+    h1 = np.linalg.norm(rect[1] - rect[2])
+    h2 = np.linalg.norm(rect[0] - rect[3])
+    max_width = max(int(w1), int(w2))
+    max_height = max(int(h1), int(h2))
+    
+    if max_width < max_height:
+        dst = np.array([
+            [0, 0],
+            [target_height - 1, 0],
+            [target_height - 1, target_width - 1],
+            [0, target_width - 1]], dtype="float32")
+        out_shape = (target_height, target_width)
+    else:
+        dst = np.array([
+            [0, 0],
+            [target_width - 1, 0],
+            [target_width - 1, target_height - 1],
+            [0, target_height - 1]], dtype="float32")
+        out_shape = (target_width, target_height)
+        
+    M = cv2.getPerspectiveTransform(rect, dst)
+    warped = cv2.warpPerspective(original, M, out_shape)
+    
+    return warped, debug_img, method
+
 def extract_ocr_data(image_path_or_cv2img):
     """
-    Hàm xử lý OCR (Trích xuất văn bản từ ảnh) bằng AI Deepdoc_VietOCR.
-    Hỗ trợ tự động xoay ảnh (rotation fallback) nếu không tìm thấy CCCD.
+    Hàm xử lý OCR (Trích xuất văn bản từ ảnh) bằng AI.
+    Hỗ trợ chia 2 luồng độc lập cho mặt sau CCCD (Ngày cấp và MRZ).
     """
     try:
         if isinstance(image_path_or_cv2img, str):
@@ -831,6 +980,7 @@ def extract_ocr_data(image_path_or_cv2img):
         import cv2
         import numpy as np
         import warnings
+        import os
         
         has_glare_warning = False
         
@@ -843,103 +993,380 @@ def extract_ocr_data(image_path_or_cv2img):
                     if issubclass(warning.category, RuntimeWarning) and "invalid value encountered in divide" in str(warning.message):
                         has_glare_warning = True
                 return result
+
+        # --- BƯỚC 1: XÁC ĐỊNH BIÊN VÀ LÀM PHẲNG THẺ ---
+        card_img, debug_detect_img, align_method = align_card(img_to_ocr)
         
-        # --- PASS 1: TÌM CHIỀU ẢNH TỐT NHẤT ---
-        best_img = img_to_ocr
+        debug_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "debug")
+        os.makedirs(debug_dir, exist_ok=True)
+        cv2.imwrite(os.path.join(debug_dir, "original_image.jpg"), img_to_ocr)
+        
+        if align_method == "contour":
+            cv2.imwrite(os.path.join(debug_dir, "detected_card_contour.jpg"), debug_detect_img)
+        else:
+            cv2.imwrite(os.path.join(debug_dir, "detected_card_fallback_box.jpg"), debug_detect_img)
+            
+        cv2.imwrite(os.path.join(debug_dir, "warped_card_normalized.jpg"), card_img)
+
+        # --- BƯỚC 2: TÌM HƯỚNG XOAY CHUẨN DỰA TRÊN WARPED CARD ---
+        rotations = [
+            (None, "Không xoay"),
+            (cv2.ROTATE_90_COUNTERCLOCKWISE, "Xoay trái 90 độ"),
+            (cv2.ROTATE_90_CLOCKWISE, "Xoay phải 90 độ"),
+            (cv2.ROTATE_180, "Xoay 180 độ")
+        ]
+        
+        is_back_side = False
+        best_rot_score = -1
+        best_back_rotated_img = None
+        best_back_rot_name = ""
+        best_raw_mrz_text = ""
+        best_mrz_lines = []
+        best_thresh_bottom_img = None
+        
+        for rot_code, rot_name in rotations:
+            rotated = card_img if rot_code is None else cv2.rotate(card_img, rot_code)
+            hr, wr = rotated.shape[:2]
+            
+            # Crop bottom 35% từ ảnh thẻ ĐÃ WARP
+            bottom_crop = rotated[int(hr * 0.65):hr, :]
+            
+            # Tiền xử lý cho VietOCR (Tăng contrast ảnh màu)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            lab = cv2.cvtColor(bottom_crop, cv2.COLOR_BGR2LAB)
+            l, a, b = cv2.split(lab)
+            l2 = clahe.apply(l)
+            mrz_contrast = cv2.cvtColor(cv2.merge((l2,a,b)), cv2.COLOR_LAB2BGR)
+            
+            # Lấy text bằng VietOCR
+            text_bottom = safe_extract_text(mrz_contrast)
+            thresh_bottom = mrz_contrast # fallback debug image
+            
+            # Đánh giá điểm (Score)
+            upper_text = text_bottom.upper()
+            score = 0
+            if 'IDVNM' in upper_text:
+                score += 500
+            if 'VNM' in upper_text:
+                score += 200
+            
+            # Khôi phục một phần dấu < bị nhận diện sai thành K hoặc khoảng trắng (CHỈ cho mrz_lines xuất ra)
+            text_bottom_fixed = upper_text.replace('K', '<').replace(' ', '<')
+            clean_mrz_text = re.sub(r'[^A-Z0-9<\n]', '', text_bottom_fixed)
+            mrz_lines = [l.strip() for l in clean_mrz_text.split('\n') if len(l.strip()) >= 20]
+            
+            if score > best_rot_score and score > 50:
+                is_back_side = True
+                best_rot_score = score
+                best_back_rotated_img = rotated
+                best_back_rot_name = rot_name
+                best_raw_mrz_text = text_bottom
+                best_mrz_lines = mrz_lines
+                best_thresh_bottom_img = thresh_bottom
+            
+            # Dừng sớm nếu đã nhận ra mặt sau với độ tin cậy cao (có cả IDVNM lẫn VNM)
+            if best_rot_score >= 700:
+                break
+                
+        # --- BƯỚC 3: XỬ LÝ THEO MẶT THẺ ---
         best_data = {'CCCD': '', 'Họ tên': '', 'Ngày sinh': '', 'OCR Side': '', 'Raw Text Upper': ''}
         best_note = "Ảnh mờ hoặc không thể nhận diện được"
         rotated_return = None
         
-        text, is_vertical = safe_extract_text(img_to_ocr, return_orientation=True)
-        data = parse_ocr_text(text)
-        
-        if data['CCCD'] or (not data['CCCD'] and data['OCR Side'] == 'Front' and data['Họ tên']):
-            best_data = data
-            if is_vertical:
-                best_img = cv2.rotate(img_to_ocr, cv2.ROTATE_90_COUNTERCLOCKWISE)
-                rotated_return = best_img
-                # Cập nhật lại data cho ảnh đã xoay để chính xác hơn (đôi khi xoay lại đọc tốt hơn)
-                text_rot, _ = safe_extract_text(best_img, return_orientation=True)
-                data_rot = parse_ocr_text(text_rot)
-                for k, v in data_rot.items():
-                    if v and not best_data.get(k): best_data[k] = v
-                best_note = "Lấy bằng OCR (Đã tự xoay chữ dọc)"
-            else:
-                best_note = "Lấy bằng OCR"
+        if is_back_side:
+            # === PIPELINE MẶT SAU (CHIA 2 LUỒNG) ===
+            best_data['OCR Side'] = 'Back'
+            rotated_return = best_back_rotated_img
+            best_note = f"Lấy bằng OCR 2 luồng độc lập ({best_back_rot_name})"
+            hr, wr = best_back_rotated_img.shape[:2]
+            
+            # Ghi ảnh rotated_best_back
+            cv2.imwrite(os.path.join(debug_dir, "rotated_best_back.jpg"), best_back_rotated_img)
+            cv2.imwrite(os.path.join(debug_dir, "thresholded_mrz.jpg"), best_thresh_bottom_img)
+            
+            # LUỒNG 1: MRZ
+            bottom_crop = best_back_rotated_img[int(hr * 0.65):hr, :]
+            cv2.imwrite(os.path.join(debug_dir, "bottom_region_mrz.jpg"), bottom_crop)
+            
+            # Cố gắng dùng Tesseract với preprocessing đặc biệt để lấy định dạng MRZ chuẩn xác (có dấu <)
+            try:
+                gray_bottom = cv2.cvtColor(bottom_crop, cv2.COLOR_BGR2GRAY)
+                hr_b, wr_b = gray_bottom.shape[:2]
+                resized_b = cv2.resize(gray_bottom, (wr_b*2, hr_b*2), interpolation=cv2.INTER_CUBIC)
+                bordered = cv2.copyMakeBorder(resized_b, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=[255])
+                
+                import pytesseract
+                custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<'
+                
+                # 3 mức threshold: tự động (Otsu), nhẹ (120), mạnh (160)
+                # Thử từ thấp đến cao, chọn mức nào cho nhiều dòng MRZ hợp lệ nhất
+                thresh_levels = [
+                    ("otsu",  lambda img: cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]),
+                    ("light", lambda img: cv2.threshold(img, 120, 255, cv2.THRESH_BINARY)[1]),
+                    ("strong",lambda img: cv2.threshold(img, 160, 255, cv2.THRESH_BINARY)[1]),
+                ]
+                
+                best_tess_lines = []
+                best_thresh_img = None
+                
+                for level_name, thresh_fn in thresh_levels:
+                    thresh_tess = thresh_fn(bordered)
+                    tess_text = pytesseract.image_to_string(thresh_tess, config=custom_config)
+                    
+                    candidate_lines = []
+                    for line in tess_text.split('\n'):
+                        line = line.strip()
+                        if not line: continue
+                        if len(line) > 30 and ' ' in line[:3]:
+                            line = line.split(' ', 1)[-1]
+                        line_clean = re.sub(r'[^A-Z0-9<]', '', line)
+                        if len(line_clean) >= 20:
+                            candidate_lines.append(line_clean)
+                    
+                    # Sửa lỗi phổ biến
+                    if candidate_lines and candidate_lines[0].startswith('1DVNM'):
+                        candidate_lines[0] = 'IDVNM' + candidate_lines[0][5:]
+                    
+                    # Chọn mức nào có >= 3 dòng MRZ HOẶC nhiều ký tự nhất
+                    total_chars = sum(len(l) for l in candidate_lines)
+                    best_chars = sum(len(l) for l in best_tess_lines)
+                    has_idvnm = any('IDVNM' in l for l in candidate_lines)
+                    
+                    if (len(candidate_lines) >= 3 and has_idvnm) or total_chars > best_chars:
+                        best_tess_lines = candidate_lines
+                        best_thresh_img = thresh_tess
+                    
+                    # Dừng sớm nếu đã có đủ 3 dòng và có IDVNM
+                    if len(best_tess_lines) >= 3 and any('IDVNM' in l for l in best_tess_lines):
+                        break
+                
+                if best_thresh_img is not None:
+                    cv2.imwrite(os.path.join(debug_dir, "thresholded_mrz.jpg"), best_thresh_img)
+                    
+                if len(best_tess_lines) >= 3:
+                    best_mrz_lines = best_tess_lines
+            except Exception:
+                pass
+            
+            if best_mrz_lines:
+                temp_data = parse_ocr_text("\n".join(best_mrz_lines))
+                best_data['CCCD'] = temp_data.get('CCCD', '')
+                best_data['Họ tên'] = temp_data.get('Họ tên', '')
+            
+            # LUỒNG 2: NGÀY CẤP (Top 70%)
+            top_crop = best_back_rotated_img[0:int(hr * 0.70), :]
+            cv2.imwrite(os.path.join(debug_dir, "top_region_issue_date.jpg"), top_crop)
+            
+            # Tiền xử lý nhẹ: Contrast
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            lab = cv2.cvtColor(top_crop, cv2.COLOR_BGR2LAB)
+            l, a, b = cv2.split(lab)
+            l2 = clahe.apply(l)
+            img_contrast = cv2.cvtColor(cv2.merge((l2,a,b)), cv2.COLOR_LAB2BGR)
+            
+            raw_issue_text = safe_extract_text(img_contrast)
+            
+            issue_date = ""
+            lines = raw_issue_text.split('\n')
+            for i, line in enumerate(lines):
+                ll = line.lower()
+                if "ngày" in ll or "tháng" in ll or "date" in ll or "năm" in ll or "cấp" in ll:
+                    for j in range(i, min(i+3, len(lines))):
+                        m = re.search(r'(?<!\d)\d{2}/\d{2}/\d{4}(?!\d)', lines[j])
+                        if m:
+                            issue_date = m.group(0)
+                            break
+                if issue_date: break
+            
+            best_data['Ngày cấp CCCD'] = issue_date
+            
+            best_data['back_side_raw'] = {
+                "issue_date": issue_date,
+                "mrz_lines": best_mrz_lines,
+                "raw_issue_text": raw_issue_text,
+                "raw_mrz_text": best_raw_mrz_text,
+                "confidence": {"issue_date": 1.0 if issue_date else 0.0, "mrz": 1.0 if best_mrz_lines else 0.0}
+            }
+            
+            best_data['Raw Text'] = f"--- TOP TEXT (Ngày cấp) ---\n{raw_issue_text}\n\n--- BOTTOM TEXT (MRZ) ---\n{best_raw_mrz_text}"
+            
+            return best_data, best_note, rotated_return
+            
         else:
-            # Fallback xoay để tìm chiều đúng
-            rotations = [
+            # === PIPELINE MẶT TRƯỚC (SỬ DỤNG ẢNH THẺ ĐÃ WARP CHUẨN HOÁ) ===
+            best_data = {'CCCD': '', 'Họ tên': '', 'Ngày sinh': '', 'OCR Side': 'Front', 'Raw Text Upper': ''}
+            best_note = "Ảnh mờ hoặc không thể nhận diện được"
+            rotated_return = None
+            
+            # Cần thử cả 4 hướng vì align_card có thể trả về ảnh dọc (nếu chụp thẻ dọc) hoặc ảnh gốc (nếu fail)
+            front_rotations = [
+                (None, "Không xoay"),
                 (cv2.ROTATE_90_COUNTERCLOCKWISE, "Xoay trái 90 độ"),
                 (cv2.ROTATE_90_CLOCKWISE, "Xoay phải 90 độ"),
                 (cv2.ROTATE_180, "Xoay 180 độ")
             ]
-            for rot_code, rot_name in rotations:
-                rotated = cv2.rotate(img_to_ocr, rot_code)
-                # extract_text_from_image có thể nhận 1 biến trả về nếu không yêu cầu orientation
-                # Ở đây code cũ dùng extract_text_from_image(rotated) mà không có return_orientation=False
-                # Hàm mặc định return_orientation=False, trả về mỗi text.
-                text_rot = extract_text_from_image(rotated)
+            
+            keywords = ["CỘNG HÒA", "ĐỘC LẬP", "CĂN CƯỚC", "SỐ / NO", "HỌ VÀ TÊN"]
+            
+            best_front_score = -1
+            best_front_data = None
+            best_front_img = None
+            best_front_note = ""
+            
+            for rot_code, rot_name in front_rotations:
+                rotated = card_img if rot_code is None else cv2.rotate(card_img, rot_code)
+                
+                # Tăng contrast nhẹ cho mặt trước
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                lab = cv2.cvtColor(rotated, cv2.COLOR_BGR2LAB)
+                l, a, b = cv2.split(lab)
+                l2 = clahe.apply(l)
+                front_contrast = cv2.cvtColor(cv2.merge((l2,a,b)), cv2.COLOR_LAB2BGR)
+                
+                text_rot = safe_extract_text(front_contrast)
                 data_rot = parse_ocr_text(text_rot)
-                if data_rot['CCCD'] or (data_rot['OCR Side'] == 'Front' and data_rot['Họ tên']):
-                    best_data = data_rot
-                    best_img = rotated
-                    rotated_return = rotated
-                    best_note = f"Lấy bằng OCR ({rot_name})"
+                
+                # Chấm điểm độ tin cậy của hướng xoay
+                score = 0
+                if data_rot.get('CCCD'): score += 100
+                if data_rot.get('Họ tên'): score += 50
+                if data_rot.get('Ngày sinh'): score += 30
+                if data_rot.get('OCR Side') == 'Front': score += 200
+                
+                upper_text = text_rot.upper()
+                for kw in keywords:
+                    if kw in upper_text:
+                        score += 20
+                
+                # Phân tích trật tự từ trên xuống dưới để phạt ảnh bị lộn ngược (180 độ)
+                if data_rot.get('OCR Side') == 'Back':
+                    idx_ngay = min([upper_text.find(x) for x in ["NGÀY", "CỤC", "THÁNG"] if x in upper_text] + [99999])
+                    idx_mrz = min([upper_text.find(x) for x in ["VNM", "IDVNM"] if x in upper_text] + [99999])
+                    if idx_ngay != 99999 and idx_mrz != 99999:
+                        if idx_ngay < idx_mrz: score += 100  # Đúng chiều (Ngày cấp ở trên MRZ)
+                        else: score -= 100                   # Lộn ngược
+                else:
+                    idx_top = min([upper_text.find(x) for x in ["CỘNG", "CĂN", "CHỨNG"] if x in upper_text] + [99999])
+                    idx_bot = min([upper_text.find(x) for x in ["CẤP", "THƯỜNG TRÚ", "ĐỊA CHỈ"] if x in upper_text] + [99999])
+                    if idx_top != 99999 and idx_bot != 99999:
+                        if idx_top < idx_bot: score += 100   # Đúng chiều
+                        else: score -= 100                   # Lộn ngược
+                    elif idx_top == 99999 and idx_bot == 99999 and data_rot.get('CCCD'):
+                        # Tìm thấy dãy 12 số nhưng KHÔNG hề có từ khóa nào của thẻ CCCD mặt trước
+                        # Khả năng cực cao là AI bị ảo giác (đọc chữ lộn ngược của ảnh screenshot sinh ra số rác)
+                        # Trừ hẳn 300 điểm để triệt tiêu hoàn toàn điểm thưởng của CCCD(100) + Front(200)
+                        score -= 300
+                        
+                if score > best_front_score:
+                    best_front_score = score
+                    best_front_data = data_rot
+                    best_front_img = rotated
+                    best_front_note = f"Lấy bằng OCR ({rot_name})"
+                
+                # Dừng sớm nếu điểm đã đủ cao (có CCCD + tên + nhận diện đúng mặt trước)
+                if best_front_score >= 300:
                     break
-            else:
-                # Nếu xoay 4 hướng vẫn không được, giữ lại data gốc tốt nhất (nếu có)
-                best_data = data
-                best_note = "Lấy bằng OCR"
-
-        # --- KIỂM TRA ĐIỀU KIỆN RETRY ---
-        def missing_critical(d):
-            if d.get('OCR Side') == 'Back':
-                return not d.get('CCCD') or not d.get('Ngày cấp CCCD') or not d.get('Nơi thường trú gốc')
-            return not d.get('CCCD') or not d.get('Họ tên') or not d.get('Ngày sinh') or not d.get('Nơi thường trú gốc')
             
-        if missing_critical(best_data):
-            # --- PASS 2: BỘ LỌC TƯƠNG PHẢN (CLAHE) ---
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-            lab = cv2.cvtColor(best_img, cv2.COLOR_BGR2LAB)
-            l, a, b = cv2.split(lab)
-            l2 = clahe.apply(l)
-            lab = cv2.merge((l2,a,b))
-            img_contrast = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-            
-            text_p2 = extract_text_from_image(img_contrast)
-            data_p2 = parse_ocr_text(text_p2)
-            
-            merged = False
-            for k, v in data_p2.items():
-                if v and not best_data.get(k):
-                    best_data[k] = v
-                    merged = True
+            # Nếu điểm quá thấp, có thể align_card crop sai hoặc CLAHE làm hỏng text (thường gặp với ảnh chụp màn hình)
+            # Fallback về OCR ảnh gốc toàn phần (không làm nét)
+            if best_front_score < 50:
+                for rot_code, rot_name in front_rotations:
+                    rotated = img_to_ocr if rot_code is None else cv2.rotate(img_to_ocr, rot_code)
                     
-            if merged:
-                best_note += " + Lọc Tương phản"
+                    text_rot = safe_extract_text(rotated)
+                    data_rot = parse_ocr_text(text_rot)
+                    
+                    score = 0
+                    if data_rot.get('CCCD'): score += 100
+                    if data_rot.get('Họ tên'): score += 50
+                    if data_rot.get('Ngày sinh'): score += 30
+                    if data_rot.get('OCR Side') == 'Front': score += 200
+                    
+                    upper_text = text_rot.upper()
+                    for kw in keywords:
+                        if kw in upper_text:
+                            score += 20
+                            
+                    # Phân tích trật tự từ trên xuống dưới để phạt ảnh bị lộn ngược (180 độ)
+                    if data_rot.get('OCR Side') == 'Back':
+                        idx_ngay = min([upper_text.find(x) for x in ["NGÀY", "CỤC", "THÁNG"] if x in upper_text] + [99999])
+                        idx_mrz = min([upper_text.find(x) for x in ["VNM", "IDVNM"] if x in upper_text] + [99999])
+                        if idx_ngay != 99999 and idx_mrz != 99999:
+                            if idx_ngay < idx_mrz: score += 100
+                            else: score -= 100
+                    else:
+                        idx_top = min([upper_text.find(x) for x in ["CỘNG", "CĂN", "CHỨNG"] if x in upper_text] + [99999])
+                        idx_bot = min([upper_text.find(x) for x in ["CẤP", "THƯỜNG TRÚ", "ĐỊA CHỈ"] if x in upper_text] + [99999])
+                        if idx_top != 99999 and idx_bot != 99999:
+                            if idx_top < idx_bot: score += 100
+                            else: score -= 100
+                        elif idx_top == 99999 and idx_bot == 99999 and data_rot.get('CCCD'):
+                            score -= 300
+                            
+                    if score > best_front_score:
+                        best_front_score = score
+                        best_front_data = data_rot
+                        best_front_img = rotated
+                        best_front_note = f"Lấy bằng OCR toàn phần ({rot_name})"
+                    
+                    # Dừng sớm nếu đủ điểm
+                    if best_front_score >= 300:
+                        break
+                    
+            best_img = None
+            if best_front_data and best_front_score > 0:
+                best_data = best_front_data
+                best_img = best_front_img
+                rotated_return = best_front_img
+                best_note = best_front_note
+            else:
+                best_img = card_img
+                rotated_return = card_img
+                    
+            # (Phần xử lý tương phản và làm nét cho mặt trước giữ nguyên)
+            def missing_critical(d):
+                return not d.get('CCCD') or not d.get('Họ tên') or not d.get('Ngày sinh') or not d.get('Nơi thường trú gốc')
                 
-            if missing_critical(best_data):
-                # --- PASS 3: BỘ LỌC LÀM NÉT (SHARPENING) ---
-                kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
-                img_sharpen = cv2.filter2D(best_img, -1, kernel)
+            if missing_critical(best_data) and best_img is not None:
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                lab = cv2.cvtColor(best_img, cv2.COLOR_BGR2LAB)
+                l, a, b = cv2.split(lab)
+                l2 = clahe.apply(l)
+                img_contrast = cv2.cvtColor(cv2.merge((l2,a,b)), cv2.COLOR_LAB2BGR)
                 
-                text_p3 = extract_text_from_image(img_sharpen)
-                data_p3 = parse_ocr_text(text_p3)
+                text_p2 = safe_extract_text(img_contrast)
+                data_p2 = parse_ocr_text(text_p2)
                 
-                merged_p3 = False
-                for k, v in data_p3.items():
+                merged = False
+                for k, v in data_p2.items():
                     if v and not best_data.get(k):
                         best_data[k] = v
-                        merged_p3 = True
-                
-                if merged_p3:
-                    best_note += " + Làm nét"
+                        merged = True
+                        
+                if merged:
+                    best_note += " + Lọc Tương phản"
+                    
+                if missing_critical(best_data):
+                    kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+                    img_sharpen = cv2.filter2D(best_img, -1, kernel)
+                    
+                    text_p3 = safe_extract_text(img_sharpen)
+                    data_p3 = parse_ocr_text(text_p3)
+                    
+                    merged_p3 = False
+                    for k, v in data_p3.items():
+                        if v and not best_data.get(k):
+                            best_data[k] = v
+                            merged_p3 = True
+                    
+                    if merged_p3:
+                        best_note += " + Làm nét"
 
-        # Nếu cả 3 pass vẫn trống toàn bộ
-        if not best_data['CCCD'] and not best_data['Họ tên'] and not best_data['Ngày sinh']:
-            return best_data, "Ảnh mờ hoặc không thể nhận diện được", rotated_return
+            if not best_data['CCCD'] and not best_data['Họ tên'] and not best_data['Ngày sinh']:
+                return best_data, "Ảnh mờ hoặc không thể nhận diện được", rotated_return
+                
+            return best_data, best_note, rotated_return
             
-        return best_data, best_note, rotated_return
     except Exception as e:
         return {}, f"Lỗi OCR: {str(e)}", None
 
@@ -968,6 +1395,16 @@ def process_qr_string(qr_string):
         
     return data, notes
 
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# Global session with connection pooling to make multi-threading actually fast
+_address_session = requests.Session()
+_adapter = HTTPAdapter(pool_connections=10, pool_maxsize=10)
+_address_session.mount('http://', _adapter)
+_address_session.mount('https://', _adapter)
+
 def fetch_single_address(addr):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:151.0) Gecko/20100101 Firefox/151.0',
@@ -986,14 +1423,14 @@ def fetch_single_address(addr):
     
     payload = json.dumps({"address": clean_addr})
     
-    # Retry tối đa 50 lần đối với lỗi mạng/500
-    # Retry tối đa 5 lần nếu API trả về thành công nhưng data = []
+    # Retry tối đa 100 lần đối với lỗi mạng/500
+    # Retry tối đa 10 lần nếu API trả về thành công nhưng data = []
     empty_data_retries = 0
-    max_empty_retries = 5
+    max_empty_retries = 10
     
-    for attempt in range(50):
+    for attempt in range(100):
         try:
-            response = requests.post(
+            response = _address_session.post(
                 'https://tienich.vnhub.com/api/wards',
                 data=payload,
                 headers=headers,
@@ -1019,10 +1456,10 @@ def fetch_single_address(addr):
             # API thành công nhưng data rỗng = không tìm thấy địa chỉ
             if empty_data_retries < max_empty_retries:
                 empty_data_retries += 1
-                time.sleep(2)
+                time.sleep(1)
                 continue
                 
-            # Đã thử 5 lần vẫn rỗng → từ bỏ
+            # Đã thử quá số lần vẫn rỗng → từ bỏ
             return {
                 "original": addr,
                 "success": False,
@@ -1031,14 +1468,14 @@ def fetch_single_address(addr):
             
         except Exception as e:
             # Lỗi 500 hoặc mạng → thử lại sau 2s
-            if attempt < 49:
-                time.sleep(2)
+            if attempt < 99:
+                time.sleep(1)
                 continue
             else:
                 return {
                     "original": addr,
                     "success": False,
-                    "error": f"Lỗi kết nối API sau 50 lần thử ({str(e)})"
+                    "error": f"Lỗi kết nối API sau 100 lần thử ({str(e)})"
                 }
 
 def call_address_api(address_list, max_workers=4):
@@ -1415,10 +1852,8 @@ def run_wizard(input_dir, normalize_address=True):
             if img is not None:
                 log_msgs.append(f"[yellow]⚠️ Không đọc được QR, đang thử quét OCR...[/yellow]")
                 
-                # Use lock for thread safety because deep learning models (PyTorch/ONNX) inside extract_ocr_data
-                # might cause Segmentation Faults when run concurrently across multiple threads in the same process.
-                with ocr_lock:
-                    ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
+                # Mỗi thread có instance model riêng (thread-local) nên không cần lock
+                ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
                 
                 if rotated_img is not None:
                     # Lưu lại ảnh đã xoay chuẩn vào thư mục tạm thay vì ghi đè file gốc
@@ -1432,19 +1867,27 @@ def run_wizard(input_dir, normalize_address=True):
                 if side: parts.append(f"[{side}]")
                 parts.append(f"CCCD: {ocr_data.get('CCCD') or '[Trống]'}")
                 parts.append(f"Tên: {ocr_data.get('Họ tên') or '[Trống]'}")
+                parts.append(f"NS: {ocr_data.get('Ngày sinh') or '[Trống]'}")
+                parts.append(f"GT: {ocr_data.get('Giới tính') or '[Trống]'}")
+                parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD') or '[Trống]'}")
                 
                 if side == 'Front':
-                    parts.append(f"NS: {ocr_data.get('Ngày sinh') or '[Trống]'}")
                     addr = ocr_data.get('Nơi thường trú gốc') or '[Trống]'
                     parts.append(f"Địa chỉ: {addr}")
-                    if ocr_data.get('Ngày cấp CCCD'):
-                        parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD')}")
                 elif side == 'Back':
-                    parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD') or '[Trống]'}")
+                    back_raw = ocr_data.get('back_side_raw', {})
+                    mrz_lines = back_raw.get('mrz_lines', [])
+                    if mrz_lines:
+                        parts.append(f"MRZ ({len(mrz_lines)} dòng): {' | '.join(mrz_lines[:3])}")
+                    else:
+                        parts.append(f"MRZ: [Trống]")
                 else:
-                    # Nếu không xác định được mặt, in tất cả
-                    parts.append(f"NS: {ocr_data.get('Ngày sinh') or '[Trống]'}")
-                    parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD') or '[Trống]'}")
+                    addr = ocr_data.get('Nơi thường trú gốc') or '[Trống]'
+                    parts.append(f"Địa chỉ: {addr}")
+                    back_raw = ocr_data.get('back_side_raw', {})
+                    mrz_lines = back_raw.get('mrz_lines', [])
+                    if mrz_lines:
+                        parts.append(f"MRZ ({len(mrz_lines)} dòng): {' | '.join(mrz_lines[:3])}")
                 
                 ocr_print_info = ", ".join(parts)
                 log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info} | Note: {ocr_note}")
@@ -1494,8 +1937,8 @@ def run_wizard(input_dir, normalize_address=True):
                     extracted_items.append(row_data)
                     
                     # Print logs for this image above the progress bar
-                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold]")
-                    file_logs.append(f"[{os.path.basename(img_path)}]")
+                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim]")
+                    file_logs.append(f"[{os.path.basename(img_path)}] - {img_path}")
                     for msg in log_msgs:
                         progress.console.print(f"  {msg}")
                         file_logs.append("  " + Text.from_markup(msg).plain)
@@ -1902,6 +2345,13 @@ def run_wizard(input_dir, normalize_address=True):
             row_data.get('Đổi tên Ảnh mặt sau CCCD/CC', '')
         ]
         ws.append(row)
+        
+        # Tô màu nền vàng cho các dòng lấy bằng OCR hoặc không đọc được
+        note_str = row_data.get('Ghi chú', '')
+        if "Lấy bằng OCR" in note_str or "Không đọc được" in note_str:
+            yellow_fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
+            for cell in ws[ws.max_row]:
+                cell.fill = yellow_fill
 
     # Adjust column widths slightly
     for col in ws.columns:
@@ -2111,6 +2561,30 @@ def run_wizard(input_dir, normalize_address=True):
     create_zip_helper('QR_scanned.zip', qr_files)
     create_zip_helper('OCR_scanned.zip', ocr_files)
     create_zip_helper('duplicate.zip', dup_files)
+
+    # 5. ReadQR.zip: ảnh có dòng Ghi chú chứa "Đọc mã QR"
+    readqr_image_paths = []
+    added_readqr = set()
+    for row in processed_data:
+        if 'Đọc mã QR' in row.get('Ghi chú', ''):
+            for field in ['Full Image Path Front', 'Full Image Path Back']:
+                p = row.get(field)
+                if p and p not in added_readqr:
+                    readqr_image_paths.append(p)
+                    added_readqr.add(p)
+    create_zip_helper('ReadQR.zip', readqr_image_paths)
+
+    # 6. ReadOCR.zip: ảnh có dòng Ghi chú chứa "Lấy bằng OCR"
+    readocr_image_paths = []
+    added_readocr = set()
+    for row in processed_data:
+        if 'Lấy bằng OCR' in row.get('Ghi chú', ''):
+            for field in ['Full Image Path Front', 'Full Image Path Back']:
+                p = row.get(field)
+                if p and p not in added_readocr:
+                    readocr_image_paths.append(p)
+                    added_readocr.add(p)
+    create_zip_helper('ReadOCR.zip', readocr_image_paths)
 
     # 3. review.zip: ảnh của các dòng chưa đầy đủ thông tin
     review_image_paths = []
@@ -2339,14 +2813,35 @@ def run_reprocess(excel_path, normalize_address=True):
         else:
             if img is not None:
                 log_msgs.append(f"[yellow]⚠️ Không đọc được QR, đang thử quét OCR...[/yellow]")
-                with ocr_lock:
-                    ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
+                # Mỗi thread có instance model riêng (thread-local) nên không cần lock
+                ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
                 
                 parts = []
                 side = ocr_data.get('OCR Side')
                 if side: parts.append(f"[{side}]")
                 parts.append(f"CCCD: {ocr_data.get('CCCD') or '[Trống]'}")
                 parts.append(f"Tên: {ocr_data.get('Họ tên') or '[Trống]'}")
+                parts.append(f"NS: {ocr_data.get('Ngày sinh') or '[Trống]'}")
+                parts.append(f"GT: {ocr_data.get('Giới tính') or '[Trống]'}")
+                parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD') or '[Trống]'}")
+                
+                if side == 'Front':
+                    addr = ocr_data.get('Nơi thường trú gốc') or '[Trống]'
+                    parts.append(f"Địa chỉ: {addr}")
+                elif side == 'Back':
+                    back_raw = ocr_data.get('back_side_raw', {})
+                    mrz_lines = back_raw.get('mrz_lines', [])
+                    if mrz_lines:
+                        parts.append(f"MRZ ({len(mrz_lines)} dòng): {' | '.join(mrz_lines[:3])}")
+                    else:
+                        parts.append(f"MRZ: [Trống]")
+                else:
+                    addr = ocr_data.get('Nơi thường trú gốc') or '[Trống]'
+                    parts.append(f"Địa chỉ: {addr}")
+                    back_raw = ocr_data.get('back_side_raw', {})
+                    mrz_lines = back_raw.get('mrz_lines', [])
+                    if mrz_lines:
+                        parts.append(f"MRZ ({len(mrz_lines)} dòng): {' | '.join(mrz_lines[:3])}")
                 
                 ocr_print_info = ", ".join(parts)
                 log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info} | Note: {ocr_note}")
@@ -2387,8 +2882,8 @@ def run_reprocess(excel_path, normalize_address=True):
                     row_data, log_msgs = future.result()
                     img_results[img_path] = row_data
                     
-                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold]")
-                    file_logs.append(f"[{os.path.basename(img_path)}]")
+                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim]")
+                    file_logs.append(f"[{os.path.basename(img_path)}] - {img_path}")
                     for msg in log_msgs:
                         progress.console.print(f"  {msg}")
                         file_logs.append("  " + Text.from_markup(msg).plain)
@@ -2426,6 +2921,7 @@ def run_reprocess(excel_path, normalize_address=True):
                 
             if new_val:
                 row_info['row_cells'][idx].value = new_val
+                row_info['row_cells'][idx].font = Font(color="FF0000")
                 
                 # Gom để gửi API chuẩn hóa (sẽ được dọn rác ở vòng lặp sau)
                 pass
@@ -2443,6 +2939,13 @@ def run_reprocess(excel_path, normalize_address=True):
             val = row[orig_idx].value
             note_val = str(row[note_idx].value) if note_idx and row[note_idx].value else ""
             
+            # Tô nền vàng nếu lấy bằng OCR hoặc không đọc được
+            if "Lấy bằng OCR" in note_val or "Không đọc được" in note_val:
+                yellow_fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
+                for cell in row:
+                    cell.fill = yellow_fill
+                    
+            
             # Làm sạch Họ tên nếu lấy bằng OCR
             if "Lấy bằng OCR" in note_val and name_idx is not None:
                 name_val = row[name_idx].value
@@ -2450,12 +2953,14 @@ def run_reprocess(excel_path, normalize_address=True):
                     cleaned_name = clean_name_string(str(name_val))
                     if cleaned_name:
                         row[name_idx].value = cleaned_name
+                        row[name_idx].font = Font(color="FF0000")
 
             if val and str(val).strip() and str(val).strip() != "None":
                 # CHỈ làm sạch và chuẩn hóa lại nếu lấy bằng OCR
                 if "Lấy bằng OCR" in note_val:
                     cleaned_val = clean_address_string(str(val))
                     row[orig_idx].value = cleaned_val
+                    row[orig_idx].font = Font(color="FF0000")
                     # Luôn bổ sung vào API để ghi đè kết quả chuẩn hóa cũ
                     address_to_normalize.add(cleaned_val)
                 else:
@@ -2515,6 +3020,7 @@ def run_reprocess(excel_path, normalize_address=True):
                     # Đè lên nếu trước đó chưa có, HOẶC nếu dòng đó được Lấy bằng OCR
                     if "Lấy bằng OCR" in note_val or not norm_val or str(norm_val).strip() == "" or str(norm_val).strip() == "None":
                         row[norm_idx].value = address_map[orig_val].get('converted', '')
+                        row[norm_idx].font = Font(color="FF0000")
 
     timestamp = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
     reprocess_out = excel_path.replace('.xlsx', f'_reprocessed_{timestamp}.xlsx')

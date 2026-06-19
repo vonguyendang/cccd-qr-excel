@@ -11,15 +11,15 @@ if deepdoc_path not in sys.path:
 
 from module.ocr import OCR
 
-# Singleton instance
-_ocr_instance = None
+# Thread-local storage: mỗi thread giữ instance model riêng, tránh lỗi PyTorch khi đa luồng
+import threading
+_thread_local = threading.local()
 
 def get_ocr_engine():
-    global _ocr_instance
-    if _ocr_instance is None:
+    if not hasattr(_thread_local, 'ocr_instance') or _thread_local.ocr_instance is None:
         print("Đang khởi tạo AI Model Deepdoc_VietOCR (lần đầu sẽ mất vài giây)...")
-        _ocr_instance = OCR()
-    return _ocr_instance
+        _thread_local.ocr_instance = OCR()
+    return _thread_local.ocr_instance
 
 def extract_text_from_image(img, return_orientation=False):
     """
