@@ -1029,9 +1029,12 @@ def run_wizard(input_dir, normalize_address=True):
     if latest_excel:
         incremental_scan = Confirm.ask(f"\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file {os.path.basename(latest_excel)}). Bạn muốn QUÉT NỐI TIẾP (chỉ quét ảnh mới ném vào) không? (Chọn No để quét lại từ đầu)[/bold yellow]", default=True)
     elif os.path.exists(os.path.join(input_dir, "original.zip")):
-        user_input = Prompt.ask("\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file original.zip) nhưng không tự động tìm thấy thư mục kết quả cũ.\n👉 Nếu bạn muốn QUÉT NỐI TIẾP, vui lòng kéo thả THƯ MỤC EXPORT cũ hoặc FILE EXCEL cũ vào đây (Nhấn Enter để quét lại toàn bộ ảnh từ đầu)[/bold yellow]").strip().strip('\'"')
+        user_input = Prompt.ask("\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file original.zip) nhưng không tự động tìm thấy thư mục kết quả cũ.\n👉 Nếu bạn muốn QUÉT NỐI TIẾP, vui lòng kéo thả THƯ MỤC EXPORT cũ hoặc FILE EXCEL cũ vào đây (Nhấn Enter để tìm trong thư mục export mặc định của app, hoặc gõ 'n' để quét lại từ đầu)[/bold yellow]").strip().strip('\'"')
         
-        if user_input:
+        if not user_input or user_input.lower() == 'y':
+            user_input = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports')
+            
+        if user_input and user_input.lower() != 'n':
             if os.path.isfile(user_input) and user_input.endswith('.xlsx'):
                 latest_excel = user_input
                 incremental_scan = True
