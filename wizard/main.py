@@ -403,14 +403,14 @@ def parse_ocr_text(text):
                             "THUCTRANG": "THU TRANG",
                             "CHUYNH": "HUYNH",
                             "CHUY": "THUY",
-                            "CANHCHATHUC": "ANH THU"
+                            "CANHCHATHUC": "ANH THU",
+                            "INK": "KIM"
                         }
                         for bad, good in ocr_fixes.items():
                             s = s.replace(bad, good)
-                        
-                        s = re.sub(r'[CKEA<S]{3,}$', '', s)
+                        s = re.sub(r'[CKEAS<]{3,}$', '', s)
                         # Danh sách âm tiết tên Tiếng Việt phổ biến (không dấu)
-                        common_names = "AN ANH BA BAC BAN BANG BAO BE BEN BICH BINH BO BON CA CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEM DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUE KHUYEN KIEN KIEU KIM KY LA LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LUA LUAN LUC LUONG LUU LY MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGOC NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAN TOAI TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UYEN VAN VANG VY VI VIEN VIET VINH VO VONG VU VUONG VY XINH XUA XUAN Y YEN"
+                        common_names = "AN ANH BA BAC BAN BANG BAO BE BEN BICH BINH BO BON CA CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEM DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HO HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUE KHUYEN KIEN KIEU KIM KY LA LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LUA LUAN LUC LUONG LUU LY MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGO NGOC NGOI NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAN TOAI TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UYEN VAN VANG VY VI VIEN VIET VINH VO VONG VU VUONG VY XINH XUA XUAN Y YEN"
                         names_list = sorted(list(set(common_names.split())), key=len, reverse=True)
                         pattern = r'(' + '|'.join(names_list) + r')'
                         
@@ -469,13 +469,12 @@ def parse_ocr_text(text):
                 # ---------------------------------------------------------
                 # 3.5. TRÍCH XUẤT HỌ TÊN VƯỢT DÒNG (Dành cho CCCD đứt nét hoặc SMS screenshot)
                 # ---------------------------------------------------------
-                # Thử tìm theo cấu trúc Multi-line (Họ tên ... Ngày sinh), giới hạn 60 ký tự để không bắt lố qua block khác
-                name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n)\s*[:\s]+(.{1,60}?)[,.]?\s*(?:ng[aà]y\s*sinh|date\s*of\s*birth|ng[aà]y,\s*th[aá]ng|dob|sinh\s*ng[aà]y|\bsinh\b\s*:)', text, re.DOTALL)
+                name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|t[eê]n\s*khai\s*sinh|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n)\s*[:\s]+(.{1,60}?)[,.]?\s*(?:ng[aà]y\s*sinh|date\s*of\s*birth|ng[aà]y,\s*th[aá]ng|dob|sinh\s*ng[aà]y|\bsinh\b\s*:|gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|n[oơ]i\s*th[uư][oờ]ng\s*tr[uú]|qu[eê]\s*qu[aá]n)', text, re.DOTALL)
                 
                 # Nếu không tìm thấy, thử tìm theo cấu trúc Single-line (VD: ten: Lam My Linh, Ngay)
                 if not name_block_match:
                     text_oneline = text.replace('\n', ' ')
-                    name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n|\bt[eê]n\b)\s*[:\s]+([^\n,.]+)', text_oneline)
+                    name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|t[eê]n\s*khai\s*sinh|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n|\bt[eê]n\b)\s*[:\s]+([^\n,.]+)', text_oneline)
 
                 # Fallback cuối: Tìm các từ viết hoa chuẩn (Title Case) dính liền với chữ Ngày/Sinh (Bị đứt khúc chữ "Họ tên" ở xa)
                 if not name_block_match:
@@ -524,7 +523,7 @@ def parse_ocr_text(text):
                     line_lower = line.lower()
     
                     # 1. Name
-                    if not data['Họ tên'] and any(kw in line_lower for kw in ["họ và tên", "họ chữ đệm và tên", "full name", "ho ten", "kho và tên", "fui nam"]):
+                    if not data['Họ tên'] and any(kw in line_lower for kw in ["họ và tên", "họ chữ đệm và tên", "tên khai sinh", "full name", "ho ten", "kho và tên", "fui nam"]):
                         if ":" in line:
                             name_part = line.split(":", 1)[1].strip()
                             name_part = name_part.rstrip('.')
@@ -607,7 +606,7 @@ def parse_ocr_text(text):
                             # Xóa cụm "giá trị đến" và mọi biến thể OCR (có/không dấu)
                             # "gia tri đến", "giá trị đến", "gia tri den", v.v.
                             clean_line = re.sub(
-                                r'(?i)(c[oó]\s+)?gi[aáàảãạ]\s*tr[iịeê]*\s*(đ[ếeêề]n|den|đen|en)\s*[:.,]*',
+                                r'(?i)(c[oó]\s+)?gi[aáàảãạ]\s*(tr[iịeê]*|m)?\s*(đ[ếeêề]n|den|đen|en)\s*[:.,]*',
                                 '', clean_line).strip()
                             clean_line = re.sub(
                                 r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|telefoxpir|date\s*ferpiry|date\s*ferp[a-z]*|'
@@ -625,7 +624,7 @@ def parse_ocr_text(text):
                                 r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
                                 r'indent|vi[eê][nǹ]|nam\s+linh|'
                                 r'place of residence|place of origin|place oforging|transervating|daleoroxic|dale\s*o|'
-                                r'deleofexpin|overstreeter|residence|origin|'
+                                r'deleofexpin|dele\s*atanting|overstreeter|residence|origin|'
                                 r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
                                 r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b',
                                 '', clean_line).strip()
@@ -1150,8 +1149,30 @@ def extract_ocr_data(image_path_or_cv2img):
             
             if best_mrz_lines:
                 temp_data = parse_ocr_text("\n".join(best_mrz_lines))
-                best_data['CCCD'] = temp_data.get('CCCD', '')
-                best_data['Họ tên'] = temp_data.get('Họ tên', '')
+                
+                # FUSE: Thử lấy tên từ VietOCR (vì VietOCR đọc chữ cái tốt hơn Tesseract)
+                name_vietocr = ""
+                if 'best_raw_mrz_text' in locals() and best_raw_mrz_text:
+                    temp_data_vietocr = parse_ocr_text(best_raw_mrz_text.upper())
+                    name_vietocr = temp_data_vietocr.get('Họ tên', '')
+                    
+                mrz_name = name_vietocr if name_vietocr else temp_data.get('Họ tên', '')
+                mrz_cccd = temp_data.get('CCCD', '') or (temp_data_vietocr.get('CCCD', '') if 'temp_data_vietocr' in locals() else '')
+                
+                # CHỐNG LỖI MÀN HÌNH CHAT ZALO/SMS CHỨA THẺ CŨ Ở DƯỚI:
+                # Ảnh mặt sau thẻ thật KHÔNG BAO GIỜ có tên ở phần chữ in (chỉ có ở phần MRZ).
+                # Nếu trước khi xử lý MRZ mà `best_data` ĐÃ CÓ TÊN, thì 100% tên đó đến từ nội dung tin nhắn SMS!
+                # Nội dung tin nhắn SMS là Golden Truth, KHÔNG ĐƯỢC để MRZ (có thể là của thẻ cũ nằm dưới) ghi đè!
+                
+                if best_data.get('Họ tên') and mrz_name and best_data['Họ tên'] != mrz_name:
+                    best_note += " | CẢNH BÁO: Phát hiện MRZ của thẻ cũ trong lịch sử chat, ưu tiên tin nhắn gốc."
+                else:
+                    if mrz_name: best_data['Họ tên'] = mrz_name
+                    
+                if best_data.get('CCCD') and mrz_cccd and best_data['CCCD'] != mrz_cccd:
+                    pass # Giữ CCCD gốc từ SMS
+                else:
+                    if mrz_cccd: best_data['CCCD'] = mrz_cccd
             
             # LUỒNG 2: NGÀY CẤP (Top 70%)
             top_crop = best_back_rotated_img[0:int(hr * 0.70), :]
@@ -1247,7 +1268,7 @@ def extract_ocr_data(image_path_or_cv2img):
                         else: score -= 100                   # Lộn ngược
                 else:
                     idx_top = min([upper_text.find(x) for x in ["CỘNG", "CĂN", "CHỨNG"] if x in upper_text] + [99999])
-                    idx_bot = min([upper_text.find(x) for x in ["CẤP", "THƯỜNG TRÚ", "ĐỊA CHỈ"] if x in upper_text] + [99999])
+                    idx_bot = min([upper_text.find(x) for x in ["CẤP", "THƯỜNG TRÚ", "ĐỊA CHỈ", "QUỐC TỊCH"] if x in upper_text] + [99999])
                     if idx_top != 99999 and idx_bot != 99999:
                         if idx_top < idx_bot: score += 100   # Đúng chiều
                         else: score -= 100                   # Lộn ngược
