@@ -474,6 +474,7 @@ def parse_ocr_text(text):
                     
                     # Fix một số lỗi OCR dính chữ kinh điển
                     clean_name = clean_name.replace('BICHINHIEN', 'BICH NHIEN')
+                    clean_name = re.sub(r'^(LE|TRAN|NGUYEN|PHAM|VU|VO|DANG|BUI|DO|HO|PHAN|LY|HUYNH|HOANG|NGO)(THI|VAN|DO|NGOC|XUAN|HUU|MINH|DUY|QUOC|BAO|TRUNG)\b', r'\1 \2', clean_name)
                     
                     if len(clean_name) > 3 and _is_valid_name(clean_name):
                         data['Họ tên'] = clean_name
