@@ -404,11 +404,22 @@ def parse_ocr_text(text):
                             s = s.replace(bad, good)
                         
                         # Danh sách âm tiết tên Tiếng Việt phổ biến (không dấu)
-                        common_names = "AN ANH BA BAC BAN BANG BAO BE BEN BICH BINH BO BON CA CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUE KHUYEN KIEN KIEU KIM KY LA LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LUA LUAN LUC LUONG LUU LY MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGOC NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAN TOAI TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UYEN VAN VANG VY VI VIEN VIET VINH VO VONG VU VUONG VY XUA XUAN Y YEN"
+                        common_names = "AN ANH BA BAC BAN BANG BAO BE BEN BICH BINH BO BON CA CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUE KHUYEN KIEN KIEU KIM KY LA LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LUA LUAN LUC LUONG LUU LY MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGOC NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAN TOAI TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UYEN VAN VANG VY VI VIEN VIET VINH VO VONG VU VUONG VY XINH XUA XUAN Y YEN"
                         names_list = sorted(list(set(common_names.split())), key=len, reverse=True)
                         pattern = r'(' + '|'.join(names_list) + r')'
                         
                         matches = re.findall(pattern, s)
+                        
+                        # Loại bỏ ảo giác OCR (padding <<<< bị đọc thành từ lặp lại nhiều lần)
+                        for i in range(len(matches) - 2):
+                            if matches[i] == matches[i+1] == matches[i+2]:
+                                matches = matches[:i]
+                                break
+                        
+                        # Nếu vẫn còn lặp 2 lần ở cuối chuỗi (do ảo giác ngắn), cắt bỏ nếu tên đã đủ dài
+                        while len(matches) > 3 and matches[-1] == matches[-2]:
+                            matches = matches[:-2]
+                            
                         return matches
 
                     for line in text_upper.split('\n'):
@@ -420,8 +431,8 @@ def parse_ocr_text(text):
                             continue
                             
                         # MRZ Line 3 chứa tên, KHÔNG có số, KHÔNG có dấu tiếng Việt
-                        # OCR đọc dấu << thành CK, CC, CE, KCK...
-                        if (15 <= len(ls) <= 40
+                        # OCR đọc dấu << thành CK, CC, CE, KCK... và có thể ảo giác lặp lại nên nới lỏng len <= 65
+                        if (15 <= len(ls) <= 65
                             and re.match(r'^[A-Z<]+$', ls)  # Chỉ gồm chữ cái A-Z và < (không có số, không dấu)
                             and re.search(r'[<CKE]{2}', ls) # Chắc chắn có ít nhất 1 cụm 2 ký tự độn (CK, CC, CE...) thay cho <<
                             and not ls.startswith('IDVN')
@@ -1981,6 +1992,34 @@ def run_wizard(input_dir, normalize_address=True):
     console.print("🎉"*15 + "\n")
 
 
+
+def clean_name_string(name):
+    if not name: return ""
+    import re
+    clean_line = str(name)
+    clean_line = re.sub(r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|date\s*ferpiry|date\s*ferp[a-z]*|'
+                        r'n[oơ]i\s*c[aấ]p|ng[aà]y\s*c[aấ]p|b[oộ]\s*c[oô]ng\s*an|c[uụ]c\s*c[aả]nh\s*s[aá]t|'
+                        r'gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|sex|nationality|'
+                        r'qu[eê]\s*qu[aá]n|khai\s*sinh|birth|data\s*ofespry)', '', clean_line)
+    clean_line = re.sub(r'(?i)\b(place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
+                        r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
+                        r'indent|vi[eê][nǹ]|nam\s+linh|'
+                        r'place of residence|place of origin|place oforging|transervating|daleoroxic|'
+                        r'deleofexpin|overstreeter|residence|origin|'
+                        r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|'
+                        r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|of|cccd)\b', '', clean_line)
+    clean_line = re.sub(r'(?i)^(họ và tên|ho ten|kho và tên)[:\s]*', '', clean_line)
+    
+    # Lọc bỏ các từ chỉ có chữ thường (do nhiễu OCR) vì tên VN luôn IN HOA
+    words = []
+    for w in clean_line.split():
+        # Xóa các ký tự không phải chữ
+        cw = re.sub(r'[^a-zA-ZÀ-ɏḀ-ỿ]', '', w)
+        if cw.isupper():
+            words.append(cw)
+            
+    return " ".join(words).strip()
+
 def clean_address_string(addr):
     if not addr: return ""
     import re
@@ -2228,12 +2267,22 @@ def run_reprocess(excel_path, normalize_address=True):
     norm_idx = col_idx.get('Địa chỉ chuẩn hóa mới')
     note_idx = col_idx.get('Ghi chú')
 
+    name_idx = col_idx.get('Họ tên')
+    
     if orig_idx is not None:
         for row in ws.iter_rows(min_row=2, values_only=False):
             val = row[orig_idx].value
+            note_val = str(row[note_idx].value) if note_idx and row[note_idx].value else ""
+            
+            # Làm sạch Họ tên nếu lấy bằng OCR
+            if "Lấy bằng OCR" in note_val and name_idx is not None:
+                name_val = row[name_idx].value
+                if name_val and str(name_val).strip() and str(name_val).strip() != "None":
+                    cleaned_name = clean_name_string(str(name_val))
+                    if cleaned_name:
+                        row[name_idx].value = cleaned_name
+
             if val and str(val).strip() and str(val).strip() != "None":
-                note_val = str(row[note_idx].value) if note_idx and row[note_idx].value else ""
-                
                 # CHỈ làm sạch và chuẩn hóa lại nếu lấy bằng OCR
                 if "Lấy bằng OCR" in note_val:
                     cleaned_val = clean_address_string(str(val))
