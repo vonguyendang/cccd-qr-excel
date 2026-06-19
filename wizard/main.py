@@ -453,7 +453,13 @@ def parse_ocr_text(text):
                 # ---------------------------------------------------------
                 # 3.5. TRÍCH XUẤT HỌ TÊN VƯỢT DÒNG (Dành cho CCCD đứt nét hoặc SMS screenshot)
                 # ---------------------------------------------------------
+                # Thử tìm theo cấu trúc Multi-line (Họ tên ... Ngày sinh)
                 name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n)\s*[:\s]+(.*?)[,.]?\s*(?:ng[aà]y\s*sinh|date\s*of\s*birth|ng[aà]y,\s*th[aá]ng|dob|sinh\s*ng[aà]y|\bsinh\b\s*:)', text, re.DOTALL)
+                
+                # Nếu không tìm thấy, thử tìm theo cấu trúc Single-line (VD: ten: Lam My Linh, Ngay)
+                if not name_block_match:
+                    name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n|\bt[eê]n\b)\s*[:\s]+([^\n,.]+)', text)
+
                 if name_block_match:
                     raw_name = name_block_match.group(1)
                     # Nếu tên bị dính chữ NGAY ở cuối (VD: THI LIEU.NGAY sinh:) thì cắt bỏ
@@ -462,9 +468,13 @@ def parse_ocr_text(text):
                     name_words = []
                     for w in raw_name.split():
                         cw = re.sub(r'[^a-zA-Z\xC0-\u024F\u1E00-\u1EFF]', '', w)
-                        if cw.isupper() and len(cw) >= 1:
+                        if len(cw) >= 1:  # Không ép isupper nữa để lấy cả chữ thường (to thi MY AN)
                             name_words.append(cw)
-                    clean_name = " ".join(name_words)
+                    clean_name = " ".join(name_words).upper()
+                    
+                    # Fix một số lỗi OCR dính chữ kinh điển
+                    clean_name = clean_name.replace('BICHINHIEN', 'BICH NHIEN')
+                    
                     if len(clean_name) > 3 and _is_valid_name(clean_name):
                         data['Họ tên'] = clean_name
 
