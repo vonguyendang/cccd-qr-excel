@@ -477,6 +477,11 @@ def parse_ocr_text(text):
                     text_oneline = text.replace('\n', ' ')
                     name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n|\bt[eê]n\b)\s*[:\s]+([^\n,.]+)', text_oneline)
 
+                # Fallback cuối: Tìm các từ viết hoa chuẩn (Title Case) dính liền với chữ Ngày/Sinh (Bị đứt khúc chữ "Họ tên" ở xa)
+                if not name_block_match:
+                    text_oneline = text.replace('\n', ' ')
+                    name_block_match = re.search(r'\b([A-Z][a-zA-ZÀ-Ỹà-ỹ]*(?:\s+[A-Z][a-zA-ZÀ-Ỹà-ỹ]*){1,6})\s*[,.]?\s*(?:Ng[aà]y|Sinh|ng[aà]y|sinh)\b', text_oneline)
+
                 if name_block_match:
                     raw_name = name_block_match.group(1)
                     # Nếu tên bị dính chữ NGAY ở cuối (VD: THI LIEU.NGAY sinh:) thì cắt bỏ
