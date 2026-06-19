@@ -982,10 +982,17 @@ def fetch_single_address(addr):
             res_data = response.json()
             
             if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
+                converted_addr = res_data['data'][0]['address']
+                
+                # Tiêu diệt rác API VNHub (VD: trả về chữ "Substates")
+                converted_addr = re.sub(r'(?i)\bsubstates\b', '', converted_addr)
+                converted_addr = re.sub(r',\s*,', ',', converted_addr) # Xóa dấu phẩy thừa do xóa chữ
+                converted_addr = re.sub(r'\s+', ' ', converted_addr).strip(', ')
+                
                 return {
                     "original": addr,
                     "success": True,
-                    "converted": res_data['data'][0]['address']
+                    "converted": converted_addr
                 }
             
             # API thành công nhưng data rỗng = không tìm thấy địa chỉ
