@@ -453,9 +453,12 @@ def parse_ocr_text(text):
                 # ---------------------------------------------------------
                 # 3.5. TRÍCH XUẤT HỌ TÊN VƯỢT DÒNG (Dành cho CCCD đứt nét hoặc SMS screenshot)
                 # ---------------------------------------------------------
-                name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n)\s*[:\s]+(.*?)[,.]?\s*(?:ng[aà]y\s*sinh|date\s*of\s*birth|ng[aà]y,\s*th[aá]ng|dob|sinh\s*ng[aà]y)', text, re.DOTALL)
+                name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n)\s*[:\s]+(.*?)[,.]?\s*(?:ng[aà]y\s*sinh|date\s*of\s*birth|ng[aà]y,\s*th[aá]ng|dob|sinh\s*ng[aà]y|\bsinh\b\s*:)', text, re.DOTALL)
                 if name_block_match:
                     raw_name = name_block_match.group(1)
+                    # Nếu tên bị dính chữ NGAY ở cuối (VD: THI LIEU.NGAY sinh:) thì cắt bỏ
+                    raw_name = re.sub(r'(?i)\.?\s*ng[aà]y\s*$', '', raw_name)
+                    raw_name = raw_name.replace('.', ' ').replace(',', ' ')
                     name_words = []
                     for w in raw_name.split():
                         cw = re.sub(r'[^a-zA-Z\xC0-\u024F\u1E00-\u1EFF]', '', w)
