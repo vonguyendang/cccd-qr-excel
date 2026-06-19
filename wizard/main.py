@@ -1044,6 +1044,10 @@ def get_unique_images(image_paths):
                     file_hash = hashlib.md5(f.read()).hexdigest()
                 if file_hash in seen_hashes:
                     duplicates_count += 1
+                    try:
+                        os.remove(path)
+                    except Exception:
+                        pass
                 else:
                     seen_hashes.add(file_hash)
                     unique_paths.append(path)
@@ -1052,7 +1056,7 @@ def get_unique_images(image_paths):
             progress.advance(task)
             
     if duplicates_count > 0:
-        console.print(f"[bold yellow]⚠️ Đã lọc bỏ {duplicates_count} ảnh trùng lặp hoàn toàn về nội dung![/bold yellow]")
+        console.print(f"[bold yellow]⚠️ Đã lọc bỏ và XÓA {duplicates_count} ảnh trùng lặp hoàn toàn về nội dung khỏi ổ cứng![/bold yellow]")
         
     return unique_paths
 
