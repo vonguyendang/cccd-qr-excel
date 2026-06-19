@@ -439,15 +439,25 @@ def parse_ocr_text(text):
                                 "ngày sinh", "date of birth", "ngày, tháng, năm", "date, month",
                                 "ngày cấp", "date of issue", "date issue", "ddate", "ddate issue",
                                 "nơi cấp", "place of issue", "place ofresic",
-                                "ngày hết hạn", "expiry", "hết hạn",
+                                "ngày hết hạn", "expiry", "hết hạn", "ferpiry", "date ferpiry",
                                 "giá trị đến", "có giá trị",
+                                "gia tri đến", "gia tri đen",  # biến thể không dấu OCR
                                 "giới tính", "quốc tịch",
                             ]):
                                 break
                                 
                             clean_line = next_line
-                            # Xóa các nhãn bị dính vào địa chỉ (thay vì skip toàn bộ dòng)
-                            clean_line = re.sub(r'(?i)((có )?gi[aáà] trị đ[ếêề]n\s*[:.,]*|expiry|nơi cấp|ngày cấp|bộ công an|cục cảnh sát|giới tính|quốc tịch|sex|nationality|quê quán|quê quan|que quan|khai sinh|birth|data ofespry)', '', clean_line).strip()
+                            # Xóa cụm "giá trị đến" và mọi biến thể OCR (có/không dấu)
+                            # "gia tri đến", "giá trị đến", "gia tri den", v.v.
+                            clean_line = re.sub(
+                                r'(?i)(c[oó]\s+)?gi[aáà]\s*tr[iị]\s*(đ[ếeêề]n|den|đen)\s*[:.,]*',
+                                '', clean_line).strip()
+                            clean_line = re.sub(
+                                r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|date\s*ferpiry|date\s*ferp[a-z]*|'
+                                r'n[oơ]i\s*c[aấ]p|ng[aà]y\s*c[aấ]p|b[oộ]\s*c[oô]ng\s*an|c[uụ]c\s*c[aả]nh\s*s[aá]t|'
+                                r'gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|sex|nationality|'
+                                r'qu[eê]\s*qu[aá]n|khai\s*sinh|birth|data\s*ofespry)',
+                                '', clean_line).strip()
                             
                             # Xóa ngày tháng năm
                             clean_line = re.sub(r'\b\d{2}/\d{2}/\d{4}\b', '', clean_line).strip()
@@ -557,7 +567,7 @@ def parse_ocr_text(text):
                         # và các cụm nhãn tiếng Việt còn sót ("Nơi đăng ký", "Ngày sinh I")
                         addr = re.sub(
                             r'(?i)\b(pplace|ppace|i\s*place|place\s*ofresic|ofresic|'
-                            r'ddate|ddte|ddate\s*issue|date\s*issue|'
+                            r'ddate|ddte|ddate\s*issue|date\s*issue|date\s*ferpiry|ferpiry|ferp[a-z]+|'
                             r'nam\s+linh|indent|'
                             r'disconning|nterting|interting|disconnected|'
                             r'issue|noi\s*dang\s*ky)\b',
