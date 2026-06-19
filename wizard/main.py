@@ -2124,15 +2124,22 @@ def run_reprocess(excel_path, normalize_address=True):
             'front_name': front_name,
             'back_name': back_name,
             'row_cells': row,
-            'is_missing': False
+            'is_missing': False,
+            'force_ocr_reprocess': False
         }
         all_rows_info.append(row_info)
         
+        note_idx = col_idx.get('Ghi chú')
+        note_val = str(row[note_idx].value) if note_idx is not None and row[note_idx].value else ""
+        if "Lấy bằng OCR" in note_val:
+            row_info['force_ocr_reprocess'] = True
+            row_info['is_missing'] = True
+            
         for col_name in required_cols:
             idx = col_idx.get(col_name)
             if idx is not None:
-                val = row[idx].value
-                if not val or str(val).strip() == "" or str(val).strip() == "None":
+                val = str(row[idx].value).strip() if row[idx].value else ""
+                if not val or val == "None" or val == "[Trống]":
                     row_info['is_missing'] = True
                     break
         
@@ -2262,12 +2269,16 @@ def run_reprocess(excel_path, normalize_address=True):
             idx = col_idx.get(col_name)
             if idx is None: continue
             
-            existing_val = row_info['row_cells'][idx].value
-            if existing_val and str(existing_val).strip() != "" and str(existing_val).strip() != "None":
-                continue # Giữ nguyên giá trị cũ nếu đã có
-                
+            existing_val = str(row_info['row_cells'][idx].value).strip() if row_info['row_cells'][idx].value else ""
+            is_empty = not existing_val or existing_val == "None" or existing_val == "[Trống]"
+            
             # Cố lấy từ front_data hoặc back_data
             new_val = front_data.get(col_name) or back_data.get(col_name)
+            
+            # Giữ nguyên giá trị cũ nếu đã có, TRỪ KHI dòng này được đánh dấu force_ocr_reprocess và có data mới
+            if not is_empty and not row_info.get('force_ocr_reprocess'):
+                continue
+                
             if new_val:
                 row_info['row_cells'][idx].value = new_val
                 
