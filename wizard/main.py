@@ -402,7 +402,8 @@ def parse_ocr_text(text):
                             "THUCTRANGCA": "THU TRANG",
                             "THUCTRANG": "THU TRANG",
                             "CHUYNH": "HUYNH",
-                            "CHUY": "THUY"
+                            "CHUY": "THUY",
+                            "CANHCHATHUC": "ANH THU"
                         }
                         for bad, good in ocr_fixes.items():
                             s = s.replace(bad, good)
@@ -468,8 +469,8 @@ def parse_ocr_text(text):
                 # ---------------------------------------------------------
                 # 3.5. TRÍCH XUẤT HỌ TÊN VƯỢT DÒNG (Dành cho CCCD đứt nét hoặc SMS screenshot)
                 # ---------------------------------------------------------
-                # Thử tìm theo cấu trúc Multi-line (Họ tên ... Ngày sinh)
-                name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n)\s*[:\s]+(.*?)[,.]?\s*(?:ng[aà]y\s*sinh|date\s*of\s*birth|ng[aà]y,\s*th[aá]ng|dob|sinh\s*ng[aà]y|\bsinh\b\s*:)', text, re.DOTALL)
+                # Thử tìm theo cấu trúc Multi-line (Họ tên ... Ngày sinh), giới hạn 60 ký tự để không bắt lố qua block khác
+                name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n)\s*[:\s]+(.{1,60}?)[,.]?\s*(?:ng[aà]y\s*sinh|date\s*of\s*birth|ng[aà]y,\s*th[aá]ng|dob|sinh\s*ng[aà]y|\bsinh\b\s*:)', text, re.DOTALL)
                 
                 # Nếu không tìm thấy, thử tìm theo cấu trúc Single-line (VD: ten: Lam My Linh, Ngay)
                 if not name_block_match:
