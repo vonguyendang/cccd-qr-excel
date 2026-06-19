@@ -459,7 +459,8 @@ def parse_ocr_text(text):
                 
                 # Nếu không tìm thấy, thử tìm theo cấu trúc Single-line (VD: ten: Lam My Linh, Ngay)
                 if not name_block_match:
-                    name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n|\bt[eê]n\b)\s*[:\s]+([^\n,.]+)', text)
+                    text_oneline = text.replace('\n', ' ')
+                    name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n|\bt[eê]n\b)\s*[:\s]+([^\n,.]+)', text_oneline)
 
                 if name_block_match:
                     raw_name = name_block_match.group(1)
