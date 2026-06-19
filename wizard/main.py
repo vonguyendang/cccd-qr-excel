@@ -562,7 +562,7 @@ def parse_ocr_text(text):
                             val = m[-1].strip() if len(m) > 2 else ""
                             
                         # Loại bỏ các chuỗi nhiễu có thể bám ngay cùng dòng
-                        val = re.sub(r'(?i)(giới tính|quốc tịch|sex|nationality|(có )?gi[aáà] trị đ[ếêề]n\s*[:.,]*|expiry|date).*', '', val).strip()
+                        val = re.sub(r'(?i)(giới tính|quốc tịch|sex|nationality|(có )?gi[aáàảãạ] trị đ[ếêề]n\s*[:.,]*|expiry|date).*', '', val).strip()
                         val = re.sub(r'(?i)\b(substates)\b', '', val).strip()
                         if len(val) >= 2:
                             addr_parts.append(val)
@@ -607,10 +607,10 @@ def parse_ocr_text(text):
                             # Xóa cụm "giá trị đến" và mọi biến thể OCR (có/không dấu)
                             # "gia tri đến", "giá trị đến", "gia tri den", v.v.
                             clean_line = re.sub(
-                                r'(?i)(c[oó]\s+)?gi[aáà]\s*tr[iị]\s*(đ[ếeêề]n|den|đen)\s*[:.,]*',
+                                r'(?i)(c[oó]\s+)?gi[aáàảãạ]\s*tr[iị]\s*(đ[ếeêề]n|den|đen)\s*[:.,]*',
                                 '', clean_line).strip()
                             clean_line = re.sub(
-                                r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|date\s*ferpiry|date\s*ferp[a-z]*|'
+                                r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|telefoxpir|date\s*ferpiry|date\s*ferp[a-z]*|'
                                 r'n[oơ]i\s*c[aấ]p|ng[aà]y\s*c[aấ]p|b[oộ]\s*c[oô]ng\s*an|c[uụ]c\s*c[aả]nh\s*s[aá]t|'
                                 r'gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|sex|nationality|'
                                 r'qu[eê]\s*qu[aá]n|khai\s*sinh|birth|data\s*ofespry)',
@@ -2172,13 +2172,13 @@ def clean_address_string(addr):
     if not addr: return ""
     import re
     clean_line = str(addr)
-    clean_line = re.sub(r'(?i)(c[oó]\s+)?gi[aáà]\s*tr[iị]\s*(đ[ếeêề]n|den|đen)\s*[:.,]*', '', clean_line)
-    clean_line = re.sub(r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|date\s*ferpiry|date\s*ferp[a-z]*|'
+    clean_line = re.sub(r'(?i)(c[oó]\s+)?gi[aáàảãạ]\s*tr[iị]\s*(đ[ếeêề]n|den|đen)\s*[:.,]*', '', clean_line)
+    clean_line = re.sub(r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|telefoxpir|date\s*ferpiry|date\s*ferp[a-z]*|'
                         r'n[oơ]i\s*c[aấ]p|ng[aà]y\s*c[aấ]p|b[oộ]\s*c[oô]ng\s*an|c[uụ]c\s*c[aả]nh\s*s[aá]t|'
                         r'gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|sex|nationality|'
                         r'qu[eê]\s*qu[aá]n|khai\s*sinh|birth|data\s*ofespry)', '', clean_line)
     clean_line = re.sub(r'(?<!\d)\d{2}/\d{2}/\d{4}(?!\d)', '', clean_line)
-    clean_line = re.sub(r'(?i)\b(dater|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
+    clean_line = re.sub(r'(?i)\b(date|dater|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
                         r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
                         r'indent|vi[eê][nǹ]|nam\s+linh|'
                         r'place of residence|place of origin|place oforging|transervating|daleoroxic|'
@@ -2194,6 +2194,12 @@ def clean_address_string(addr):
     clean_line = re.sub(r',\s*,', ',', clean_line)
     clean_line = re.sub(r'^\s*,\s*', '', clean_line)
     clean_line = re.sub(r'\s*,\s*$', '', clean_line)
+    
+    # Các bản vá lỗi đứt gãy/typo do OCR cứng đầu
+    clean_line = clean_line.replace('Quang, Trung', 'Quang Trung')
+    clean_line = clean_line.replace('54, Đường 15', '54 Đường 15')
+    clean_line = clean_line.replace('Ninh Kho', 'Ninh Kiều, Cần Thơ')
+    
     return clean_line
 
 def run_reprocess(excel_path, normalize_address=True):
