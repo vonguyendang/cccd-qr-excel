@@ -1029,27 +1029,56 @@ console = Console()
 
 def get_unique_images(image_paths):
     import hashlib
+    from PIL import Image
     unique_paths = []
-    seen_hashes = set()
+    seen_md5 = set()
+    seen_dhash = []
     duplicates_count = 0
+    
+    def get_dhash(img_path):
+        try:
+            with Image.open(img_path) as img:
+                img = img.convert('L').resize((9, 8), Image.Resampling.LANCZOS)
+                pixels = list(img.getdata())
+                diff = [pixels[r * 9 + c] > pixels[r * 9 + c + 1] for r in range(8) for c in range(8)]
+                return sum([2 ** i for (i, v) in enumerate(diff) if v])
+        except Exception:
+            return None
+
+    def hamming_distance(h1, h2):
+        return bin(h1 ^ h2).count('1')
     
     with Progress(
         SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
         BarColumn(), TaskProgressColumn(), console=console,
     ) as progress:
-        task = progress.add_task("[cyan]Đang kiểm tra và lọc ảnh trùng lặp (MD5)...", total=len(image_paths))
+        task = progress.add_task("[cyan]Đang quét dHash & MD5 để diệt ảnh trùng lặp...", total=len(image_paths))
         for path in image_paths:
             try:
                 with open(path, 'rb') as f:
-                    file_hash = hashlib.md5(f.read()).hexdigest()
-                if file_hash in seen_hashes:
+                    file_md5 = hashlib.md5(f.read()).hexdigest()
+                    
+                if file_md5 in seen_md5:
+                    is_duplicate = True
+                else:
+                    is_duplicate = False
+                    file_dhash = get_dhash(path)
+                    if file_dhash is not None:
+                        for old_dhash in seen_dhash:
+                            if hamming_distance(file_dhash, old_dhash) <= 2:
+                                is_duplicate = True
+                                break
+                                
+                if is_duplicate:
                     duplicates_count += 1
                     try:
                         os.remove(path)
                     except Exception:
                         pass
                 else:
-                    seen_hashes.add(file_hash)
+                    seen_md5.add(file_md5)
+                    if file_dhash is not None:
+                        seen_dhash.append(file_dhash)
                     unique_paths.append(path)
             except Exception:
                 unique_paths.append(path)
