@@ -1020,7 +1020,8 @@ def run_wizard(input_dir, normalize_address=True):
     all_old_excels = []
     for edir in possible_exports:
         if os.path.isdir(edir):
-            all_old_excels.extend(glob.glob(os.path.join(edir, "*.xlsx")))
+            excels = glob.glob(os.path.join(edir, "*.xlsx"))
+            all_old_excels.extend([f for f in excels if not os.path.basename(f).startswith('~$')])
             
     latest_excel = None
     if all_old_excels:
@@ -1040,6 +1041,7 @@ def run_wizard(input_dir, normalize_address=True):
                 incremental_scan = True
             elif os.path.isdir(user_input):
                 excels = glob.glob(os.path.join(user_input, "*.xlsx"))
+                excels = [f for f in excels if not os.path.basename(f).startswith('~$')]
                 if excels:
                     latest_excel = max(excels, key=os.path.getmtime)
                     incremental_scan = True
