@@ -2057,30 +2057,46 @@ def run_reprocess(excel_path, normalize_address=True):
         return
 
     rows_to_process = []
+    assigned_images = set()
+    all_rows_info = []
+    cccd_col = col_idx.get('CCCD')
+    
     for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=False), start=2):
-        is_missing = False
+        front_name = row[img_front_col].value
+        back_name = row[img_back_col].value
+        if front_name: assigned_images.add(os.path.basename(str(front_name)))
+        if back_name: assigned_images.add(os.path.basename(str(back_name)))
+        
+        row_info = {
+            'row_idx': row_idx,
+            'front_name': front_name,
+            'back_name': back_name,
+            'row_cells': row,
+            'is_missing': False
+        }
+        all_rows_info.append(row_info)
+        
         for col_name in required_cols:
             idx = col_idx.get(col_name)
             if idx is not None:
                 val = row[idx].value
                 if not val or str(val).strip() == "" or str(val).strip() == "None":
-                    is_missing = True
+                    row_info['is_missing'] = True
                     break
-        if is_missing:
-            front_name = row[img_front_col].value
-            back_name = row[img_back_col].value
-            rows_to_process.append({
-                'row_idx': row_idx,
-                'front_name': front_name,
-                'back_name': back_name,
-                'row_cells': row
-            })
-            
-    if not rows_to_process:
-        console.print("[bold green]✅ Tất cả các dòng trong file Excel đều đã đầy đủ thông tin, sẽ chuyển thẳng sang làm sạch & chuẩn hóa địa chỉ![/bold green]")
+        
+        if row_info['is_missing']:
+            rows_to_process.append(row_info)
+
+    unassigned_images = [p for p in image_paths if os.path.basename(p) not in assigned_images]
+
+    if not rows_to_process and not unassigned_images:
+        console.print("[bold green]✅ File Excel đã đầy đủ thông tin và không có ảnh mới, chuyển sang bước chuẩn hóa địa chỉ![/bold green]")
         num_threads = 4
     else:
-        console.print(f"[bold yellow]⚠️ Tìm thấy {len(rows_to_process)} dòng bị thiếu thông tin cần xử lý lại.[/bold yellow]")
+        if rows_to_process:
+            console.print(f"[bold yellow]⚠️ Tìm thấy {len(rows_to_process)} dòng bị thiếu thông tin.[/bold yellow]")
+        if unassigned_images:
+            console.print(f"[bold cyan]🔍 Tìm thấy {len(unassigned_images)} ảnh mới trong thư mục, sẽ quét để bổ sung.[/bold cyan]")
         
         # Cấu hình luồng xử lý
         num_threads_input = Prompt.ask("\n[cyan]Nhập số luồng xử lý ảnh song song[/cyan] (Enter để mặc định là 4)", default="4").strip()
@@ -2148,6 +2164,10 @@ def run_reprocess(excel_path, normalize_address=True):
         if row['back_name'] and row['back_name'] in img_map:
             all_images_to_process.add(img_map[row['back_name']])
             
+    # Thêm ảnh unassigned vào danh sách xử lý
+    for p in unassigned_images:
+        all_images_to_process.add(p)
+            
     img_results = {}
     with Progress(
         SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
@@ -2205,14 +2225,28 @@ def run_reprocess(excel_path, normalize_address=True):
     # LÀM SẠCH VÀ CHUẨN BỊ GỌI API CHO TOÀN BỘ FILE EXCEL (kể cả những dòng không bị lỗi OCR)
     address_to_normalize = set()
     orig_idx = col_idx.get('Nơi thường trú gốc')
+    norm_idx = col_idx.get('Địa chỉ chuẩn hóa mới')
+    note_idx = col_idx.get('Ghi chú')
+
     if orig_idx is not None:
-        # iter_rows đã tiêu thụ hết ws, ta cần lặp lại
         for row in ws.iter_rows(min_row=2, values_only=False):
             val = row[orig_idx].value
             if val and str(val).strip() and str(val).strip() != "None":
-                cleaned_val = clean_address_string(str(val))
-                row[orig_idx].value = cleaned_val
-                address_to_normalize.add(cleaned_val)
+                note_val = str(row[note_idx].value) if note_idx and row[note_idx].value else ""
+                
+                # CHỈ làm sạch và chuẩn hóa lại nếu lấy bằng OCR
+                if "Lấy bằng OCR" in note_val:
+                    cleaned_val = clean_address_string(str(val))
+                    row[orig_idx].value = cleaned_val
+                    # Luôn bổ sung vào API để ghi đè kết quả chuẩn hóa cũ
+                    address_to_normalize.add(cleaned_val)
+                else:
+                    # Nếu quét bằng QR hoặc nhập tay thì giữ nguyên gốc
+                    cleaned_val = str(val).strip()
+                    # CHỈ bổ sung vào API nếu Địa chỉ chuẩn hóa mới bị Trống
+                    norm_val = row[norm_idx].value if norm_idx else None
+                    if not norm_val or str(norm_val).strip() == "" or str(norm_val).strip() == "None":
+                        address_to_normalize.add(cleaned_val)
 
     # Nơi chuẩn hóa địa chỉ
     if normalize_address and address_to_normalize:
@@ -2252,12 +2286,17 @@ def run_reprocess(excel_path, normalize_address=True):
         # Điền lại địa chỉ chuẩn hóa vào Excel
         norm_idx = col_idx.get('Địa chỉ chuẩn hóa mới')
         orig_idx = col_idx.get('Nơi thường trú gốc')
+        note_idx = col_idx.get('Ghi chú')
         if norm_idx is not None and orig_idx is not None:
             for row in ws.iter_rows(min_row=2, values_only=False):
                 orig_val = row[orig_idx].value
+                # Chỉ điền nếu gọi API thành công
                 if orig_val and orig_val in address_map and address_map[orig_val].get('success'):
-                    # Đè lên luôn vì mình vừa reprocess
-                    row[norm_idx].value = address_map[orig_val].get('converted', '')
+                    norm_val = row[norm_idx].value
+                    note_val = str(row[note_idx].value) if note_idx and row[note_idx].value else ""
+                    # Đè lên nếu trước đó chưa có, HOẶC nếu dòng đó được Lấy bằng OCR
+                    if "Lấy bằng OCR" in note_val or not norm_val or str(norm_val).strip() == "" or str(norm_val).strip() == "None":
+                        row[norm_idx].value = address_map[orig_val].get('converted', '')
 
     timestamp = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
     reprocess_out = excel_path.replace('.xlsx', f'_reprocessed_{timestamp}.xlsx')
