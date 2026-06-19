@@ -543,6 +543,7 @@ def parse_ocr_text(text):
                             
                         # Loại bỏ các chuỗi nhiễu có thể bám ngay cùng dòng
                         val = re.sub(r'(?i)(giới tính|quốc tịch|sex|nationality|(có )?gi[aáà] trị đ[ếêề]n\s*[:.,]*|expiry|date).*', '', val).strip()
+                        val = re.sub(r'(?i)\b(substates)\b', '', val).strip()
                         if len(val) >= 2:
                             addr_parts.append(val)
         
@@ -600,7 +601,7 @@ def parse_ocr_text(text):
                                 
                             # CẮT BỎ CÁC TỪ TIẾNG ANH ẢO GIÁC DO OCR NHẬN DIỆN MỜ VÀ CÁC NHÃN
                             clean_line = re.sub(
-                                r'(?i)\b(place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
+                                r'(?i)\b(substates|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
                                 r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
                                 r'indent|vi[eê][nǹ]|nam\s+linh|'
                                 r'place of residence|place of origin|place oforging|transervating|daleoroxic|'
@@ -608,7 +609,7 @@ def parse_ocr_text(text):
                                 r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
                                 r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b',
                                 '', clean_line).strip()
-                            clean_line = re.sub(r'(?i)(họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)', '', clean_line).strip()
+                            clean_line = re.sub(r'(?i)(substates|họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)', '', clean_line).strip()
                             
                             # Loại bỏ chữ 'Có' rớt lại do cắt cụm 'Có giá trị đến' bị thiếu
                             # Xử lý các dạng: 'Có :', 'Có', 'Có ,' đứng 1 mình hoặc kẹp ở đầu/cuối chuỗi
