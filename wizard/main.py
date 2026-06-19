@@ -1143,7 +1143,7 @@ def run_wizard(input_dir, normalize_address=True):
             api_threads = 4
 
     # Wizard confirmation
-    confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu xử lý ngay bây giờ không?[/bold yellow]")
+    confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu xử lý ngay bây giờ không?[/bold yellow]", default=True)
     if not confirm:
         console.print("[yellow]Đã hủy quá trình.[/yellow]")
         return
@@ -2008,7 +2008,7 @@ def run_reprocess(excel_path, normalize_address=True):
             console.print("[yellow]Số luồng không hợp lệ, dùng mặc định 4[/yellow]")
             api_threads = 4
         
-    confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu TÁI XỬ LÝ ngay bây giờ không?[/bold yellow]")
+    confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu TÁI XỬ LÝ ngay bây giờ không?[/bold yellow]", default=True)
     if not confirm:
         console.print("[yellow]Đã hủy quá trình.[/yellow]")
         return
