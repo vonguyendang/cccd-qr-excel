@@ -1102,10 +1102,13 @@ def run_wizard(input_dir, normalize_address=True):
                     })
                     front = row[img_front_col]
                     back = row[img_back_col]
+                    renamed_front = row[renamed_front_col] if renamed_front_col is not None else ''
+                    renamed_back = row[renamed_back_col] if renamed_back_col is not None else ''
                     
                     if front: processed_images_set.add(str(front))
                     if back: processed_images_set.add(str(back))
-                    
+                    if renamed_front: processed_images_set.add(str(renamed_front))
+                    if renamed_back: processed_images_set.add(str(renamed_back))
         except Exception as e:
             console.print(f"[red]❌ Lỗi đọc file Excel cũ: {e}[/red]")
             incremental_scan = False
@@ -1118,8 +1121,6 @@ def run_wizard(input_dir, normalize_address=True):
             if base.isdigit() and int(base) > max_renamed_idx:
                 max_renamed_idx = int(base)
                 
-        new_image_paths = [p for p in new_image_paths if not os.path.splitext(os.path.basename(p))[0].isdigit()]
-        
         if not new_image_paths:
             console.print("\n[bold green]✅ Không tìm thấy ảnh mới nào được chép thêm vào. Kết thúc quá trình quét nối tiếp![/bold green]")
             return
