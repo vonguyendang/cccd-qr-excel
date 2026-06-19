@@ -613,7 +613,7 @@ def parse_ocr_text(text):
                                 r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|telefoxpir|date\s*ferpiry|date\s*ferp[a-z]*|'
                                 r'n[oơ]i\s*c[aấ]p|ng[aà]y\s*c[aấ]p|b[oộ]\s*c[oô]ng\s*an|c[uụ]c\s*c[aả]nh\s*s[aá]t|'
                                 r'gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|sex|nationality|'
-                                r'qu[eê]\s*qu[aá]n|khai\s*sinh|birth|data\s*ofespry)',
+                                r'qu[eê]\s*qu[aá]n|khai\s*sinh|ng[aà]y\s*sinh|i\s*date|birth|data\s*ofespry)',
                                 '', clean_line).strip()
                             
                             # Xóa ngày tháng năm
@@ -2176,7 +2176,7 @@ def clean_address_string(addr):
     clean_line = re.sub(r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|telefoxpir|date\s*ferpiry|date\s*ferp[a-z]*|'
                         r'n[oơ]i\s*c[aấ]p|ng[aà]y\s*c[aấ]p|b[oộ]\s*c[oô]ng\s*an|c[uụ]c\s*c[aả]nh\s*s[aá]t|'
                         r'gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|sex|nationality|'
-                        r'qu[eê]\s*qu[aá]n|khai\s*sinh|birth|data\s*ofespry)', '', clean_line)
+                        r'qu[eê]\s*qu[aá]n|khai\s*sinh|ng[aà]y\s*sinh|i\s*date|birth|data\s*ofespry)', '', clean_line)
     clean_line = re.sub(r'(?<!\d)\d{2}/\d{2}/\d{4}(?!\d)', '', clean_line)
     clean_line = re.sub(r'(?i)\b(date|dater|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
                         r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
@@ -2200,6 +2200,7 @@ def clean_address_string(addr):
     clean_line = clean_line.replace('54, Đường 15', '54 Đường 15')
     clean_line = clean_line.replace('Ninh Kho', 'Ninh Kiều, Cần Thơ')
     clean_line = clean_line.replace('Trà Canh Al', 'Trà Canh A1')
+    clean_line = clean_line.replace('Vĩnh, Viễn', 'Vĩnh Viễn')
     
     return clean_line
 
