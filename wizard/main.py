@@ -1000,19 +1000,104 @@ def run_wizard(input_dir, normalize_address=True):
 
     console.print(f"\n[bold green]✅ Đã quét thư mục và tìm thấy tổng cộng {len(image_paths)} file ảnh.[/bold green]")
     
+    # --- INCREMENTAL SCAN LOGIC ---
+    incremental_scan = False
+    old_records = []
+    processed_images_set = set()
+    max_renamed_idx = 0
+    exports_dir = os.path.join(input_dir, "exports")
+    
+    if os.path.isdir(exports_dir):
+        import glob
+        old_excels = glob.glob(os.path.join(exports_dir, "*.xlsx"))
+        if old_excels:
+            latest_excel = max(old_excels, key=os.path.getmtime)
+            incremental_scan = Confirm.ask(f"\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file {os.path.basename(latest_excel)}). Bạn muốn QUÉT NỐI TIẾP (chỉ quét ảnh mới ném vào) không? (Chọn No để quét lại từ đầu)[/bold yellow]", default=True)
+            if incremental_scan:
+                console.print("[cyan]Đang đọc file Excel cũ để lọc ra các ảnh mới...[/cyan]")
+                try:
+                    import openpyxl
+                    wb = openpyxl.load_workbook(latest_excel)
+                    ws = wb.active
+                    headers = [cell.value for cell in ws[1]]
+                    col_idx = {name: i for i, name in enumerate(headers)}
+                    
+                    img_front_col = col_idx.get('Ảnh mặt trước CCCD/CC')
+                    img_back_col = col_idx.get('Ảnh mặt sau CCCD/CC')
+                    renamed_front_col = col_idx.get('Đổi tên Ảnh mặt trước CCCD/CC')
+                    renamed_back_col = col_idx.get('Đổi tên Ảnh mặt sau CCCD/CC')
+                    
+                    if img_front_col is None or img_back_col is None:
+                        console.print("[red]❌ File Excel cũ không có cột tên ảnh, không thể quét nối tiếp.[/red]")
+                        incremental_scan = False
+                    else:
+                        for row in ws.iter_rows(min_row=2, values_only=True):
+                            old_records.append({
+                                'Họ tên': row[col_idx.get('Họ tên')] if 'Họ tên' in col_idx else '',
+                                'CCCD': row[col_idx.get('CCCD')] if 'CCCD' in col_idx else '',
+                                'CMND': row[col_idx.get('CMND')] if 'CMND' in col_idx else '',
+                                'Giới tính': row[col_idx.get('Giới tính')] if 'Giới tính' in col_idx else '',
+                                'Ngày sinh': row[col_idx.get('Ngày sinh')] if 'Ngày sinh' in col_idx else '',
+                                'Nơi thường trú gốc': row[col_idx.get('Nơi thường trú gốc')] if 'Nơi thường trú gốc' in col_idx else '',
+                                'Địa chỉ chuẩn hóa mới': row[col_idx.get('Địa chỉ chuẩn hóa mới')] if 'Địa chỉ chuẩn hóa mới' in col_idx else '',
+                                'Ngày cấp CCCD': row[col_idx.get('Ngày cấp CCCD')] if 'Ngày cấp CCCD' in col_idx else '',
+                                'Nơi cấp': row[col_idx.get('Nơi cấp')] if 'Nơi cấp' in col_idx else '',
+                                'Ngày hết hạn': row[col_idx.get('Ngày hết hạn')] if 'Ngày hết hạn' in col_idx else '',
+                                'Phân loại': row[col_idx.get('Phân loại')] if 'Phân loại' in col_idx else '',
+                                'Ghi chú': row[col_idx.get('Ghi chú')] if 'Ghi chú' in col_idx else '',
+                                'QR Raw': row[col_idx.get('QR Raw')] if 'QR Raw' in col_idx else '',
+                                'Ảnh mặt trước CCCD/CC': row[img_front_col],
+                                'Ảnh mặt sau CCCD/CC': row[img_back_col],
+                                'Đổi tên Ảnh mặt trước CCCD/CC': row[renamed_front_col] if renamed_front_col is not None else '',
+                                'Đổi tên Ảnh mặt sau CCCD/CC': row[renamed_back_col] if renamed_back_col is not None else ''
+                            })
+                            front = row[img_front_col]
+                            back = row[img_back_col]
+                            
+                            if front: processed_images_set.add(str(front))
+                            if back: processed_images_set.add(str(back))
+                            
+                except Exception as e:
+                    console.print(f"[red]❌ Lỗi đọc file Excel cũ: {e}[/red]")
+                    incremental_scan = False
+                    
+    if incremental_scan:
+        new_image_paths = [p for p in image_paths if os.path.basename(p) not in processed_images_set]
+        
+        for p in image_paths:
+            base = os.path.splitext(os.path.basename(p))[0]
+            if base.isdigit() and int(base) > max_renamed_idx:
+                max_renamed_idx = int(base)
+                
+        new_image_paths = [p for p in new_image_paths if not os.path.splitext(os.path.basename(p))[0].isdigit()]
+        
+        if not new_image_paths:
+            console.print("\n[bold green]✅ Không tìm thấy ảnh mới nào được chép thêm vào. Kết thúc quá trình quét nối tiếp![/bold green]")
+            return
+        console.print(f"[bold green]✅ Đã tự động lọc ra [yellow]{len(new_image_paths)}[/yellow] ảnh mới cần xử lý.[/bold green]")
+        image_paths = new_image_paths
+
     # --- AUTO BACKUP AND RENAME LOGIC ---
     import zipfile
     import uuid
     zip_path = os.path.join(input_dir, "original.zip")
     
-    if not os.path.exists(zip_path):
-        console.print("[cyan]📦 Đang sao lưu các file ảnh gốc vào original.zip...[/cyan]")
+    if not os.path.exists(zip_path) or incremental_scan:
+        action_word = "bổ sung" if incremental_scan else "gốc"
+        mode = 'a' if incremental_scan else 'w'
+        start_idx = max_renamed_idx + 1 if incremental_scan else 1
+        
+        console.print(f"[cyan]📦 Đang nén {action_word} các file ảnh vào original.zip...[/cyan]")
         try:
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            with zipfile.ZipFile(zip_path, mode, zipfile.ZIP_DEFLATED) as zipf:
                 for file_path in image_paths:
                     zipf.write(file_path, os.path.basename(file_path))
             
-            console.print("[cyan]🔄 Đang đổi tên các file ảnh theo số thứ tự...[/cyan]")
+            if incremental_scan:
+                console.print(f"[cyan]🔄 Đang đổi tên các file ảnh mới nối tiếp (từ số {start_idx})...[/cyan]")
+            else:
+                console.print("[cyan]🔄 Đang đổi tên các file ảnh theo số thứ tự...[/cyan]")
+                
             # Bước 1: Đổi tên thành tên tạm (để tránh ghi đè ngẫu nhiên)
             temp_paths = []
             for file_path in image_paths:
@@ -1024,7 +1109,7 @@ def run_wizard(input_dir, normalize_address=True):
                 
             # Bước 2: Đổi tên thành số thứ tự
             new_image_paths = []
-            for i, (temp_path, ext) in enumerate(temp_paths, 1):
+            for i, (temp_path, ext) in enumerate(temp_paths, start_idx):
                 new_name = f"{i}{ext}"
                 new_path = os.path.join(input_dir, new_name)
                 os.rename(temp_path, new_path)
@@ -1571,6 +1656,9 @@ def run_wizard(input_dir, normalize_address=True):
     for cell in ws[1]:
         cell.font = Font(bold=True)
 
+    if 'incremental_scan' in locals() and incremental_scan and old_records:
+        processed_data = old_records + processed_data
+
     for idx, row_data in enumerate(processed_data):
         row = [
             idx + 1,
@@ -1830,6 +1918,240 @@ def run_wizard(input_dir, normalize_address=True):
     console.print(f"File log chi tiết được lưu tại: [yellow]{os.path.abspath(log_filename)}[/yellow]")
     console.print("🎉"*15 + "\n")
 
+def run_reprocess(excel_path, normalize_address=True):
+    from rich.text import Text
+    import datetime
+    file_logs = []
+    
+    excel_dir = os.path.dirname(os.path.abspath(excel_path))
+    parent_dir = os.path.dirname(excel_dir)
+    image_dir = parent_dir
+    
+    user_img_dir = Prompt.ask(f"[bold cyan]Nhập đường dẫn thư mục chứa ảnh gốc (Ấn Enter nếu là: {image_dir})[/bold cyan]").strip().strip('\'"')
+    if user_img_dir:
+        image_dir = user_img_dir
+        
+    if not os.path.isdir(image_dir):
+        console.print(f"[bold red]❌ Thư mục ảnh '{image_dir}' không tồn tại![/bold red]")
+        return
+        
+    image_paths = []
+    for ext in ('*.jpg', '*.jpeg', '*.png', '*.heic', '*.webp', '*.JPG', '*.JPEG', '*.PNG', '*.HEIC', '*.WEBP'):
+        image_paths.extend(glob.glob(os.path.join(image_dir, ext)))
+        
+    img_map = {os.path.basename(p): p for p in image_paths}
+    
+    console.print(f"[cyan]Đang đọc file Excel: {excel_path}[/cyan]")
+    try:
+        wb = openpyxl.load_workbook(excel_path)
+        ws = wb.active
+    except Exception as e:
+        console.print(f"[bold red]❌ Lỗi đọc file Excel: {e}[/bold red]")
+        return
+        
+    headers = [cell.value for cell in ws[1]]
+    if not headers or "Họ tên" not in headers:
+        console.print("[bold red]❌ File Excel không đúng định dạng (không tìm thấy cột 'Họ tên').[/bold red]")
+        return
+        
+    col_idx = {name: i for i, name in enumerate(headers)}
+    
+    required_cols = ['Họ tên', 'CCCD', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD', 'Nơi cấp', 'Ngày hết hạn']
+    img_front_col = col_idx.get('Ảnh mặt trước CCCD/CC')
+    img_back_col = col_idx.get('Ảnh mặt sau CCCD/CC')
+    
+    if img_front_col is None or img_back_col is None:
+        console.print("[bold red]❌ Không tìm thấy cột chứa tên file ảnh trong Excel.[/bold red]")
+        return
+
+    rows_to_process = []
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=False), start=2):
+        is_missing = False
+        for col_name in required_cols:
+            idx = col_idx.get(col_name)
+            if idx is not None:
+                val = row[idx].value
+                if not val or str(val).strip() == "" or str(val).strip() == "None":
+                    is_missing = True
+                    break
+        if is_missing:
+            front_name = row[img_front_col].value
+            back_name = row[img_back_col].value
+            rows_to_process.append({
+                'row_idx': row_idx,
+                'front_name': front_name,
+                'back_name': back_name,
+                'row_cells': row
+            })
+            
+    if not rows_to_process:
+        console.print("[bold green]✅ Tất cả các dòng trong file Excel đều đã đầy đủ thông tin, không cần xử lý lại![/bold green]")
+        return
+        
+    console.print(f"[bold yellow]⚠️ Tìm thấy {len(rows_to_process)} dòng bị thiếu thông tin cần xử lý lại.[/bold yellow]")
+    
+    # Process images for missing rows
+    import concurrent.futures
+    num_threads = max(1, os.cpu_count() - 1)
+    
+    # Helper to reprocess a single image
+    def process_single_image(img_path):
+        qr_string, engine, err, img, qr_rotated_img = extract_qr_data(img_path)
+        log_msgs = []
+        row_data = {}
+        if qr_string:
+            log_msgs.append(f"[green]✅ [Đã quét mã QR bằng {engine}]:[/green] {qr_string}")
+            extracted, validation_notes = process_qr_string(qr_string)
+            row_data.update(extracted)
+        else:
+            if img is not None:
+                log_msgs.append(f"[yellow]⚠️ Không đọc được QR, đang thử quét OCR...[/yellow]")
+                with ocr_lock:
+                    ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
+                
+                parts = []
+                side = ocr_data.get('OCR Side')
+                if side: parts.append(f"[{side}]")
+                parts.append(f"CCCD: {ocr_data.get('CCCD') or '[Trống]'}")
+                parts.append(f"Tên: {ocr_data.get('Họ tên') or '[Trống]'}")
+                
+                ocr_print_info = ", ".join(parts)
+                log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info}")
+                
+                if DEBUG_MODE and ocr_data.get('Raw Text'):
+                    log_msgs.append(f"[magenta]🐛 DEBUG RAW OCR TEXT:\n{ocr_data['Raw Text']}[/magenta]")
+                
+                row_data.update(ocr_data)
+        
+        row_data['Nơi cấp'] = get_place_of_issue(row_data.get('QR Raw', ''))
+        row_data['Ngày hết hạn'] = calculate_expiry_date(row_data.get('Ngày sinh', ''))
+        return row_data, log_msgs
+
+    # We need to process both front and back images for each row
+    all_images_to_process = set()
+    for row in rows_to_process:
+        if row['front_name'] and row['front_name'] in img_map:
+            all_images_to_process.add(img_map[row['front_name']])
+        if row['back_name'] and row['back_name'] in img_map:
+            all_images_to_process.add(img_map[row['back_name']])
+            
+    img_results = {}
+    with Progress(
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
+        BarColumn(), TaskProgressColumn(), TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task_id = progress.add_task("[cyan]Đang quét ảnh...", total=len(all_images_to_process))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            future_to_img = {executor.submit(process_single_image, path): path for path in all_images_to_process}
+            for future in concurrent.futures.as_completed(future_to_img):
+                img_path = future_to_img[future]
+                try:
+                    row_data, log_msgs = future.result()
+                    img_results[img_path] = row_data
+                    
+                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold]")
+                    file_logs.append(f"[{os.path.basename(img_path)}]")
+                    for msg in log_msgs:
+                        progress.console.print(f"  {msg}")
+                        file_logs.append("  " + Text.from_markup(msg).plain)
+                except Exception as exc:
+                    err = f"❌ Lỗi khi xử lý ảnh {os.path.basename(img_path)}: {exc}"
+                    progress.console.print(f"[bold red]{err}[/bold red]")
+                    file_logs.append(err)
+                finally:
+                    progress.advance(task_id)
+
+    # Merge results back into Excel rows
+    # We prioritize keeping existing non-empty values, but overwrite if OCR found new data
+    address_to_normalize = set()
+    for row_info in rows_to_process:
+        front_path = img_map.get(row_info['front_name']) if row_info['front_name'] else None
+        back_path = img_map.get(row_info['back_name']) if row_info['back_name'] else None
+        
+        front_data = img_results.get(front_path, {})
+        back_data = img_results.get(back_path, {})
+        
+        # Merge logic
+        for col_name in required_cols:
+            idx = col_idx.get(col_name)
+            if idx is None: continue
+            
+            existing_val = row_info['row_cells'][idx].value
+            if existing_val and str(existing_val).strip() != "" and str(existing_val).strip() != "None":
+                continue # Giữ nguyên giá trị cũ nếu đã có
+                
+            # Cố lấy từ front_data hoặc back_data
+            new_val = front_data.get(col_name) or back_data.get(col_name)
+            if new_val:
+                row_info['row_cells'][idx].value = new_val
+                
+                # Nếu là địa chỉ, gom để gửi API chuẩn hóa
+                if col_name == 'Nơi thường trú gốc' and new_val:
+                    address_to_normalize.add(new_val)
+
+    # Nơi chuẩn hóa địa chỉ
+    if normalize_address and address_to_normalize:
+        console.print(Panel(f"[bold cyan]🌐 ĐANG CHUẨN BỊ GỌI API CHUẨN HÓA CHO {len(address_to_normalize)} ĐỊA CHỈ DUY NHẤT VỚI {api_threads} LUỒNG...[/bold cyan]", border_style="green"))
+        address_map = {}
+        unique_addresses = list(address_to_normalize)
+        batch_size = 100
+        total_addrs = len(unique_addresses)
+        processed_count = 0
+        with Progress(
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
+            BarColumn(), TaskProgressColumn(), TextColumn("[bold]{task.fields[status]}"),
+            TimeElapsedColumn(), console=console,
+        ) as api_progress:
+            api_task = api_progress.add_task("[cyan]Đang chuẩn hóa địa chỉ...", total=total_addrs, status="")
+            for i in range(0, total_addrs, batch_size):
+                batch = unique_addresses[i:i+batch_size]
+                with concurrent.futures.ThreadPoolExecutor(max_workers=api_threads) as executor:
+                    future_to_addr = {executor.submit(fetch_single_address, addr): addr for addr in batch}
+                    for future in concurrent.futures.as_completed(future_to_addr):
+                        result = future.result()
+                        processed_count += 1
+                        if result and 'original' in result:
+                            orig_addr = result['original']
+                            address_map[orig_addr] = result
+                            short_addr = orig_addr[:45]
+                            if result.get('success'):
+                                new_addr = result.get('converted', '')
+                                status_text = f"[green]✓[/green] {short_addr}"
+                                api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold green]{new_addr}[/bold green]")
+                            else:
+                                err_msg = result.get('error', 'Lỗi không xác định')
+                                status_text = f"[red]✗[/red] {short_addr}"
+                                api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold red]{err_msg}[/bold red]")
+                            api_progress.update(api_task, advance=1, status=status_text)
+                            
+        # Điền lại địa chỉ chuẩn hóa vào Excel
+        norm_idx = col_idx.get('Địa chỉ chuẩn hóa mới')
+        orig_idx = col_idx.get('Nơi thường trú gốc')
+        if norm_idx is not None and orig_idx is not None:
+            for row_info in rows_to_process:
+                orig_val = row_info['row_cells'][orig_idx].value
+                if orig_val and orig_val in address_map and address_map[orig_val].get('success'):
+                    # Đè lên luôn vì mình vừa reprocess
+                    row_info['row_cells'][norm_idx].value = address_map[orig_val].get('converted', '')
+
+    timestamp = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
+    reprocess_out = excel_path.replace('.xlsx', f'_reprocessed_{timestamp}.xlsx')
+    wb.save(reprocess_out)
+    
+    log_filename = excel_path.replace('.xlsx', f'_reprocess_log_{timestamp}.txt')
+    file_logs.append("\nĐÃ HOÀN TẤT THÀNH CÔNG TÁI XỬ LÝ!")
+    file_logs.append(f"File kết quả: {os.path.abspath(reprocess_out)}")
+    with open(log_filename, "w", encoding="utf-8") as f:
+        f.write("\n".join(file_logs))
+        
+    console.print("\n" + "🎉"*15)
+    console.print(f"[bold green]ĐÃ HOÀN TẤT THÀNH CÔNG TÁI XỬ LÝ![/bold green]")
+    console.print(f"File kết quả được lưu tại: [yellow]{os.path.abspath(reprocess_out)}[/yellow]")
+    console.print(f"File log chi tiết được lưu tại: [yellow]{os.path.abspath(log_filename)}[/yellow]")
+    console.print("🎉"*15 + "\n")
+
+
 def main():
     console.print(Panel.fit("[bold green]🚀 PHẦN MỀM TRÍCH XUẤT MÃ QR TỪ ẢNH CCCD RA EXCEL[/bold green]", border_style="cyan", padding=(1, 5)))
     
@@ -1846,26 +2168,50 @@ def main():
         if first_run and len(args) >= 2:
             input_dir = args[1]
             first_run = False
+            if input_dir.endswith('.xlsx') and os.path.isfile(input_dir):
+                run_reprocess(input_dir, normalize_address=True)
+                if not Confirm.ask("\n[bold yellow]Bạn có muốn tiếp tục xử lý thư mục khác không?[/bold yellow]"):
+                    console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
+                    break
+                continue
+            else:
+                run_wizard(input_dir, normalize_address=True)
         else:
-            console.print("\n[yellow][Hướng dẫn][/yellow]: Kéo thả thư mục chứa ảnh vào cửa sổ này, hoặc copy đường dẫn thư mục và dán vào đây.")
-            input_dir = Prompt.ask("[bold cyan]Nhập đường dẫn thư mục chứa ảnh CCCD (hoặc gõ 'q' để thoát)[/bold cyan]").strip()
-            
-            # Hỏi bật debug mode nếu người dùng chạy tương tác và chưa bật
+            is_reprocess = Confirm.ask("\n[bold yellow]Bạn có muốn TÁI XỬ LÝ file Excel đã xuất để điền bổ sung thông tin bị thiếu không?[/bold yellow]", default=False)
             global DEBUG_MODE
-            if not DEBUG_MODE and input_dir.lower() not in ('q', 'quit', 'exit'):
-                if Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=False):
-                    DEBUG_MODE = True
+            
+            if is_reprocess:
+                excel_path = Prompt.ask("[bold cyan]Nhập đường dẫn file Excel cũ (hoặc gõ 'q' để thoát)[/bold cyan]").strip().strip('\'"')
+                if excel_path.lower() in ('q', 'quit', 'exit'):
+                    console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
+                    break
+                if not os.path.isfile(excel_path) or not excel_path.endswith('.xlsx'):
+                    console.print(f"\n[bold red]❌ Lỗi: File '{excel_path}' không hợp lệ hoặc không tồn tại.[/bold red]")
+                    continue
                     
-            if input_dir.lower() not in ('q', 'quit', 'exit'):
+                if not DEBUG_MODE:
+                    if Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=False):
+                        DEBUG_MODE = True
+                do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng) không?[/bold yellow]", default=True)
+                
+                run_reprocess(excel_path, normalize_address=do_normalize)
+            else:
+                console.print("\n[yellow][Hướng dẫn][/yellow]: Kéo thả thư mục chứa ảnh vào cửa sổ này, hoặc copy đường dẫn thư mục và dán vào đây.")
+                input_dir = Prompt.ask("[bold cyan]Nhập đường dẫn thư mục chứa ảnh CCCD (hoặc gõ 'q' để thoát)[/bold cyan]").strip().strip('\'"')
+                
+                if input_dir.lower() in ('q', 'quit', 'exit'):
+                    console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
+                    break
+                    
+                if not DEBUG_MODE:
+                    if Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=False):
+                        DEBUG_MODE = True
+                        
                 do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng và tốn thêm thời gian) không?[/bold yellow]", default=True)
-                    
+                
+                run_wizard(input_dir, normalize_address=do_normalize)
+                
             first_run = False
-            
-        if input_dir.lower() in ('q', 'quit', 'exit'):
-            console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
-            break
-            
-        run_wizard(input_dir, normalize_address=do_normalize)
         
         if not Confirm.ask("\n[bold yellow]Bạn có muốn tiếp tục xử lý thư mục khác không?[/bold yellow]"):
             console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
