@@ -63,6 +63,17 @@ def _is_valid_name(s):
     first_ascii = ''.join(c for c in first if unicodedata.category(c) != 'Mn')
     return first_ascii in _VN_SURNAMES
 
+# Danh sách 63 tỉnh/thành phố VN (không dấu, lowercase)
+_VN_PROVINCES = {
+    'an giang', 'ba ria', 'bac giang', 'bac kan', 'bac lieu', 'bac ninh', 'ben tre', 'binh dinh', 'binh duong', 'binh phuoc',
+    'binh thuan', 'ca mau', 'can tho', 'cao bang', 'da nang', 'dak lak', 'dak nong', 'dien bien', 'dong nai', 'dong thap',
+    'gia lai', 'ha giang', 'ha nam', 'ha noi', 'ha tinh', 'hai duong', 'hai phong', 'hau giang', 'hcm', 'ho chi minh',
+    'hoa binh', 'hung yen', 'khanh hoa', 'kien giang', 'kon tum', 'lai chau', 'lam dong', 'lang son', 'lao cai', 'long an',
+    'nam dinh', 'nghe an', 'ninh binh', 'ninh thuan', 'phu tho', 'phu yen', 'quang binh', 'quang nam', 'quang ngai', 'quang ninh',
+    'quang tri', 'soc trang', 'son la', 'tay ninh', 'thai binh', 'thai nguyen', 'thanh hoa', 'thua thien hue', 'tien giang', 'tra vinh',
+    'tuyen quang', 'vinh long', 'vinh phuc', 'vung tau', 'yen bai',
+}
+
 # Global locks
 ocr_lock = threading.Lock()
 
@@ -560,6 +571,15 @@ def parse_ocr_text(text):
                                 )
                                 if not is_dup:
                                     addr_parts.append(clean_line)
+                                    
+                                    # Kiểm tra xem dòng vừa thêm có phải điểm cuối địa chỉ (chứa tên tỉnh thành) không
+                                    # Chuẩn hóa về không dấu lowercase để so sánh
+                                    cl_lower = clean_line.lower().replace("đ", "d").replace("-", "")
+                                    cl_nfd = unicodedata.normalize('NFD', cl_lower)
+                                    cl_ascii = "".join(c for c in cl_nfd if unicodedata.category(c) != 'Mn')
+                                    
+                                    if any(p in cl_ascii for p in _VN_PROVINCES):
+                                        break
                 
                         addr = ", ".join(filter(bool, addr_parts))
                         
