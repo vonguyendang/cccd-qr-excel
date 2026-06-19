@@ -335,14 +335,17 @@ def parse_ocr_text(text):
                 # Tránh tình trạng mặt sau bị OCR rác ra ngẫu nhiên 12 chữ số
                 if not data['CCCD'] and data['OCR Side'] != 'Back':
                     text_numbers = text_upper.replace('O', '0')
-                    # Lấy tất cả cụm 12 số đứng độc lập bắt đầu bằng 0
-                    # Dùng re.sub loại toàn bộ whitespace (kể cả \n \t) để tránh đếm sai độ dài
-                    cccd_matches = re.findall(r'\b(0[\d\s]{11,15})\b', text_numbers)
+                    # Tìm tất cả cụm số (có thể chứa khoảng trắng) dài 12-25 ký tự
+                    # Regex này lấy luôn các số bị dính vào chữ cái ở đầu/cuối (như TTBB0088195038174)
+                    cccd_matches = re.findall(r'(?<!\d)([\d\s]{12,25})(?!\d)', text_numbers)
                     valid_cccds = []
                     for match_str in cccd_matches:
-                        val = re.sub(r'\s+', '', match_str)  # loại mọi whitespace kể cả \n
-                        if len(val) == 12:
-                            valid_cccds.append(val)
+                        val = re.sub(r'\s+', '', match_str)  # loại mọi whitespace
+                        # Có trường hợp OCR đọc dư 1 vài số 0 ở đầu (do chữ 'số' bị đọc thành 's0' -> 0)
+                        if 12 <= len(val) <= 15:
+                            candidate = val[-12:] # Lấy đúng 12 số cuối cùng
+                            if candidate.startswith('0'):
+                                valid_cccds.append(candidate)
                     
                     if valid_cccds:
                         # Ưu tiên cụm nằm trên dòng có chứa từ khóa 'SỐ'/'CƯỚC' (nhãn số thẻ)
@@ -350,13 +353,15 @@ def parse_ocr_text(text):
                         data['OCR Side'] = 'Front'
                         for line in text_upper.split('\n'):
                             if 'SỐ' in line or 'CƯỚC' in line:
-                                m = re.search(r'\b(0[\d\s]{11,15})\b', line.replace('O','0'))
+                                m = re.search(r'(?<!\d)([\d\s]{12,25})(?!\d)', line.replace('O','0'))
                                 if m:
                                     val = re.sub(r'\s+', '', m.group(1))
-                                    if len(val) == 12:
-                                        data['CCCD'] = val
-                                        data['OCR Side'] = 'Front'
-                                        break
+                                    if 12 <= len(val) <= 15:
+                                        candidate = val[-12:]
+                                        if candidate.startswith('0'):
+                                            data['CCCD'] = candidate
+                                            data['OCR Side'] = 'Front'
+                                            break
                 all_dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
     
                 # ---------------------------------------------------------
@@ -428,7 +433,7 @@ def parse_ocr_text(text):
                         ls = line.replace(' ', '').strip()
                         
                         # Chặn các dòng tiếng Anh hoặc tiếng Việt không dấu bị nhận diện nhầm
-                        if any(bad in ls for bad in ['IDEN', 'NATIO', 'SONAL', 'CANCUOC', 'CONGDAN', 'TRUONG', 'GIAMDOC', 'INDEX', 'FINGER', 'ADMIN', 'POLICE', 'POUCE', 'DIRECTOR', 'ORDER', 'DEPART', 'SOCIAL', 'MANAGE', 'GENERAL', 'MONTH', 'YEAR', 'RIGHT', 'LEFT', 'FEATURE']):
+                        if any(bad in ls for bad in ['IDEN', 'NATIO', 'SONAL', 'CANCUOC', 'CONGDAN', 'TRUONG', 'GIAMDOC', 'INDEX', 'FINGER', 'ADMIN', 'POLICE', 'POUCE', 'DIRECTOR', 'ORDER', 'DEPART', 'SOCIAL', 'MANAGE', 'GENERAL', 'MONTH', 'YEAR', 'RIGHT', 'LEFT', 'FEATURE', 'RECTOR', 'GENER', 'WAY', 'AND', 'RESID', 'ORIGIN']):
                             continue
                             
                         # MRZ Line 3 chứa tên, KHÔNG có số, KHÔNG có dấu tiếng Việt
@@ -439,14 +444,24 @@ def parse_ocr_text(text):
                             and not ls.startswith('IDVN')
                             and not ls.startswith('VNM')
                         ):
-                            # Tách Họ và Đệm+Tên dựa trên 2 dấu << liên tiếp (OCR -> CC, CK, CE, CEC...)
-                            split_parts = re.split(r'CK|CEC|KCK|CC|CE|CS|EK(?=[A-Z])', ls, maxsplit=1)
+                            # Dọn dẹp rác padding ở đuôi trước khi tách để không bị dính chữ (VD: CACKICK)
+                            ls_clean = re.sub(r'[CKEIS]+$', '', ls)
+                            
+                            # Tách Họ và Đệm+Tên dựa trên 2 dấu << liên tiếp (OCR -> CC, CK, CE, CEC, KK...)
+                            # Bỏ EK ra khỏi danh sách cắt vì EK dễ cắt nhầm tên (VD: LEKK -> L và EK)
+                            split_parts = re.split(r'CK|CEC|KCK|CC|CE|CS|KK', ls_clean, maxsplit=1)
                             if len(split_parts) == 2:
                                 surname_words = _extract_mrz_name_words(split_parts[0])
                                 given_words   = _extract_mrz_name_words(split_parts[1])
                                 words = surname_words + given_words
                             else:
                                 words = _extract_mrz_name_words(split_parts[0])
+                            
+                            # Xóa các cụm 1 chữ cái bị nhận diện nhầm ở đuôi (thường do C, K, E rớt lại tạo thành CA, KY)
+                            # Nhưng giữ lại chữ Y (Thị Y, A Y)
+                            while len(words) > 2 and len(words[-1]) == 2 and words[-1] in ['CA', 'KY', 'KE', 'CE', 'CI', 'CO']:
+                                words.pop()
+                                
                             if len(words) >= 2:
                                 data['Họ tên'] = ' '.join(words)
                                 break
