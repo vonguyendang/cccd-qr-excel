@@ -270,7 +270,7 @@ def parse_ocr_text(text):
                 }
 
                 if not text.strip():
-                    return data, "Ảnh không thể nhận diện được chữ"
+                    return data
 
                 text_upper = text.upper()
 
@@ -2019,7 +2019,7 @@ def run_reprocess(excel_path, normalize_address=True):
                 parts.append(f"Tên: {ocr_data.get('Họ tên') or '[Trống]'}")
                 
                 ocr_print_info = ", ".join(parts)
-                log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info}")
+                log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info} | Note: {ocr_note}")
                 
                 if DEBUG_MODE and ocr_data.get('Raw Text'):
                     log_msgs.append(f"[magenta]🐛 DEBUG RAW OCR TEXT:\n{ocr_data['Raw Text']}[/magenta]")
