@@ -362,7 +362,7 @@ def parse_ocr_text(text):
                                             data['CCCD'] = candidate
                                             data['OCR Side'] = 'Front'
                                             break
-                all_dates = re.findall(r'\b\d{2}/\d{2}/\d{4}\b', text)
+                all_dates = re.findall(r'(?<!\d)\d{2}/\d{2}/\d{4}(?!\d)', text)
     
                 # ---------------------------------------------------------
                 # 3. TRÍCH XUẤT GIỚI TÍNH (Thuật toán Fallback toàn cục)
@@ -388,8 +388,6 @@ def parse_ocr_text(text):
                 if data['OCR Side'] == 'Back' and not data['Họ tên']:
                     def _extract_mrz_name_words(s):
                         """Tách các từ tên thực sự từ chuỗi MRZ bằng thuật toán Greedy Match với từ điển."""
-                        s = re.sub(r'[CKEA<S]{3,}$', '', s)
-                        
                         # Sửa các lỗi OCR kinh điển làm biến dạng từ
                         ocr_fixes = {
                             "HHONGE": "HONG",
@@ -409,6 +407,7 @@ def parse_ocr_text(text):
                         for bad, good in ocr_fixes.items():
                             s = s.replace(bad, good)
                         
+                        s = re.sub(r'[CKEA<S]{3,}$', '', s)
                         # Danh sách âm tiết tên Tiếng Việt phổ biến (không dấu)
                         common_names = "AN ANH BA BAC BAN BANG BAO BE BEN BICH BINH BO BON CA CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEM DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUE KHUYEN KIEN KIEU KIM KY LA LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LUA LUAN LUC LUONG LUU LY MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGOC NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAN TOAI TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UYEN VAN VANG VY VI VIEN VIET VINH VO VONG VU VUONG VY XINH XUA XUAN Y YEN"
                         names_list = sorted(list(set(common_names.split())), key=len, reverse=True)
@@ -2172,7 +2171,7 @@ def clean_address_string(addr):
                         r'n[oơ]i\s*c[aấ]p|ng[aà]y\s*c[aấ]p|b[oộ]\s*c[oô]ng\s*an|c[uụ]c\s*c[aả]nh\s*s[aá]t|'
                         r'gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|sex|nationality|'
                         r'qu[eê]\s*qu[aá]n|khai\s*sinh|birth|data\s*ofespry)', '', clean_line)
-    clean_line = re.sub(r'\b\d{2}/\d{2}/\d{4}\b', '', clean_line)
+    clean_line = re.sub(r'(?<!\d)\d{2}/\d{2}/\d{4}(?!\d)', '', clean_line)
     clean_line = re.sub(r'(?i)\b(place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
                         r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
                         r'indent|vi[eê][nǹ]|nam\s+linh|'
