@@ -2203,7 +2203,7 @@ def main():
             else:
                 run_wizard(input_dir, normalize_address=True)
         else:
-            is_reprocess = Confirm.ask("\n[bold yellow]Bạn có muốn TÁI XỬ LÝ file Excel đã xuất để điền bổ sung thông tin bị thiếu không?[/bold yellow]", default=False)
+            is_reprocess = Confirm.ask("\n[bold yellow]Bạn có muốn TÁI XỬ LÝ (chỉ quét lại các ảnh cũ bị lỗi/thiếu thông tin trong file Excel) không?\n👉 Chọn 'n' (No) nếu bạn muốn quét Thư mục mới hoặc Quét nối tiếp ảnh mới.[/bold yellow]", default=False)
             global DEBUG_MODE
             
             if is_reprocess:
