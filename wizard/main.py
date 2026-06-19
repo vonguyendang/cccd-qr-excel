@@ -1029,10 +1029,19 @@ def run_wizard(input_dir, normalize_address=True):
     if latest_excel:
         incremental_scan = Confirm.ask(f"\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file {os.path.basename(latest_excel)}). Bạn muốn QUÉT NỐI TIẾP (chỉ quét ảnh mới ném vào) không? (Chọn No để quét lại từ đầu)[/bold yellow]", default=True)
     elif os.path.exists(os.path.join(input_dir, "original.zip")):
-        excel_path = Prompt.ask("\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file original.zip) nhưng không tìm thấy file Excel cũ.\n👉 Nếu bạn muốn QUÉT NỐI TIẾP, vui lòng copy đường dẫn file Excel cũ dán vào đây (hoặc nhấn Enter để quét lại toàn bộ ảnh từ đầu)[/bold yellow]").strip().strip('\'"')
-        if excel_path and os.path.isfile(excel_path) and excel_path.endswith('.xlsx'):
-            latest_excel = excel_path
-            incremental_scan = True
+        user_input = Prompt.ask("\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file original.zip) nhưng không tự động tìm thấy thư mục kết quả cũ.\n👉 Nếu bạn muốn QUÉT NỐI TIẾP, vui lòng kéo thả THƯ MỤC EXPORT cũ hoặc FILE EXCEL cũ vào đây (Nhấn Enter để quét lại toàn bộ ảnh từ đầu)[/bold yellow]").strip().strip('\'"')
+        
+        if user_input:
+            if os.path.isfile(user_input) and user_input.endswith('.xlsx'):
+                latest_excel = user_input
+                incremental_scan = True
+            elif os.path.isdir(user_input):
+                excels = glob.glob(os.path.join(user_input, "*.xlsx"))
+                if excels:
+                    latest_excel = max(excels, key=os.path.getmtime)
+                    incremental_scan = True
+                else:
+                    console.print("[red]❌ Không tìm thấy file Excel nào trong thư mục bạn vừa nhập.[/red]")
 
     if incremental_scan and latest_excel:
         console.print(f"[cyan]Đang đọc file Excel cũ ({os.path.basename(latest_excel)}) để lọc ra các ảnh mới...[/cyan]")
