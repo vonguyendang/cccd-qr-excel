@@ -100,8 +100,8 @@ def load_model(model_dir, nm, device_id: int | None = None):
     options = ort.SessionOptions()
     options.enable_cpu_mem_arena = False
     options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
-    options.intra_op_num_threads = 2
-    options.inter_op_num_threads = 2
+    options.intra_op_num_threads = 1
+    options.inter_op_num_threads = 1
 
     # https://github.com/microsoft/onnxruntime/issues/9509#issuecomment-951546580
     # Shrink GPU memory after execution

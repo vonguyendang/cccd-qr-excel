@@ -3,6 +3,13 @@ import sys
 import numpy as np
 from PIL import Image
 
+# Giới hạn số luồng của OpenMP/MKL để tránh thread explosion khi chạy ThreadPoolExecutor
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 # Thêm thư mục deepdoc_vietocr vào PYTHONPATH
 base_dir = os.path.dirname(os.path.abspath(__file__))
 deepdoc_path = os.path.join(base_dir, 'deepdoc_vietocr')
@@ -18,6 +25,11 @@ _thread_local = threading.local()
 def get_ocr_engine():
     if not hasattr(_thread_local, 'ocr_instance') or _thread_local.ocr_instance is None:
         print("Đang khởi tạo AI Model Deepdoc_VietOCR (lần đầu sẽ mất vài giây)...")
+        import torch
+        try:
+            torch.set_num_threads(1)
+        except:
+            pass
         _thread_local.ocr_instance = OCR()
     return _thread_local.ocr_instance
 
