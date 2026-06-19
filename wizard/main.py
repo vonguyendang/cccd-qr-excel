@@ -1993,9 +1993,28 @@ def run_reprocess(excel_path, normalize_address=True):
         
     console.print(f"[bold yellow]⚠️ Tìm thấy {len(rows_to_process)} dòng bị thiếu thông tin cần xử lý lại.[/bold yellow]")
     
+    # Cấu hình luồng xử lý
+    num_threads_input = Prompt.ask("\n[cyan]Nhập số luồng xử lý ảnh song song[/cyan] (Enter để mặc định là 4)", default="4").strip()
+    try:
+        num_threads = int(num_threads_input) if num_threads_input else 4
+    except ValueError:
+        console.print("[yellow]⚠️ Giá trị không hợp lệ, sử dụng mặc định: 4 luồng.[/yellow]")
+        num_threads = 4
+
+    api_threads_input = Prompt.ask("[cyan]Nhập số luồng gọi API địa chỉ song song[/cyan] (Enter để mặc định là 4)", default="4").strip()
+    try:
+        api_threads = int(api_threads_input) if api_threads_input else 4
+    except ValueError:
+        console.print("[yellow]Số luồng không hợp lệ, dùng mặc định 4[/yellow]")
+        api_threads = 4
+        
+    confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu TÁI XỬ LÝ ngay bây giờ không?[/bold yellow]")
+    if not confirm:
+        console.print("[yellow]Đã hủy quá trình.[/yellow]")
+        return
+    
     # Process images for missing rows
     import concurrent.futures
-    num_threads = 4
     
     # Helper to reprocess a single image
     def process_single_image(img_path):
