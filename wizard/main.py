@@ -78,6 +78,7 @@ _VN_PROVINCES = {
 
 # Global locks
 ocr_lock = threading.Lock()
+qr_lock = threading.Lock()
 
 # Global AI Models
 detector = None
@@ -213,13 +214,15 @@ def extract_qr_data(image_path):
             return None, None, None
 
         # 1. Quét toàn bộ ảnh
-        qr_data, engine, center = _try_scan(img)
+        with qr_lock:
+            qr_data, engine, center = _try_scan(img)
         
         # 2. Quét góc phần tư phía trên bên phải (CCCD) nếu toàn bộ ảnh thất bại
         if not qr_data:
             h, w = img.shape[:2]
             crop = img[0:int(h/2), int(w/2):w]
-            qr_data, engine, crop_center = _try_scan(crop)
+            with qr_lock:
+                qr_data, engine, crop_center = _try_scan(crop)
             if qr_data and crop_center:
                 center = (crop_center[0] + w/2, crop_center[1])
 
@@ -1992,7 +1995,7 @@ def run_reprocess(excel_path, normalize_address=True):
     
     # Process images for missing rows
     import concurrent.futures
-    num_threads = max(1, os.cpu_count() - 1)
+    num_threads = 4
     
     # Helper to reprocess a single image
     def process_single_image(img_path):
