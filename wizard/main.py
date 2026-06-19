@@ -65,7 +65,7 @@ def _is_valid_name(s):
 
 # Danh sách 63 tỉnh/thành phố VN (không dấu, lowercase)
 _VN_PROVINCES = {
-    'an giang', 'ba ria', 'bac giang', 'bac kan', 'bac lieu', 'bac ninh', 'ben tre', 'binh dinh', 'binh duong', 'binh phuoc',
+    'an giang', 'ba ria-vung tau','ba ria - vung tau','ba ria', 'vung tau', 'bac giang', 'bac kan', 'bac lieu', 'bac ninh', 'ben tre', 'binh dinh', 'binh duong', 'binh phuoc',
     'binh thuan', 'ca mau', 'can tho', 'cao bang', 'da nang', 'dak lak', 'dak nong', 'dien bien', 'dong nai', 'dong thap',
     'gia lai', 'ha giang', 'ha nam', 'ha noi', 'ha tinh', 'hai duong', 'hai phong', 'hau giang', 'hcm', 'ho chi minh',
     'hoa binh', 'hung yen', 'khanh hoa', 'kien giang', 'kon tum', 'lai chau', 'lam dong', 'lang son', 'lao cai', 'long an',
@@ -574,11 +574,33 @@ def parse_ocr_text(text):
                                     
                                     # Kiểm tra xem dòng vừa thêm có phải điểm cuối địa chỉ (chứa tên tỉnh thành) không
                                     # Chuẩn hóa về không dấu lowercase để so sánh
-                                    cl_lower = clean_line.lower().replace("đ", "d").replace("-", "")
+                                    cl_lower = clean_line.lower().replace("đ", "d").replace("-", " ")
                                     cl_nfd = unicodedata.normalize('NFD', cl_lower)
                                     cl_ascii = "".join(c for c in cl_nfd if unicodedata.category(c) != 'Mn')
                                     
-                                    if any(p in cl_ascii for p in _VN_PROVINCES):
+                                    is_end = False
+                                    for p in _VN_PROVINCES:
+                                        # Tìm bằng regex word boundary để tránh match một phần (VD: 'an giang' trong chuỗi khác)
+                                        import re
+                                        matches = list(re.finditer(r'\b' + re.escape(p) + r'\b', cl_ascii))
+                                        if matches:
+                                            # Lấy match cuối cùng trên dòng
+                                            last_match = matches[-1]
+                                            prefix_str = cl_ascii[:last_match.start()].strip().strip(',')
+                                            
+                                            # Kiểm tra xem ngay trước tỉnh/thành có phải là tiền tố cấp quận/huyện/thành phố không
+                                            # VD: "tp soc trang", "thanh pho ben tre", "tx", "thi xa"
+                                            is_sub_admin = False
+                                            for prefix in ['tp', 'thanh pho', 'tx', 'thi xa', 'huyen', 'quan']:
+                                                if prefix_str.endswith(prefix):
+                                                    is_sub_admin = True
+                                                    break
+                                            
+                                            if not is_sub_admin:
+                                                is_end = True
+                                                break
+                                                
+                                    if is_end:
                                         break
                 
                         addr = ", ".join(filter(bool, addr_parts))
