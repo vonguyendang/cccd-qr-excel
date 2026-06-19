@@ -1010,59 +1010,76 @@ def run_wizard(input_dir, normalize_address=True):
     old_records = []
     processed_images_set = set()
     max_renamed_idx = 0
-    exports_dir = os.path.join(input_dir, "exports")
     
-    if os.path.isdir(exports_dir):
-        old_excels = glob.glob(os.path.join(exports_dir, "*.xlsx"))
-        if old_excels:
-            latest_excel = max(old_excels, key=os.path.getmtime)
-            incremental_scan = Confirm.ask(f"\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file {os.path.basename(latest_excel)}). Bạn muốn QUÉT NỐI TIẾP (chỉ quét ảnh mới ném vào) không? (Chọn No để quét lại từ đầu)[/bold yellow]", default=True)
-            if incremental_scan:
-                console.print("[cyan]Đang đọc file Excel cũ để lọc ra các ảnh mới...[/cyan]")
-                try:
-                    wb = openpyxl.load_workbook(latest_excel)
-                    ws = wb.active
-                    headers = [cell.value for cell in ws[1]]
-                    col_idx = {name: i for i, name in enumerate(headers)}
+    clean_input_dir = os.path.normpath(input_dir)
+    possible_exports = [
+        clean_input_dir + "_exports",
+        os.path.join(clean_input_dir, "exports")
+    ]
+    
+    all_old_excels = []
+    for edir in possible_exports:
+        if os.path.isdir(edir):
+            all_old_excels.extend(glob.glob(os.path.join(edir, "*.xlsx")))
+            
+    latest_excel = None
+    if all_old_excels:
+        latest_excel = max(all_old_excels, key=os.path.getmtime)
+        
+    if latest_excel:
+        incremental_scan = Confirm.ask(f"\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file {os.path.basename(latest_excel)}). Bạn muốn QUÉT NỐI TIẾP (chỉ quét ảnh mới ném vào) không? (Chọn No để quét lại từ đầu)[/bold yellow]", default=True)
+    elif os.path.exists(os.path.join(input_dir, "original.zip")):
+        excel_path = Prompt.ask("\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file original.zip) nhưng không tìm thấy file Excel cũ.\n👉 Nếu bạn muốn QUÉT NỐI TIẾP, vui lòng copy đường dẫn file Excel cũ dán vào đây (hoặc nhấn Enter để quét lại toàn bộ ảnh từ đầu)[/bold yellow]").strip().strip('\'"')
+        if excel_path and os.path.isfile(excel_path) and excel_path.endswith('.xlsx'):
+            latest_excel = excel_path
+            incremental_scan = True
+
+    if incremental_scan and latest_excel:
+        console.print(f"[cyan]Đang đọc file Excel cũ ({os.path.basename(latest_excel)}) để lọc ra các ảnh mới...[/cyan]")
+        try:
+            wb = openpyxl.load_workbook(latest_excel)
+            ws = wb.active
+            headers = [cell.value for cell in ws[1]]
+            col_idx = {name: i for i, name in enumerate(headers)}
+            
+            img_front_col = col_idx.get('Ảnh mặt trước CCCD/CC')
+            img_back_col = col_idx.get('Ảnh mặt sau CCCD/CC')
+            renamed_front_col = col_idx.get('Đổi tên Ảnh mặt trước CCCD/CC')
+            renamed_back_col = col_idx.get('Đổi tên Ảnh mặt sau CCCD/CC')
+            
+            if img_front_col is None or img_back_col is None:
+                console.print("[red]❌ File Excel cũ không có cột tên ảnh, không thể quét nối tiếp.[/red]")
+                incremental_scan = False
+            else:
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    old_records.append({
+                        'Họ tên': row[col_idx.get('Họ tên')] if 'Họ tên' in col_idx else '',
+                        'CCCD': row[col_idx.get('CCCD')] if 'CCCD' in col_idx else '',
+                        'CMND': row[col_idx.get('CMND')] if 'CMND' in col_idx else '',
+                        'Giới tính': row[col_idx.get('Giới tính')] if 'Giới tính' in col_idx else '',
+                        'Ngày sinh': row[col_idx.get('Ngày sinh')] if 'Ngày sinh' in col_idx else '',
+                        'Nơi thường trú gốc': row[col_idx.get('Nơi thường trú gốc')] if 'Nơi thường trú gốc' in col_idx else '',
+                        'Địa chỉ chuẩn hóa mới': row[col_idx.get('Địa chỉ chuẩn hóa mới')] if 'Địa chỉ chuẩn hóa mới' in col_idx else '',
+                        'Ngày cấp CCCD': row[col_idx.get('Ngày cấp CCCD')] if 'Ngày cấp CCCD' in col_idx else '',
+                        'Nơi cấp': row[col_idx.get('Nơi cấp')] if 'Nơi cấp' in col_idx else '',
+                        'Ngày hết hạn': row[col_idx.get('Ngày hết hạn')] if 'Ngày hết hạn' in col_idx else '',
+                        'Phân loại': row[col_idx.get('Phân loại')] if 'Phân loại' in col_idx else '',
+                        'Ghi chú': row[col_idx.get('Ghi chú')] if 'Ghi chú' in col_idx else '',
+                        'QR Raw': row[col_idx.get('QR Raw')] if 'QR Raw' in col_idx else '',
+                        'Ảnh mặt trước CCCD/CC': row[img_front_col],
+                        'Ảnh mặt sau CCCD/CC': row[img_back_col],
+                        'Đổi tên Ảnh mặt trước CCCD/CC': row[renamed_front_col] if renamed_front_col is not None else '',
+                        'Đổi tên Ảnh mặt sau CCCD/CC': row[renamed_back_col] if renamed_back_col is not None else ''
+                    })
+                    front = row[img_front_col]
+                    back = row[img_back_col]
                     
-                    img_front_col = col_idx.get('Ảnh mặt trước CCCD/CC')
-                    img_back_col = col_idx.get('Ảnh mặt sau CCCD/CC')
-                    renamed_front_col = col_idx.get('Đổi tên Ảnh mặt trước CCCD/CC')
-                    renamed_back_col = col_idx.get('Đổi tên Ảnh mặt sau CCCD/CC')
+                    if front: processed_images_set.add(str(front))
+                    if back: processed_images_set.add(str(back))
                     
-                    if img_front_col is None or img_back_col is None:
-                        console.print("[red]❌ File Excel cũ không có cột tên ảnh, không thể quét nối tiếp.[/red]")
-                        incremental_scan = False
-                    else:
-                        for row in ws.iter_rows(min_row=2, values_only=True):
-                            old_records.append({
-                                'Họ tên': row[col_idx.get('Họ tên')] if 'Họ tên' in col_idx else '',
-                                'CCCD': row[col_idx.get('CCCD')] if 'CCCD' in col_idx else '',
-                                'CMND': row[col_idx.get('CMND')] if 'CMND' in col_idx else '',
-                                'Giới tính': row[col_idx.get('Giới tính')] if 'Giới tính' in col_idx else '',
-                                'Ngày sinh': row[col_idx.get('Ngày sinh')] if 'Ngày sinh' in col_idx else '',
-                                'Nơi thường trú gốc': row[col_idx.get('Nơi thường trú gốc')] if 'Nơi thường trú gốc' in col_idx else '',
-                                'Địa chỉ chuẩn hóa mới': row[col_idx.get('Địa chỉ chuẩn hóa mới')] if 'Địa chỉ chuẩn hóa mới' in col_idx else '',
-                                'Ngày cấp CCCD': row[col_idx.get('Ngày cấp CCCD')] if 'Ngày cấp CCCD' in col_idx else '',
-                                'Nơi cấp': row[col_idx.get('Nơi cấp')] if 'Nơi cấp' in col_idx else '',
-                                'Ngày hết hạn': row[col_idx.get('Ngày hết hạn')] if 'Ngày hết hạn' in col_idx else '',
-                                'Phân loại': row[col_idx.get('Phân loại')] if 'Phân loại' in col_idx else '',
-                                'Ghi chú': row[col_idx.get('Ghi chú')] if 'Ghi chú' in col_idx else '',
-                                'QR Raw': row[col_idx.get('QR Raw')] if 'QR Raw' in col_idx else '',
-                                'Ảnh mặt trước CCCD/CC': row[img_front_col],
-                                'Ảnh mặt sau CCCD/CC': row[img_back_col],
-                                'Đổi tên Ảnh mặt trước CCCD/CC': row[renamed_front_col] if renamed_front_col is not None else '',
-                                'Đổi tên Ảnh mặt sau CCCD/CC': row[renamed_back_col] if renamed_back_col is not None else ''
-                            })
-                            front = row[img_front_col]
-                            back = row[img_back_col]
-                            
-                            if front: processed_images_set.add(str(front))
-                            if back: processed_images_set.add(str(back))
-                            
-                except Exception as e:
-                    console.print(f"[red]❌ Lỗi đọc file Excel cũ: {e}[/red]")
-                    incremental_scan = False
+        except Exception as e:
+            console.print(f"[red]❌ Lỗi đọc file Excel cũ: {e}[/red]")
+            incremental_scan = False
                     
     if incremental_scan:
         new_image_paths = [p for p in image_paths if os.path.basename(p) not in processed_images_set]
