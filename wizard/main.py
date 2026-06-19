@@ -163,7 +163,6 @@ def extract_qr_data(image_path):
         if img is None:
             return None, None, "Lỗi đọc file ảnh", None
 
-        import re
         def _try_scan(scan_img):
             # 1. zxingcpp
             try:
@@ -589,7 +588,6 @@ def parse_ocr_text(text):
                                     is_end = False
                                     for p in _VN_PROVINCES:
                                         # Tìm bằng regex word boundary để tránh match một phần (VD: 'an giang' trong chuỗi khác)
-                                        import re
                                         matches = list(re.finditer(r'\b' + re.escape(p) + r'\b', cl_ascii))
                                         if matches:
                                             # Lấy match cuối cùng trên dòng
@@ -872,7 +870,6 @@ def extract_ocr_data(image_path_or_cv2img):
 
 def process_qr_string(qr_string):
     parts = qr_string.split('|')
-    import re
     addr_raw = parts[5] if len(parts) > 5 else ''
     addr_clean = re.sub(r',\s*-\s*', ' ', addr_raw) # Xóa ', -' (vd: KDC, - Hưng Phú 1 -> KDC Hưng Phú 1)
     addr_clean = re.sub(r',\s*,', ',', addr_clean) # Thay thế ', ,' hoặc ',,' bằng ','
