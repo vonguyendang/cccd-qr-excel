@@ -1043,8 +1043,26 @@ def run_wizard(input_dir, normalize_address=True):
                 excels = glob.glob(os.path.join(user_input, "*.xlsx"))
                 excels = [f for f in excels if not os.path.basename(f).startswith('~$')]
                 if excels:
-                    latest_excel = max(excels, key=os.path.getmtime)
-                    incremental_scan = True
+                    if len(excels) == 1:
+                        latest_excel = excels[0]
+                        incremental_scan = True
+                    else:
+                        excels.sort(key=os.path.getmtime, reverse=True)
+                        console.print("\n[bold cyan]Tìm thấy nhiều file Excel, vui lòng chọn file bạn muốn dùng để làm mốc Quét nối tiếp:[/bold cyan]")
+                        for i, f in enumerate(excels, 1):
+                            mtime = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y-%m-%d %H:%M:%S')
+                            console.print(f"  [bold yellow][{i}][/bold yellow]. {os.path.basename(f)} [dim]({mtime})[/dim]")
+                            
+                        choice = Prompt.ask("\n[bold cyan]Nhập số thứ tự file Excel[/bold cyan] (Enter để chọn file mới nhất [1])", default="1").strip()
+                        try:
+                            choice_idx = int(choice) - 1
+                            if 0 <= choice_idx < len(excels):
+                                latest_excel = excels[choice_idx]
+                                incremental_scan = True
+                            else:
+                                console.print("[red]❌ Lựa chọn không hợp lệ, hủy Quét Nối Tiếp.[/red]")
+                        except ValueError:
+                            console.print("[red]❌ Lựa chọn không hợp lệ, hủy Quét Nối Tiếp.[/red]")
                 else:
                     console.print("[red]❌ Không tìm thấy file Excel nào trong thư mục bạn vừa nhập.[/red]")
 
