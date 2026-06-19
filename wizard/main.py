@@ -624,7 +624,7 @@ def parse_ocr_text(text):
                                 r'(?i)\b(substates|date|dater|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
                                 r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
                                 r'indent|vi[eê][nǹ]|nam\s+linh|'
-                                r'place of residence|place of origin|place oforging|transervating|daleoroxic|'
+                                r'place of residence|place of origin|place oforging|transervating|daleoroxic|dale\s*o|'
                                 r'deleofexpin|overstreeter|residence|origin|'
                                 r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
                                 r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b',
@@ -2181,7 +2181,7 @@ def clean_address_string(addr):
     clean_line = re.sub(r'(?i)\b(date|dater|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
                         r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
                         r'indent|vi[eê][nǹ]|nam\s+linh|'
-                        r'place of residence|place of origin|place oforging|transervating|daleoroxic|'
+                        r'place of residence|place of origin|place oforging|transervating|daleoroxic|dale\s*o|'
                         r'deleofexpin|overstreeter|residence|origin|'
                         r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
                         r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b', '', clean_line)
@@ -2199,6 +2199,7 @@ def clean_address_string(addr):
     clean_line = clean_line.replace('Quang, Trung', 'Quang Trung')
     clean_line = clean_line.replace('54, Đường 15', '54 Đường 15')
     clean_line = clean_line.replace('Ninh Kho', 'Ninh Kiều, Cần Thơ')
+    clean_line = clean_line.replace('Trà Canh Al', 'Trà Canh A1')
     
     return clean_line
 
