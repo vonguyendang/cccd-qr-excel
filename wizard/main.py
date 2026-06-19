@@ -1227,7 +1227,7 @@ def run_wizard(input_dir, normalize_address=True):
                     parts.append(f"Ngày cấp: {ocr_data.get('Ngày cấp CCCD') or '[Trống]'}")
                 
                 ocr_print_info = ", ".join(parts)
-                log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info}")
+                log_msgs.append(f"[blue]ℹ️ Kết quả OCR:[/blue] {ocr_print_info} | Note: {ocr_note}")
                 
                 if DEBUG_MODE and ocr_data.get('Raw Text'):
                     log_msgs.append(f"[magenta]🐛 DEBUG RAW OCR TEXT:\n{ocr_data['Raw Text']}[/magenta]")
