@@ -472,6 +472,16 @@ def parse_ocr_text(text):
                             name_words.append(cw)
                     clean_name = " ".join(name_words).upper()
                     
+                    # Loại bỏ các từ rác ở đầu chuỗi do OCR ảo giác (vd: KILL Vu Thuc Uyen -> Vu Thuc Uyen)
+                    words_upper = clean_name.split()
+                    while len(words_upper) > 2:
+                        first = unicodedata.normalize('NFD', words_upper[0].lower())
+                        first_ascii = ''.join(c for c in first if unicodedata.category(c) != 'Mn')
+                        if first_ascii in _VN_SURNAMES:
+                            break
+                        words_upper.pop(0)
+                    clean_name = " ".join(words_upper)
+                    
                     # Fix một số lỗi OCR dính chữ kinh điển
                     clean_name = clean_name.replace('BICHINHIEN', 'BICH NHIEN')
                     clean_name = re.sub(r'^(LE|TRAN|NGUYEN|PHAM|VU|VO|DANG|BUI|DO|HO|PHAN|LY|HUYNH|HOANG|NGO)(THI|VAN|DO|NGOC|XUAN|HUU|MINH|DUY|QUOC|BAO|TRUNG)\b', r'\1 \2', clean_name)
