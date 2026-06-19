@@ -427,7 +427,7 @@ def parse_ocr_text(text):
                         ls = line.replace(' ', '').strip()
                         
                         # Chặn các dòng tiếng Anh hoặc tiếng Việt không dấu bị nhận diện nhầm
-                        if any(bad in ls for bad in ['IDEN', 'NATIO', 'SONAL', 'CANCUOC', 'CONGDAN', 'TRUONG', 'GIAMDOC', 'INDEX', 'FINGER', 'ADMIN', 'POLICE', 'DIRECTOR', 'ORDER']):
+                        if any(bad in ls for bad in ['IDEN', 'NATIO', 'SONAL', 'CANCUOC', 'CONGDAN', 'TRUONG', 'GIAMDOC', 'INDEX', 'FINGER', 'ADMIN', 'POLICE', 'POUCE', 'DIRECTOR', 'ORDER', 'DEPART', 'SOCIAL', 'MANAGE', 'GENERAL', 'MONTH', 'YEAR', 'RIGHT', 'LEFT', 'FEATURE']):
                             continue
                             
                         # MRZ Line 3 chứa tên, KHÔNG có số, KHÔNG có dấu tiếng Việt
@@ -1017,6 +1017,35 @@ from rich.prompt import Prompt, Confirm
 
 console = Console()
 
+def get_unique_images(image_paths):
+    import hashlib
+    unique_paths = []
+    seen_hashes = set()
+    duplicates_count = 0
+    
+    with Progress(
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
+        BarColumn(), TaskProgressColumn(), console=console,
+    ) as progress:
+        task = progress.add_task("[cyan]Đang kiểm tra và lọc ảnh trùng lặp (MD5)...", total=len(image_paths))
+        for path in image_paths:
+            try:
+                with open(path, 'rb') as f:
+                    file_hash = hashlib.md5(f.read()).hexdigest()
+                if file_hash in seen_hashes:
+                    duplicates_count += 1
+                else:
+                    seen_hashes.add(file_hash)
+                    unique_paths.append(path)
+            except Exception:
+                unique_paths.append(path)
+            progress.advance(task)
+            
+    if duplicates_count > 0:
+        console.print(f"[bold yellow]⚠️ Đã lọc bỏ {duplicates_count} ảnh trùng lặp hoàn toàn về nội dung![/bold yellow]")
+        
+    return unique_paths
+
 def run_wizard(input_dir, normalize_address=True):
     from rich.text import Text
     file_logs = []
@@ -1039,7 +1068,9 @@ def run_wizard(input_dir, normalize_address=True):
         Prompt.ask("[dim]Nhấn Enter để thử lại...[/dim]")
         return
 
-    console.print(f"\n[bold green]✅ Đã quét thư mục và tìm thấy tổng cộng {len(image_paths)} file ảnh.[/bold green]")
+    image_paths = get_unique_images(image_paths)
+
+    console.print(f"\n[bold green]✅ Đã quét thư mục và chuẩn bị xử lý {len(image_paths)} file ảnh.[/bold green]")
     
     # --- INCREMENTAL SCAN LOGIC ---
     incremental_scan = False
@@ -2083,6 +2114,8 @@ def run_reprocess(excel_path, normalize_address=True):
     image_paths = []
     for ext in ('*.jpg', '*.jpeg', '*.png', '*.heic', '*.webp', '*.JPG', '*.JPEG', '*.PNG', '*.HEIC', '*.WEBP'):
         image_paths.extend(glob.glob(os.path.join(image_dir, ext)))
+        
+    image_paths = get_unique_images(image_paths)
         
     img_map = {os.path.basename(p): p for p in image_paths}
     
