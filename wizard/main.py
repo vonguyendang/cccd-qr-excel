@@ -435,19 +435,33 @@ def parse_ocr_text(text):
                             
                             # CÁC TỪ KHOÁ NGẮT (BREAK) - Rác ngoài thẻ hoặc Mặt sau
                             if any(stop_word in next_lower for stop_word in [
-                                "zalo", "chữ ký", "qr", "từ mã", "đặc điểm nhận dạng", "ngón trỏ", "trái", "phải"
+                                "zalo", "chữ ký", "qr", "từ mã", "đặc điểm nhận dạng", "ngón trỏ", "trái", "phải",
+                                "ngày sinh", "date of birth", "ngày, tháng, năm", "date, month",
+                                "ngày cấp", "date of issue", "date issue", "ddate", "ddate issue",
+                                "nơi cấp", "place of issue", "place ofresic",
+                                "ngày hết hạn", "expiry", "hết hạn",
+                                "giá trị đến", "có giá trị",
+                                "giới tính", "quốc tịch",
                             ]):
                                 break
                                 
                             clean_line = next_line
                             # Xóa các nhãn bị dính vào địa chỉ (thay vì skip toàn bộ dòng)
-                            clean_line = re.sub(r'(?i)((có )?gi[aáà] trị đ[ếêề]n\s*[:.,]*|expiry|date|nơi cấp|ngày cấp|bộ công an|cục cảnh sát|giới tính|quốc tịch|sex|nationality|quê quán|quê quan|que quan|khai sinh|birth|data ofespry)', '', clean_line).strip()
+                            clean_line = re.sub(r'(?i)((có )?gi[aáà] trị đ[ếêề]n\s*[:.,]*|expiry|nơi cấp|ngày cấp|bộ công an|cục cảnh sát|giới tính|quốc tịch|sex|nationality|quê quán|quê quan|que quan|khai sinh|birth|data ofespry)', '', clean_line).strip()
                             
                             # Xóa ngày tháng năm
                             clean_line = re.sub(r'\b\d{2}/\d{2}/\d{4}\b', '', clean_line).strip()
                                 
                             # CẮT BỎ CÁC TỪ TIẾNG ANH ẢO GIÁC DO OCR NHẬN DIỆN MỜ VÀ CÁC NHÃN
-                            clean_line = re.sub(r'(?i)\b(place of residence|place of origin|place oforging|transervating|daleoroxic|deleofexpin|overstreeter|residence|origin|họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b', '', clean_line).strip()
+                            clean_line = re.sub(
+                                r'(?i)\b(place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
+                                r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
+                                r'indent|vi[eê][nǹ]|nam\s+linh|'
+                                r'place of residence|place of origin|place oforging|transervating|daleoroxic|'
+                                r'deleofexpin|overstreeter|residence|origin|'
+                                r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
+                                r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b',
+                                '', clean_line).strip()
                             clean_line = re.sub(r'(?i)(họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)', '', clean_line).strip()
                             
                             # Loại bỏ chữ 'Có' rớt lại do cắt cụm 'Có giá trị đến' bị thiếu
@@ -464,7 +478,13 @@ def parse_ocr_text(text):
                                 continue
 
                             if len(clean_line) >= 2:
-                                addr_parts.append(clean_line)
+                                # Chống lặp: không thêm nếu đã có phần giống hệt hoặc bị bao trong
+                                is_dup = any(
+                                    clean_line == p or clean_line in p or p in clean_line
+                                    for p in addr_parts
+                                )
+                                if not is_dup:
+                                    addr_parts.append(clean_line)
                 
                         addr = ", ".join(filter(bool, addr_parts))
                         
@@ -475,24 +495,76 @@ def parse_ocr_text(text):
                         # Xóa các từ viết tắt hành chính: X. P. Q. H. T. TP. TX. TT. (có hoặc không có dấu chấm)
                         addr = re.sub(r'(?i)\b(x|p|q|h|t|tp|tx|tt)[\.\s]+', '', addr)
                         
-                        # Fix các lỗi typo kinh điển của VietOCR khi đọc thẻ mờ ở Cần Thơ
+                        # Fix các lỗi typo kinh điển của VietOCR khi đọc thẻ mờ ở Cần Thơ và các tỉnh khác
                         typo_fixes = {
+                            # --- Cần Thơ variants ---
                             "Ninh Kiơu Thơ": "Ninh Kiều, Cần Thơ",
                             "Ninh Kiơn Thơ": "Ninh Kiều, Cần Thơ",
                             "Ninh Kiểu": "Ninh Kiều",
                             "Ninh ciều": "Ninh Kiều",
                             "Cần Thơng": "Cần Thơ",
                             "Cần Thợ": "Cần Thơ",
+                            "Cán Thơng Chinh": "Cần Thơ",
+                            "Cán Thơng": "Cần Thơ",
+                            "Thơng Chinh": "Cần Thơ",
+                            "Thơng Chình": "Cần Thơ",
+                            "Thơng Chính": "Cần Thơ",
+                            "Thung Chinh": "Cần Thơ",
+                            "Thung Chình": "Cần Thơ",
+                            "Thung, Cán": "Cần Thơ",
+                            "Thung": "Cần Thơ",
+                            "Cán Thơ": "Cần Thơ",
+                            "Cần Thơng Chinh": "Cần Thơ",
                             "Bình Thủy Thơ": "Bình Thủy, Cần Thơ",
                             "BẦN THỚ": "Bình Thủy, Cần Thơ",
                             "Bần Thớ": "Bình Thủy, Cần Thơ",
                             "CẦN THO": "CẦN THƠ",
+                            # --- Số bị đọc nhầm ---
                             "Ấp Trà Canh AL": "Ấp Trà Canh A1",
                             " AL,": " A1,",  # Đề phòng trường hợp chung chung số 1 bị đọc thành L
-                            "Đồng Nai Thu": "Đồng Nai"
+                            "Đồng Nai Thu": "Đồng Nai",
+                            # --- Dấu câu và ký hiệu lạ bị dính ---
+                            "TP-Sóc Trăng": "TP. Sóc Trăng",
+                            "TP-": "TP. ",
                         }
                         for wrong, right in typo_fixes.items():
                             addr = addr.replace(wrong, right)
+                        
+                        # Dùng regex để thay thế các từ đơn ngắn nguy hiểm hơn (tránh false-positive)
+                        addr = re.sub(r'\bThung\b', 'Cần Thơ', addr)
+                        
+                        # Dùng regex để xóa các cụm "Cần Thơ" bị lặp lại liên tiếp (có thể cách nhau bằng khoảng trắng hoặc dấu phẩy)
+                        addr = re.sub(r'(?:Cần Thơ[,\s]*){2,}', 'Cần Thơ', addr)
+                        
+                        # Regex loại bỏ các pattern lặp lại do OCR đọc cùng 1 đoạn nhiều lần
+                        # Ví dụ: "Cần Thơ, Cần Thơ, Cần Thơ" → "Cần Thơ"
+                        def _dedup_repeated_phrases(text):
+                            """Xóa các cụm từ bị lặp lại liên tiếp (trường hợp OCR đọc nhiều lần)."""
+                            # Tách theo dấu phẩy, loại trùng lặp liên tiếp
+                            parts = [p.strip() for p in text.split(',') if p.strip()]
+                            deduped = []
+                            for p in parts:
+                                if not deduped or p.lower() != deduped[-1].lower():
+                                    deduped.append(p)
+                            return ', '.join(deduped)
+                        addr = _dedup_repeated_phrases(addr)
+                        
+                        # Xóa các nhãn tiếng Anh bị OCR hallucinate còn sót trong địa chỉ,
+                        # và các cụm nhãn tiếng Việt còn sót ("Nơi đăng ký", "Ngày sinh I")
+                        addr = re.sub(
+                            r'(?i)\b(pplace|ppace|i\s*place|place\s*ofresic|ofresic|'
+                            r'ddate|ddte|ddate\s*issue|date\s*issue|'
+                            r'nam\s+linh|indent|'
+                            r'issue|noi\s*dang\s*ky)\b',
+                            '', addr).strip()
+                        # Lưu ý: KHÔNG xóa "Viễn/Viên" vì là địa danh thật
+                        # (Thị trấn Vĩnh Viễn, Long Mỹ, Hậu Giang)
+                        # Xóa nhãn tiếng Việt còn sót
+                        addr = re.sub(r'(?i)\bnơi\s*đăng\s*ký\b', '', addr).strip()
+                        addr = re.sub(r'(?i)\bngày\s*sinh\s*[a-z]?\s*$', '', addr).strip()
+                        addr = re.sub(r'(?i)^[a-z]\s+ngày\s*sinh', '', addr).strip()
+                        addr = re.sub(r',\s*,', ',', addr)
+                        addr = re.sub(r'\s{2,}', ' ', addr)
                             
                         # Tẩy sạch dấu phẩy thừa do nối chuỗi
                         data['Nơi thường trú gốc'] = re.sub(r',\s*,', ',', addr).lstrip(', ').rstrip('., ')
