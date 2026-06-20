@@ -2954,6 +2954,25 @@ def run_wizard(input_dir, normalize_address=True):
     console.print(f"File log chi tiết được lưu tại: [yellow]{os.path.abspath(log_filename)}[/yellow]")
     console.print("🎉"*15 + "\n")
     
+    from rich.table import Table
+    table = Table(title="📊 BÁO CÁO THỐNG KÊ KẾT QUẢ", show_header=True, header_style="bold magenta")
+    table.add_column("Chỉ số đo lường", style="cyan", width=40)
+    table.add_column("Số lượng", justify="right", style="green", width=15)
+    
+    table.add_row("Tổng số ảnh đã đưa vào xử lý", str(len(all_original_image_paths)))
+    table.add_row("Tổng số hồ sơ (công dân) hợp lệ", str(len(processed_data)))
+    
+    qr_count = sum(1 for r in processed_data if 'Lấy bằng OCR' not in str(r.get('Ghi chú', '')))
+    ocr_count = sum(1 for r in processed_data if 'Lấy bằng OCR' in str(r.get('Ghi chú', '')))
+    table.add_row("Dữ liệu trích xuất chuẩn xác bằng QR", str(qr_count))
+    table.add_row("Dữ liệu cứu hộ thành công bằng AI OCR", str(ocr_count))
+    table.add_row("Hồ sơ thiếu/lỗi cần kiểm tra lại (Review)", str(len(review_rows)))
+    table.add_row("Ảnh rác / Không thể phân loại (Unknown)", str(len(unknown_image_paths)))
+    
+    console.print(table)
+    console.print()
+
+    
     # Xoá file backup tạm sau khi hoàn tất thành công
     try:
         if 'realtime_csv' in locals() and os.path.exists(realtime_csv): os.remove(realtime_csv)
@@ -3406,6 +3425,22 @@ def run_reprocess(excel_path, normalize_address=True):
     console.print(f"File kết quả được lưu tại: [yellow]{os.path.abspath(reprocess_out)}[/yellow]")
     console.print(f"File log chi tiết được lưu tại: [yellow]{os.path.abspath(log_filename)}[/yellow]")
     console.print("🎉"*15 + "\n")
+
+    from rich.table import Table
+    table = Table(title="📊 BÁO CÁO THỐNG KÊ TÁI XỬ LÝ", show_header=True, header_style="bold magenta")
+    table.add_column("Chỉ số đo lường", style="cyan", width=40)
+    table.add_column("Số lượng", justify="right", style="green", width=15)
+    
+    table.add_row("Tổng số dòng trong Excel", str(len(rows_to_process)))
+    table.add_row("Tổng số ảnh đã đưa vào quét lại", str(len(all_images_to_process)))
+    
+    qr_count = sum(1 for r in img_results.values() if 'Lấy bằng OCR' not in str(r.get('Ghi chú', '')))
+    ocr_count = sum(1 for r in img_results.values() if 'Lấy bằng OCR' in str(r.get('Ghi chú', '')))
+    table.add_row("Số ảnh đọc mã QR thành công", str(qr_count))
+    table.add_row("Số ảnh phải dùng AI OCR để cứu", str(ocr_count))
+    
+    console.print(table)
+    console.print()
 
 
 def main():
