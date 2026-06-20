@@ -1712,6 +1712,30 @@ class CountColumn(ProgressColumn):
         remaining = total - completed
         return Text(f"[Xong: {completed}/{total} | Còn: {remaining}/{total}]", style="green")
 
+class ETAColumn(ProgressColumn):
+    def render(self, task):
+        from rich.text import Text
+        import datetime
+        completed = task.completed
+        if completed == 0 or task.elapsed is None:
+            return Text("-:--:--", style="cyan")
+        speed = completed / task.elapsed
+        remaining = task.total - completed
+        if speed > 0:
+            eta_seconds = remaining / speed
+            eta_str = str(datetime.timedelta(seconds=int(eta_seconds)))
+            return Text(eta_str, style="cyan")
+        return Text("-:--:--", style="cyan")
+
+class SpeedColumn(ProgressColumn):
+    def render(self, task):
+        from rich.text import Text
+        completed = task.completed
+        if completed == 0 or task.elapsed is None or task.elapsed == 0:
+            return Text("[⚡ --.-s/ảnh]", style="yellow")
+        speed = task.elapsed / completed
+        return Text(f"[⚡ {speed:.1f}s/ảnh]", style="yellow")
+
 console = Console()
 
 def get_unique_images(image_paths):
@@ -2182,7 +2206,8 @@ def run_wizard(input_dir, normalize_address=True):
         CountColumn(),
         TimeElapsedColumn(),
         TextColumn("⏳ ETA:"),
-        TimeRemainingColumn(),
+        ETAColumn(),
+        SpeedColumn(),
         console=console,
     )
     
@@ -3298,7 +3323,7 @@ def run_reprocess(excel_path, normalize_address=True):
     with Progress(
         SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
         BarColumn(), TaskProgressColumn(), CountColumn(), TimeElapsedColumn(),
-        TextColumn("⏳ ETA:"), TimeRemainingColumn(),
+        TextColumn("⏳ ETA:"), ETAColumn(), SpeedColumn(),
         console=console,
     ) as progress:
         task_id = progress.add_task("[cyan]Đang quét ảnh...", total=len(all_images_to_process))
