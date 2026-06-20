@@ -22,6 +22,54 @@ import concurrent.futures
 import zipfile
 import threading
 import warnings
+import json
+import difflib
+
+# Caches cho Rule-based & Fuzzy Matching
+OCR_RULES_CACHE = {}
+OCR_RULES_MTIME = 0
+VALID_LOCATIONS_CACHE = []
+
+def load_ocr_rules():
+    global OCR_RULES_CACHE, OCR_RULES_MTIME
+    rules_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ocr_rules.json')
+    try:
+        if os.path.exists(rules_path):
+            mtime = os.path.getmtime(rules_path)
+            if mtime > OCR_RULES_MTIME:
+                with open(rules_path, 'r', encoding='utf-8') as f:
+                    OCR_RULES_CACHE = json.load(f)
+                OCR_RULES_MTIME = mtime
+    except Exception as e:
+        print(f"[Warning] Failed to load ocr_rules.json (giữ cache cũ): {e}")
+    return OCR_RULES_CACHE
+
+def load_valid_locations():
+    global VALID_LOCATIONS_CACHE
+    if VALID_LOCATIONS_CACHE:
+        return VALID_LOCATIONS_CACHE
+    data_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'data.json')
+    try:
+        if os.path.exists(data_path):
+            with open(data_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                locations = set()
+                for level1 in data:
+                    locations.add(level1.get('name', ''))
+                    clean_l1 = re.sub(r'^(Tỉnh|Thành phố)\s+', '', level1.get('name', ''))
+                    locations.add(clean_l1)
+                    for level2 in level1.get('level2s', []):
+                        locations.add(level2.get('name', ''))
+                        clean_l2 = re.sub(r'^(Quận|Huyện|Thị xã|Thành phố)\s+', '', level2.get('name', ''))
+                        locations.add(clean_l2)
+                        for level3 in level2.get('level3s', []):
+                            locations.add(level3.get('name', ''))
+                            clean_l3 = re.sub(r'^(Phường|Xã|Thị trấn)\s+', '', level3.get('name', ''))
+                            locations.add(clean_l3)
+                VALID_LOCATIONS_CACHE = [x for x in locations if x]
+    except Exception as e:
+        print(f"[Warning] Failed to load valid locations from data.json: {e}")
+    return VALID_LOCATIONS_CACHE
 
 # Tắt cảnh báo chia cho 0 của numpy bên trong thư viện VietOCR
 warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in divide")
@@ -596,21 +644,9 @@ def parse_ocr_text(text):
                             commas_count = current_addr.count(',')
                             
                             # CÁC TỪ KHOÁ NGẮT (BREAK) - Rác ngoài thẻ hoặc Mặt sau
-                            hard_stops = [
-                                "zalo", "chữ ký", "chữ ky", "qr", "từ mã", "đặc điểm nhận dạng",
-                                "ngón trỏ trái", "ngón trỏ phải", "ngón trỏ",  # cụ thể hơn "trái"/"phải"
-                                "vân tay trái", "vân tay phải",
-                                "hữ ký", "hữ ký với", "mẫu chữ",  # biến thể OCR của "chữ ký" trên mặt sau
-                            ]
-                            soft_stops = [
-                                "ngày sinh", "date of birth", "ngày, tháng, năm", "date, month",
-                                "ngày cấp", "date of issue", "date issue", "ddate", "ddate issue",
-                                "nơi cấp", "place of issue", "place ofresic",
-                                "ngày hết hạn", "expiry", "hết hạn", "ferpiry", "date ferpiry",
-                                "giá trị đến", "có giá trị",
-                                "gia tri đến", "gia tri đen",  # biến thể không dấu OCR
-                                "giới tính", "quốc tịch",
-                            ]
+                            rules = load_ocr_rules()
+                            hard_stops = rules.get("hard_stops", [])
+                            soft_stops = rules.get("soft_stops", [])
                             
                             if any(stop_word in next_lower for stop_word in hard_stops):
                                 break
@@ -719,99 +755,7 @@ def parse_ocr_text(text):
                 
                         addr = ", ".join(filter(bool, addr_parts))
                         
-                        # Dọn rác cứng đầu có thể lọt vào cuối đuôi địa chỉ (như CCCD, Có, dấu phẩy thừa)
-                        addr = re.sub(r'(?i)[,.\s]+(cccd|có|co\u0301|of)\s*[:.,]*\s*$', '', addr).strip()
-                        addr = re.sub(r'(?i)\b(cccd)\b', '', addr).strip()
-                        
-                        # Xóa các từ viết tắt hành chính: X. P. Q. H. T. TP. TX. TT. (có hoặc không có dấu chấm)
-                        addr = re.sub(r'(?i)\b(x|p|q|h|t|tp|tx|tt)[\.\s]+', '', addr)
-                        
-                        # Fix các lỗi typo kinh điển của VietOCR khi đọc thẻ mờ ở Cần Thơ và các tỉnh khác
-                        typo_fixes = {
-                            # --- Cần Thơ variants ---
-                            "Ninh Kiơu Thơ": "Ninh Kiều, Cần Thơ",
-                            "Ninh Kiơn Thơ": "Ninh Kiều, Cần Thơ",
-                            "Thới Bình Ninh Kiều": "Thới Bình, Ninh Kiều",
-                            "Bình Thơn Thơng Nhiều Thuyên": "Bình Thủy, Cần Thơ",
-                            "Hung Vương": "Hùng Vương",
-                            "Pham, Ngọc Hưng": "Phạm Ngọc Hưng",
-                            "Pham Ngọc Hưng": "Phạm Ngọc Hưng",
-                            "Bình, Dương B": "Bình Dương B",
-                            "Long Tuyên": "Long Tuyền",
-                            "An Thời": "An Thới",
-                            "Ninh Kiểu": "Ninh Kiều",
-                            "Ninh ciều": "Ninh Kiều",
-                            "Cần Thơng": "Cần Thơ",
-                            "Cần Thợ": "Cần Thơ",
-                            "Cán Thơng Chinh": "Cần Thơ",
-                            "Cán Thơng": "Cần Thơ",
-                            "Thơng Chinh": "Cần Thơ",
-                            "Thơng Chình": "Cần Thơ",
-                            "Thơng Chính": "Cần Thơ",
-                            "Thung Chinh": "Cần Thơ",
-                            "Thung Chình": "Cần Thơ",
-                            "Thung, Cán": "Cần Thơ",
-                            "Thung": "Cần Thơ",
-                            "Cán Thơ": "Cần Thơ",
-                            "Cần Thơng Chinh": "Cần Thơ",
-                            "Bình Thủy Thơ": "Bình Thủy, Cần Thơ",
-                            "BẦN THỚ": "Bình Thủy, Cần Thơ",
-                            "Bần Thớ": "Bình Thủy, Cần Thơ",
-                            "CẦN THO": "CẦN THƠ",
-                            # --- Số bị đọc nhầm ---
-                            "Ấp Trà Canh AL": "Ấp Trà Canh A1",
-                            " AL,": " A1,",  # Đề phòng trường hợp chung chung số 1 bị đọc thành L
-                            "Đồng Nai Thu": "Đồng Nai",
-                            # --- Dấu câu và ký hiệu lạ bị dính ---
-                            "TP-Sóc Trăng": "TP. Sóc Trăng",
-                            "TP-": "TP. ",
-                        }
-                        # Thêm khoảng trắng khi TP/TX/TT dính liền vào tên tỉnh/thành không có dấu phân cách
-                        # VD: "TPCần Thơ" → "TP Cần Thơ", "TXTân An" → "TX Tân An"
-                        addr = re.sub(r'\b(TP|TX|TT)([A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂẮẶẦẤƠỜƯỚƯỪ])',
-                                      r'\1 \2', addr)
-                        for wrong, right in typo_fixes.items():
-                            addr = addr.replace(wrong, right)
-                        
-                        # Dùng regex để thay thế các từ đơn ngắn nguy hiểm hơn (tránh false-positive)
-                        addr = re.sub(r'\bThung\b', 'Cần Thơ', addr)
-                        
-                        # Dùng regex để xóa các cụm "Cần Thơ" bị lặp lại liên tiếp (có thể cách nhau bằng khoảng trắng hoặc dấu phẩy)
-                        addr = re.sub(r'(?i)(?:(?:Thủ\s*)?Cần Thơ[,\s]*){2,}', 'Cần Thơ, ', addr)
-                        addr = re.sub(r'(?i)(?:Thủ Thơ[,\s]*)+', '', addr)
-                        
-                        # Regex loại bỏ các pattern lặp lại do OCR đọc cùng 1 đoạn nhiều lần
-                        # Ví dụ: "Cần Thơ, Cần Thơ, Cần Thơ" → "Cần Thơ"
-                        def _dedup_repeated_phrases(text):
-                            """Xóa các cụm từ bị lặp lại liên tiếp (trường hợp OCR đọc nhiều lần)."""
-                            # Tách theo dấu phẩy, loại trùng lặp liên tiếp
-                            parts = [p.strip() for p in text.split(',') if p.strip()]
-                            deduped = []
-                            for p in parts:
-                                if not deduped or p.lower() != deduped[-1].lower():
-                                    deduped.append(p)
-                            return ', '.join(deduped)
-                        addr = _dedup_repeated_phrases(addr)
-                        
-                        # Xóa các nhãn tiếng Anh bị OCR hallucinate còn sót trong địa chỉ,
-                        # và các cụm nhãn tiếng Việt còn sót ("Nơi đăng ký", "Ngày sinh I")
-                        addr = re.sub(
-                            r'(?i)\b(pplace|ppace|i\s*place|place\s*ofresic|ofresic|'
-                            r'ddate|ddte|ddate\s*issue|date\s*issue|date\s*ferpiry|ferpiry|ferp[a-z]+|'
-                            r'nam\s+linh|indent|'
-                            r'disconning|nterting|interting|disconnected|'
-                            r'issue|noi\s*dang\s*ky)\b',
-                            '', addr).strip()
-                        # Xóa cụm ALL-CAPS >= 6 ký tự không phải địa danh VN hợp lệ
-                        # (rác OCR thường viết hoa toàn bộ, không có dấu tiếng Việt)
-                        addr = re.sub(r'(?<![A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂẮẶẦẤƠỜƯỚƯỪ])'  # không đứng sau chữ hoa VN
-                                      r'\b[A-Z]{6,}\b',  # chuỗi 6+ chữ cái Latin hoa liên tiếp
-                                      '', addr).strip()
-                        # Lưu ý: KHÔNG xóa "Viễn/Viên" vì là địa danh thật
-                        # (Thị trấn Vĩnh Viễn, Long Mỹ, Hậu Giang)
-                        # Xóa nhãn tiếng Việt còn sót
-                        addr = re.sub(r'(?i)\bnơi\s*đăng\s*ký\b', '', addr).strip()
-                        addr = re.sub(r'(?i)\bngày\s*sinh\s*[a-z]?\s*$', '', addr).strip()
+                        addr = ", ".join(filter(bool, addr_parts))
                         addr = re.sub(r'(?i)^[a-z]\s+ngày\s*sinh', '', addr).strip()
                         addr = re.sub(r',\s*,', ',', addr)
                         addr = re.sub(r'\s{2,}', ' ', addr)
@@ -825,7 +769,11 @@ def parse_ocr_text(text):
                         addr = re.sub(r',\s*,', ',', addr).strip(',').strip()
                             
                         # Tẩy sạch dấu phẩy thừa do nối chuỗi
-                        data['Nơi thường trú gốc'] = re.sub(r',\s*,', ',', addr).lstrip(', ').rstrip('., ')
+                        addr = re.sub(r',\s*,', ',', addr).lstrip(', ').rstrip('., ')
+                        
+                        addr_cleaned = clean_address_string(addr)
+                        data['Nơi thường trú gốc'] = addr_cleaned
+                        print(f"[OCR Address] Raw: {addr} | Cleaned: {addr_cleaned}")
         
                     # --- BƯỚC 4.4: TRÍCH XUẤT GIỚI TÍNH (Layer 1 - Label-based line scan) ---
                     if "giới tính" in line_lower or "sex" in line_lower or "gioi tinh" in line_lower:
@@ -3002,18 +2950,12 @@ def run_wizard(input_dir, normalize_address=True):
 def clean_name_string(name):
     if not name: return ""
     import re
+    rules = load_ocr_rules()
     clean_line = str(name)
-    clean_line = re.sub(r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|date\s*ferpiry|date\s*ferp[a-z]*|'
-                        r'n[oơ]i\s*c[aấ]p|ng[aà]y\s*c[aấ]p|b[oộ]\s*c[oô]ng\s*an|c[uụ]c\s*c[aả]nh\s*s[aá]t|'
-                        r'gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|sex|nationality|'
-                        r'qu[eê]\s*qu[aá]n|khai\s*sinh|birth|data\s*ofespry)', '', clean_line)
-    clean_line = re.sub(r'(?i)\b(place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
-                        r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
-                        r'indent|vi[eê][nǹ]|nam\s+linh|'
-                        r'place of residence|place of origin|place oforging|transervating|daleoroxic|'
-                        r'deleofexpin|overstreeter|residence|origin|'
-                        r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|'
-                        r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|of|cccd)\b', '', clean_line)
+    
+    for pattern in rules.get("blacklist_patterns", []):
+        clean_line = re.sub(pattern, '', clean_line)
+        
     clean_line = re.sub(r'(?i)^(họ và tên|ho ten|kho và tên)[:\s]*', '', clean_line)
     
     # Lọc bỏ các từ chỉ có chữ thường (do nhiễu OCR) vì tên VN luôn IN HOA
@@ -3029,36 +2971,52 @@ def clean_name_string(name):
 def clean_address_string(addr):
     if not addr: return ""
     import re
+    import difflib
+    
+    rules = load_ocr_rules()
+    valid_locs = load_valid_locations()
     clean_line = str(addr)
-    clean_line = re.sub(r'(?i)(c[oó]\s+)?gi[aáàảãạ]\s*tr[iị]\s*(đ[ếeêề]n|den|đen)\s*[:.,]*', '', clean_line)
-    clean_line = re.sub(r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|telefoxpir|date\s*ferpiry|date\s*ferp[a-z]*|'
-                        r'n[oơ]i\s*c[aấ]p|ng[aà]y\s*c[aấ]p|b[oộ]\s*c[oô]ng\s*an|c[uụ]c\s*c[aả]nh\s*s[aá]t|'
-                        r'gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|sex|nationality|'
-                        r'qu[eê]\s*qu[aá]n|khai\s*sinh|ng[aà]y\s*sinh|i\s*date|birth|data\s*ofespry)', '', clean_line)
-    clean_line = re.sub(r'(?<!\d)\d{2}/\d{2}/\d{4}(?!\d)', '', clean_line)
-    clean_line = re.sub(r'(?i)\b(date|dater|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
-                        r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
-                        r'indent|vi[eê][nǹ]|nam\s+linh|'
-                        r'place of residence|place of origin|place oforging|transervating|daleoroxic|dale\s*o|'
-                        r'deleofexpin|overstreeter|residence|origin|'
-                        r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
-                        r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b', '', clean_line)
-    clean_line = re.sub(r'(?i)(họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)', '', clean_line)
-    clean_line = re.sub(r'(?i)^(c[oó]|có)\s*[:.,]*\s*', '', clean_line)
-    clean_line = re.sub(r'(?i)\s+(c[oó]|có)\s*[:.,]*$', '', clean_line)
-    clean_line = re.sub(r'\b\d{10,12}\b', '', clean_line)
-    clean_line = re.sub(r'\b\d{4}/\d{4}\b', '', clean_line)
+    
+    # 1. Xóa rác bằng regex
+    for pattern in rules.get("blacklist_patterns", []):
+        clean_line = re.sub(pattern, '', clean_line)
+        
+    # 2. Thay thế typo mapping chuẩn
+    for bad, good in rules.get("exact_typo_mapping", {}).items():
+        clean_line = clean_line.replace(bad, good)
+        
+    # 3. Chuẩn hóa khoảng trắng, dấu phẩy
     clean_line = re.sub(r'\s+', ' ', clean_line).strip(', ')
     clean_line = re.sub(r',\s*,', ',', clean_line)
     clean_line = re.sub(r'^\s*,\s*', '', clean_line)
     clean_line = re.sub(r'\s*,\s*$', '', clean_line)
     
-    # Các bản vá lỗi đứt gãy/typo do OCR cứng đầu
-    clean_line = clean_line.replace('Quang, Trung', 'Quang Trung')
-    clean_line = clean_line.replace('54, Đường 15', '54 Đường 15')
-    clean_line = clean_line.replace('Ninh Kho', 'Ninh Kiều, Cần Thơ')
-    clean_line = clean_line.replace('Trà Canh Al', 'Trà Canh A1')
-    clean_line = clean_line.replace('Vĩnh, Viễn', 'Vĩnh Viễn')
+    # 4. Viết tắt (dùng regex tránh thay thế nhầm giữa từ)
+    for pattern, replacement in rules.get("abbreviation_mapping", {}).items():
+        clean_line = re.sub(pattern, replacement, clean_line)
+        
+    # 5. Xóa các cụm từ bị lặp lại liên tiếp (trường hợp OCR đọc nhiều lần)
+    parts = [p.strip() for p in clean_line.split(',') if p.strip()]
+    deduped = []
+    for p in parts:
+        if not deduped or p.lower() != deduped[-1].lower():
+            deduped.append(p)
+    clean_line = ', '.join(deduped)
+
+    # 6. Fuzzy Matching từng đoạn qua dấu phẩy
+    segments = [s.strip() for s in clean_line.split(',') if s.strip()]
+    corrected_segments = []
+    for seg in segments:
+        if valid_locs and len(seg) >= 3:
+            matches = difflib.get_close_matches(seg, valid_locs, n=1, cutoff=0.85)
+            if matches:
+                corrected_segments.append(matches[0])
+            else:
+                corrected_segments.append(seg)
+        else:
+            corrected_segments.append(seg)
+            
+    clean_line = ", ".join(corrected_segments)
     
     return clean_line
 
