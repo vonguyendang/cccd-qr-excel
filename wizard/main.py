@@ -1909,6 +1909,7 @@ def run_wizard(input_dir, normalize_address=True):
             img_back_col = col_idx.get('Ảnh mặt sau CCCD/CC')
             renamed_front_col = col_idx.get('Đổi tên Ảnh mặt trước CCCD/CC')
             renamed_back_col = col_idx.get('Đổi tên Ảnh mặt sau CCCD/CC')
+            img_other_col = col_idx.get('Ảnh khác (SMS/Chụp màn hình/...)')
             
             if img_front_col is None or img_back_col is None:
                 console.print("[red]❌ File Excel cũ không có cột tên ảnh, không thể quét nối tiếp.[/red]")
@@ -1932,17 +1933,22 @@ def run_wizard(input_dir, normalize_address=True):
                         'Ảnh mặt trước CCCD/CC': row[img_front_col],
                         'Ảnh mặt sau CCCD/CC': row[img_back_col],
                         'Đổi tên Ảnh mặt trước CCCD/CC': row[renamed_front_col] if renamed_front_col is not None else '',
-                        'Đổi tên Ảnh mặt sau CCCD/CC': row[renamed_back_col] if renamed_back_col is not None else ''
+                        'Đổi tên Ảnh mặt sau CCCD/CC': row[renamed_back_col] if renamed_back_col is not None else '',
+                        'Ảnh khác (SMS/Chụp màn hình/...)': row[img_other_col] if img_other_col is not None else ''
                     })
                     front = row[img_front_col]
                     back = row[img_back_col]
                     renamed_front = row[renamed_front_col] if renamed_front_col is not None else ''
                     renamed_back = row[renamed_back_col] if renamed_back_col is not None else ''
+                    other = row[img_other_col] if img_other_col is not None else ''
                     
                     if front: processed_images_set.add(str(front))
                     if back: processed_images_set.add(str(back))
                     if renamed_front: processed_images_set.add(str(renamed_front))
                     if renamed_back: processed_images_set.add(str(renamed_back))
+                    if other:
+                        for p in str(other).split(', '):
+                            if p: processed_images_set.add(p)
         except Exception as e:
             console.print(f"[red]❌ Lỗi đọc file Excel cũ: {e}[/red]")
             incremental_scan = False
@@ -2606,7 +2612,7 @@ def run_wizard(input_dir, normalize_address=True):
     headers = [
         "STT", "Họ tên", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
         "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", "QR Raw", 
-        "Ảnh mặt trước CCCD/CC", "Ảnh mặt sau CCCD/CC", "Đổi tên Ảnh mặt trước CCCD/CC", "Đổi tên Ảnh mặt sau CCCD/CC"
+        "Ảnh mặt trước CCCD/CC", "Ảnh mặt sau CCCD/CC", "Ảnh khác (SMS/Chụp màn hình/...)", "Đổi tên Ảnh mặt trước CCCD/CC", "Đổi tên Ảnh mặt sau CCCD/CC"
     ]
     
     ws.append(headers)
@@ -2615,6 +2621,25 @@ def run_wizard(input_dir, normalize_address=True):
 
     if 'incremental_scan' in locals() and incremental_scan and old_records:
         processed_data = old_records + processed_data
+
+    # Xử lý logic gộp ảnh "Khác"
+    for row_data in processed_data:
+        if row_data.get('Phân loại') == 'Khác':
+            imgs = []
+            if row_data.get('Ảnh mặt trước CCCD/CC'): imgs.append(row_data['Ảnh mặt trước CCCD/CC'])
+            if row_data.get('Ảnh mặt sau CCCD/CC'): imgs.append(row_data['Ảnh mặt sau CCCD/CC'])
+            if row_data.get('OCR Image Path Unknown'): imgs.append(row_data['OCR Image Path Unknown'])
+            
+            anh_khac = row_data.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+            anh_khac_list = []
+            if anh_khac: anh_khac_list.append(anh_khac)
+            anh_khac_list.extend(imgs)
+            
+            row_data['Ảnh khác (SMS/Chụp màn hình/...)'] = ", ".join(filter(None, anh_khac_list))
+            row_data['Ảnh mặt trước CCCD/CC'] = ''
+            row_data['Ảnh mặt sau CCCD/CC'] = ''
+            row_data['Đổi tên Ảnh mặt trước CCCD/CC'] = ''
+            row_data['Đổi tên Ảnh mặt sau CCCD/CC'] = ''
 
     for idx, row_data in enumerate(processed_data):
         row = [
@@ -2634,6 +2659,7 @@ def run_wizard(input_dir, normalize_address=True):
             row_data.get('QR Raw', ''),
             row_data.get('Ảnh mặt trước CCCD/CC', ''),
             row_data.get('Ảnh mặt sau CCCD/CC', ''),
+            row_data.get('Ảnh khác (SMS/Chụp màn hình/...)', ''),
             row_data.get('Đổi tên Ảnh mặt trước CCCD/CC', ''),
             row_data.get('Đổi tên Ảnh mặt sau CCCD/CC', '')
         ]
