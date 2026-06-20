@@ -1652,7 +1652,7 @@ def call_address_api(address_list, max_workers=4):
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn, TimeRemainingColumn
 from rich.prompt import Prompt, Confirm
 
 console = Console()
@@ -1680,7 +1680,8 @@ def get_unique_images(image_paths):
     
     with Progress(
         SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
-        BarColumn(), TaskProgressColumn(), console=console,
+        BarColumn(), TaskProgressColumn(), TimeElapsedColumn(), 
+        TextColumn("⏳ ETA:"), TimeRemainingColumn(), console=console,
     ) as progress:
         task = progress.add_task("[cyan]Đang quét dHash & MD5 để diệt ảnh trùng lặp...", total=len(image_paths))
         for path in image_paths:
@@ -2083,6 +2084,8 @@ def run_wizard(input_dir, normalize_address=True):
         BarColumn(),
         TaskProgressColumn(),
         TimeElapsedColumn(),
+        TextColumn("⏳ ETA:"),
+        TimeRemainingColumn(),
         console=console,
     )
     
@@ -2354,6 +2357,8 @@ def run_wizard(input_dir, normalize_address=True):
             TaskProgressColumn(),
             TextColumn("[bold]{task.fields[status]}"),
             TimeElapsedColumn(),
+            TextColumn("⏳ ETA:"),
+            TimeRemainingColumn(),
             console=console,
         ) as api_progress:
             api_task = api_progress.add_task(
@@ -3031,6 +3036,7 @@ def run_reprocess(excel_path, normalize_address=True):
     with Progress(
         SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
         BarColumn(), TaskProgressColumn(), TimeElapsedColumn(),
+        TextColumn("⏳ ETA:"), TimeRemainingColumn(),
         console=console,
     ) as progress:
         task_id = progress.add_task("[cyan]Đang quét ảnh...", total=len(all_images_to_process))
@@ -3142,7 +3148,7 @@ def run_reprocess(excel_path, normalize_address=True):
         with Progress(
             SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
             BarColumn(), TaskProgressColumn(), TextColumn("[bold]{task.fields[status]}"),
-            TimeElapsedColumn(), console=console,
+            TimeElapsedColumn(), TextColumn("⏳ ETA:"), TimeRemainingColumn(), console=console,
         ) as api_progress:
             api_task = api_progress.add_task("[cyan]Đang chuẩn hóa địa chỉ...", total=total_addrs, status="")
             for i in range(0, total_addrs, batch_size):
