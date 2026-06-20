@@ -58,43 +58,63 @@
             <h1
                 class="font-heading text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-3 tracking-tight">
                 Scanner Pro</h1>
-            <p class="text-slate-400 text-lg font-medium">Hệ thống trích xuất mã QR CCCD tự động siêu tốc</p>
+            <p class="text-slate-400 text-lg font-medium">Hệ thống trích xuất dữ liệu CCCD tự động siêu tốc</p>
         </div>
 
         <!-- Room Info & Join -->
         <div id="roomJoinSection" class="flex flex-col items-center justify-center mb-8 w-full max-w-md mx-auto">
             <div class="bg-slate-800/80 p-5 rounded-2xl border border-indigo-500/30 w-full shadow-lg">
                 <h3 class="text-lg font-semibold text-white mb-2 text-center">Khôi phục Dữ liệu / Đồng bộ</h3>
-                <p class="text-xs text-slate-400 text-center mb-4">Mỗi phiên làm việc được lưu kép 10 ngày. Nhập Mã phiên để khôi phục hoặc làm việc nhóm.</p>
+                <p class="text-xs text-slate-400 text-center mb-4">Mỗi phiên làm việc được lưu kép 10 ngày. Nhập Mã
+                    phiên để khôi phục hoặc làm việc nhóm.</p>
                 <div class="flex gap-2">
-                    <input type="text" id="roomCodeInput" placeholder="Nhập mã phiên..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono uppercase text-center">
-                    <button id="btnJoinRoom" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-xl transition-colors">Vào phiên</button>
+                    <input type="text" id="roomCodeInput" placeholder="Nhập mã phiên..."
+                        class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono uppercase text-center">
+                    <button id="btnJoinRoom"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-xl transition-colors">Vào
+                        phiên</button>
                 </div>
                 <div class="text-center mt-3">
                     <span class="text-slate-400 text-sm">Hoặc</span>
-                    <button id="btnCreateRoom" class="text-indigo-400 hover:text-indigo-300 font-medium text-sm ml-1 underline">Tạo mã phiên mới</button>
+                    <button id="btnCreateRoom"
+                        class="text-indigo-400 hover:text-indigo-300 font-medium text-sm ml-1 underline">Tạo mã phiên
+                        mới</button>
                 </div>
             </div>
         </div>
 
         <div id="roomActiveSection" class="hidden flex-col items-center justify-center mb-8 w-full">
-            <div class="bg-indigo-900/30 px-6 py-3 rounded-full border border-indigo-500/30 flex flex-col md:flex-row items-center gap-4 shadow-lg shadow-indigo-500/10">
+            <div
+                class="bg-indigo-900/30 px-6 py-3 rounded-full border border-indigo-500/30 flex flex-col md:flex-row items-center gap-4 shadow-lg shadow-indigo-500/10">
                 <div class="flex items-center gap-2">
                     <span class="relative flex h-3 w-3">
-                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                     </span>
                     <span class="text-slate-300 font-medium">Mã Khôi Phục / Phòng:</span>
-                    <span id="activeRoomCode" class="text-emerald-400 font-bold font-mono tracking-widest text-lg">---</span>
-                    <button id="btnCopyRoomCode" class="text-slate-400 hover:text-indigo-400 p-1.5 rounded-lg hover:bg-indigo-500/10 transition-colors ml-1" title="Copy mã phòng">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    <span id="activeRoomCode"
+                        class="text-emerald-400 font-bold font-mono tracking-widest text-lg">---</span>
+                    <button id="btnCopyRoomCode"
+                        class="text-slate-400 hover:text-indigo-400 p-1.5 rounded-lg hover:bg-indigo-500/10 transition-colors ml-1"
+                        title="Copy mã phòng">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                            </path>
+                        </svg>
                     </button>
                 </div>
                 <div class="hidden md:block h-6 w-px bg-slate-700"></div>
                 <span class="text-xs text-indigo-300">⚠️ Hãy lưu mã này để khôi phục trong 10 ngày!</span>
                 <div class="hidden md:block h-6 w-px bg-slate-700"></div>
-                <button id="btnLeaveRoom" class="text-red-400 hover:text-red-300 font-medium text-sm flex items-center gap-1 transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                <button id="btnLeaveRoom"
+                    class="text-red-400 hover:text-red-300 font-medium text-sm flex items-center gap-1 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                        </path>
+                    </svg>
                     Thoát
                 </button>
             </div>
@@ -149,7 +169,8 @@
                 <div id="fileSection" class="tab-content hidden flex-none flex-col justify-center">
                     <div
                         class="upload-area group relative overflow-hidden rounded-3xl py-8 px-4 text-center transition-all bg-slate-800/30 border-2 border-dashed border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-900/10 h-48 flex flex-col items-center justify-center">
-                        <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.heic,image/jpeg,image/png,image/heic"
+                        <input type="file" id="fileInput" multiple
+                            accept=".jpg,.jpeg,.png,.heic,image/jpeg,image/png,image/heic"
                             class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
                         <div
                             class="relative z-10 flex flex-col items-center justify-center pointer-events-none transform transition-transform duration-300 group-hover:-translate-y-2">
@@ -164,7 +185,8 @@
                             </div>
                             <span class="text-xl font-heading font-bold text-slate-200">Kéo thả hoặc Nhấn tải
                                 ảnh</span>
-                            <span class="text-indigo-400 text-sm font-medium mt-1">Hỗ trợ .jpg, .jpeg, .png, .heic</span>
+                            <span class="text-indigo-400 text-sm font-medium mt-1">Hỗ trợ .jpg, .jpeg, .png,
+                                .heic</span>
                             <span class="text-slate-500 text-xs mt-1 block">Có thể chọn nhiều file cùng lúc</span>
                         </div>
                     </div>
@@ -184,8 +206,12 @@
                             </svg>
                             Đang xử lý: <span id="progressText" class="text-white font-bold ml-1">0/0</span>
                         </h3>
-                        <button id="btnCancelImport" class="hidden px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        <button id="btnCancelImport"
+                            class="hidden px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
                             Dừng quét
                         </button>
                     </div>
@@ -200,7 +226,8 @@
             </div>
 
             <!-- Right Column: Results & Export -->
-            <div class="flex flex-col lg:h-full bg-slate-800/20 rounded-3xl border border-slate-700/30 p-4 md:p-6 shadow-lg min-h-0">
+            <div
+                class="flex flex-col lg:h-full bg-slate-800/20 rounded-3xl border border-slate-700/30 p-4 md:p-6 shadow-lg min-h-0">
 
                 <div class="flex justify-between items-center mb-6 border-b border-slate-700/50 pb-4">
                     <div>
@@ -268,7 +295,8 @@
                                 <span>Chuẩn hóa địa chỉ</span>
                                 <span id="apiProgressText" class="font-bold">0/0</span>
                             </div>
-                            <div class="w-full bg-slate-800/50 rounded-full h-1.5 border border-indigo-500/30 overflow-hidden">
+                            <div
+                                class="w-full bg-slate-800/50 rounded-full h-1.5 border border-indigo-500/30 overflow-hidden">
                                 <div class="bg-gradient-to-r from-blue-400 to-indigo-400 h-1.5 rounded-full transition-all duration-300"
                                     id="apiProgressFill" style="width: 0%"></div>
                             </div>

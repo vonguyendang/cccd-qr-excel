@@ -3426,7 +3426,7 @@ def run_reprocess(excel_path, normalize_address=True):
 
 def main():
     global DEBUG_MODE
-    console.print(Panel.fit("[bold green]🚀 PHẦN MỀM TRÍCH XUẤT MÃ QR TỪ ẢNH CCCD RA EXCEL[/bold green]", border_style="cyan", padding=(1, 5)))
+    console.print(Panel.fit("[bold green]🚀 PHẦN MỀM TRÍCH XUẤT DỮ LIỆU TỪ ẢNH CCCD RA EXCEL[/bold green]", border_style="cyan", padding=(1, 5)))
     
     with console.status("[bold green]Đang khởi tạo model AI...", spinner="dots"):
         init_models()
