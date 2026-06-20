@@ -1834,6 +1834,7 @@ def run_wizard(input_dir, normalize_address=True):
     image_paths = get_unique_images(image_paths)
 
     console.print(f"\n[bold green]✅ Đã quét thư mục và chuẩn bị xử lý {len(image_paths)} file ảnh.[/bold green]")
+    all_original_image_paths = image_paths.copy()
     
     # --- INCREMENTAL SCAN LOGIC ---
     incremental_scan = False
@@ -1946,6 +1947,25 @@ def run_wizard(input_dir, normalize_address=True):
             console.print(f"[red]❌ Lỗi đọc file Excel cũ: {e}[/red]")
             incremental_scan = False
                     
+    realtime_csv = os.path.join(input_dir, "ket_qua_scan_tam_thoi.csv")
+    realtime_log = os.path.join(input_dir, "log_scan_tam_thoi.txt")
+    crashed_items = []
+    
+    if os.path.exists(realtime_csv):
+        try:
+            import csv
+            with open(realtime_csv, 'r', encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    crashed_items.append(row)
+                    if row.get('Image Path'):
+                        processed_images_set.add(row['Image Path'])
+            if crashed_items:
+                console.print(f"[bold green]✅ Đã phục hồi {len(crashed_items)} kết quả scan bị gián đoạn từ {os.path.basename(realtime_csv)}.[/bold green]")
+                incremental_scan = True
+        except Exception as e:
+            pass
+
     if incremental_scan:
         new_image_paths = [p for p in image_paths if os.path.basename(p) not in processed_images_set]
         
@@ -2165,7 +2185,7 @@ def run_wizard(input_dir, normalize_address=True):
     records = {} # mapping CCCD -> record
     
     # Process images in parallel and collect all returned raw data
-    extracted_items = []
+    extracted_items = crashed_items.copy() if 'crashed_items' in locals() else []
     
     progress = Progress(
         SpinnerColumn(),
@@ -2187,6 +2207,25 @@ def run_wizard(input_dir, normalize_address=True):
                 try:
                     row_data, log_msgs = future.result()
                     extracted_items.append(row_data)
+                    
+                    # Ghi realtime backup
+                    try:
+                        import csv
+                        file_exists = os.path.exists(realtime_csv) and os.path.getsize(realtime_csv) > 0
+                        csv_keys = ['Họ tên', 'CCCD', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Địa chỉ chuẩn hóa mới', 'Ngày cấp CCCD', 'Nơi cấp', 'Ngày hết hạn', 'Phân loại', 'Ghi chú', 'QR Raw', 'Image Path', 'Full Image Path', 'Scan Type', 'OCR Side', 'Raw Text Upper', 'Raw Text']
+                        with open(realtime_csv, 'a', newline='', encoding='utf-8-sig') as f:
+                            writer = csv.DictWriter(f, fieldnames=csv_keys, extrasaction='ignore')
+                            if not file_exists:
+                                writer.writeheader()
+                            writer.writerow(row_data)
+                    except Exception: pass
+                    
+                    try:
+                        with open(realtime_log, 'a', encoding='utf-8') as f:
+                            f.write(f"[{os.path.basename(img_path)}] - {img_path}\n")
+                            for msg in log_msgs:
+                                f.write("  " + Text.from_markup(msg).plain + "\n")
+                    except Exception: pass
                     
                     # Print logs for this image above the progress bar
                     progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim]")
@@ -2773,7 +2812,7 @@ def run_wizard(input_dir, normalize_address=True):
         # 1. original.zip
         original_zip_path = os.path.join(exports_dir, 'original.zip')
         with zipfile.ZipFile(original_zip_path, 'w') as zf:
-            for path in image_paths:
+            for path in all_original_image_paths:
                 if os.path.exists(path):
                     zf.write(path, os.path.basename(path))
         console.print(f" [green]✓[/green] Đã tạo [bold]original.zip[/bold] với {len(image_paths)} file.")
@@ -2786,11 +2825,17 @@ def run_wizard(input_dir, normalize_address=True):
                 folder = "CCCD" if row.get("Phân loại") == "Căn cước công dân" else "CC"
                 
                 front_path = row.get('Full Image Path Front')
+                if front_path and not os.path.exists(front_path):
+                    fallback = os.path.join(input_dir, os.path.basename(front_path))
+                    if os.path.exists(fallback): front_path = fallback
                 if front_path and os.path.exists(front_path) and row.get('Đổi tên Ảnh mặt trước CCCD/CC'):
                     zf.write(front_path, f"{folder}/{row['Đổi tên Ảnh mặt trước CCCD/CC']}")
                     count_rename += 1
                     
                 back_path = row.get('Full Image Path Back')
+                if back_path and not os.path.exists(back_path):
+                    fallback = os.path.join(input_dir, os.path.basename(back_path))
+                    if os.path.exists(fallback): back_path = fallback
                 if back_path and os.path.exists(back_path) and row.get('Đổi tên Ảnh mặt sau CCCD/CC'):
                     zf.write(back_path, f"{folder}/{row['Đổi tên Ảnh mặt sau CCCD/CC']}")
                     count_rename += 1
@@ -2804,6 +2849,9 @@ def run_wizard(input_dir, normalize_address=True):
             zip_path = os.path.join(exports_dir, zip_name)
             with zipfile.ZipFile(zip_path, 'w') as zf:
                 for fpath in file_paths:
+                    if not os.path.exists(fpath):
+                        fallback = os.path.join(input_dir, os.path.basename(fpath))
+                        if os.path.exists(fallback): fpath = fallback
                     if os.path.exists(fpath):
                         zf.write(fpath, os.path.basename(fpath))
             console.print(f" [green]✓[/green] Đã tạo [bold]{zip_name}[/bold] với {len(file_paths)} file.")
@@ -2866,6 +2914,12 @@ def run_wizard(input_dir, normalize_address=True):
         f.write("\n".join(file_logs))
     console.print(f"File log chi tiết được lưu tại: [yellow]{os.path.abspath(log_filename)}[/yellow]")
     console.print("🎉"*15 + "\n")
+    
+    # Xoá file backup tạm sau khi hoàn tất thành công
+    try:
+        if 'realtime_csv' in locals() and os.path.exists(realtime_csv): os.remove(realtime_csv)
+        if 'realtime_log' in locals() and os.path.exists(realtime_log): os.remove(realtime_log)
+    except: pass
 
 
 
