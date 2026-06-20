@@ -1695,8 +1695,16 @@ def call_address_api(address_list, max_workers=4):
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn, TimeRemainingColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn, TimeRemainingColumn, ProgressColumn
 from rich.prompt import Prompt, Confirm
+
+class CountColumn(ProgressColumn):
+    def render(self, task):
+        from rich.text import Text
+        completed = int(task.completed)
+        total = int(task.total) if task.total else 0
+        remaining = total - completed
+        return Text(f"[Xong: {completed}/{total} | Còn: {remaining}/{total}]", style="green")
 
 console = Console()
 
@@ -2158,6 +2166,7 @@ def run_wizard(input_dir, normalize_address=True):
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
         TaskProgressColumn(),
+        CountColumn(),
         TimeElapsedColumn(),
         TextColumn("⏳ ETA:"),
         TimeRemainingColumn(),
@@ -3223,7 +3232,7 @@ def run_reprocess(excel_path, normalize_address=True):
             
     with Progress(
         SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
-        BarColumn(), TaskProgressColumn(), TimeElapsedColumn(),
+        BarColumn(), TaskProgressColumn(), CountColumn(), TimeElapsedColumn(),
         TextColumn("⏳ ETA:"), TimeRemainingColumn(),
         console=console,
     ) as progress:
