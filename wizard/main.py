@@ -829,106 +829,165 @@ def order_points(pts):
     rect[3] = pts[np.argmax(diff)]
     return rect
 
+USE_OPENCV_ALIGN_FIRST = True
+
+def _align_card_opencv(img, target_width=1000, target_height=630):
+    import cv2
+    import numpy as np
+    
+    # Resize to a smaller, standard size for robust edge detection
+    h, w = img.shape[:2]
+    ratio = 800.0 / h
+    small_img = cv2.resize(img, (int(w * ratio), 800))
+    
+    gray = cv2.cvtColor(small_img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.GaussianBlur(gray, (5, 5), 0)
+    
+    # Enhance contrast
+    gray = cv2.equalizeHist(gray)
+    
+    # Edge detection
+    edged = cv2.Canny(gray, 30, 150)
+    
+    # Morphology to close gaps in the edge of the card
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    edged = cv2.morphologyEx(edged, cv2.MORPH_CLOSE, kernel)
+    
+    cnts, _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not cnts:
+        return None, None
+        
+    cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
+    
+    img_area = small_img.shape[0] * small_img.shape[1]
+    
+    screenCnt = None
+    for c in cnts:
+        # Check area: ID card should be relatively large (at least 30% of the image)
+        area = cv2.contourArea(c)
+        if area < img_area * 0.30:
+            continue
+            
+        peri = cv2.arcLength(c, True)
+        
+        # Try multiple epsilons to find a 4-point contour
+        for eps in [0.02, 0.03, 0.04, 0.05]:
+            approx = cv2.approxPolyDP(c, eps * peri, True)
+            if len(approx) == 4 and cv2.isContourConvex(approx):
+                pts = approx.reshape(4, 2)
+                rect_pts = order_points(pts.astype("float32"))
+                w_side = (np.linalg.norm(rect_pts[1] - rect_pts[0]) + np.linalg.norm(rect_pts[2] - rect_pts[3])) / 2
+                h_side = (np.linalg.norm(rect_pts[3] - rect_pts[0]) + np.linalg.norm(rect_pts[2] - rect_pts[1])) / 2
+                if h_side < 10: continue
+                aspect_ratio = max(w_side, h_side) / min(w_side, h_side)
+                
+                # CCCD aspect ratio is approx 1.58 (85.6mm / 53.98mm)
+                if 1.3 <= aspect_ratio <= 1.8:
+                    screenCnt = approx
+                    break
+        if screenCnt is not None:
+            break
+            
+    if screenCnt is not None:
+        # Scale points back to original image size
+        screenCnt = (screenCnt / ratio).astype("int")
+        pts = screenCnt.reshape(4, 2)
+        rect = order_points(pts.astype("float32"))
+        return rect, "opencv_contour"
+        
+    return None, None
+
+def _align_card_onnx(img):
+    import cv2
+    import numpy as np
+    
+    scale = 0.5
+    h, w = img.shape[:2]
+    small_img = cv2.resize(img, (int(w * scale), int(h * scale)))
+    
+    from vietocr_engine import get_ocr_engine
+    ocr = get_ocr_engine()
+    bxs = ocr(small_img, 0)
+    
+    if bxs:
+        min_x = float('inf')
+        min_y = float('inf')
+        max_x = 0
+        max_y = 0
+        
+        for box, text in bxs:
+            for pt in box:
+                x, y = pt
+                min_x = min(min_x, x)
+                min_y = min(min_y, y)
+                max_x = max(max_x, x)
+                max_y = max(max_y, y)
+                
+        min_x = int(min_x / scale)
+        min_y = int(min_y / scale)
+        max_x = int(max_x / scale)
+        max_y = int(max_y / scale)
+        
+        margin_x = int((max_x - min_x) * 0.05)
+        margin_y = int((max_y - min_y) * 0.05)
+        
+        min_x = max(0, min_x - margin_x)
+        min_y = max(0, min_y - margin_y)
+        max_x = min(w, max_x + margin_x)
+        max_y = min(h, max_y + margin_y)
+        
+        rect = np.array([
+            [min_x, min_y],
+            [max_x, min_y],
+            [max_x, max_y],
+            [min_x, max_y]
+        ], dtype="float32")
+        
+        return rect, "onnx_cluster"
+        
+    return None, None
+
 def align_card(img, target_width=1000, target_height=630):
     import cv2
     import numpy as np
     original = img.copy()
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gray = cv2.bilateralFilter(gray, 11, 17, 17)
-    edged = cv2.Canny(gray, 30, 200)
-    
     debug_img = original.copy()
     
-    # 1. Thử Contour 4 góc
-    cnts, _ = cv2.findContours(edged.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:10]
+    rect = None
+    method = ""
     
-    screenCnt = None
-    for c in cnts:
-        peri = cv2.arcLength(c, True)
-        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
-        if len(approx) == 4:
-            # Kiểm tra tỷ lệ khung hình: thẻ CCCD có tỷ lệ ~3:2 (≈1.58)
-            # Chấp nhận range 1.2 đến 2.2 để bao quát cả ảnh chụp nghiêng
-            pts = approx.reshape(4, 2)
-            rect_pts = order_points(pts.astype("float32"))
-            w_side = (np.linalg.norm(rect_pts[1] - rect_pts[0]) + np.linalg.norm(rect_pts[2] - rect_pts[3])) / 2
-            h_side = (np.linalg.norm(rect_pts[3] - rect_pts[0]) + np.linalg.norm(rect_pts[2] - rect_pts[1])) / 2
-            if h_side < 10: continue
-            ratio = max(w_side, h_side) / min(w_side, h_side)
-            if ratio < 1.2 or ratio > 2.2:
-                continue  # Bỏ qua: không phải hình dạng thẻ (quá vuông hoặc quá dài)
-            screenCnt = approx
-            break
-            
-    if screenCnt is not None:
-        cv2.drawContours(debug_img, [screenCnt], -1, (0, 255, 0), 5)
-        pts = screenCnt.reshape(4, 2)
-        rect = order_points(pts)
-        method = "contour"
-    else:
-        # 2. Thử Fallback bằng OCR clustering
-        scale = 0.5
-        h, w = img.shape[:2]
-        small_img = cv2.resize(img, (int(w * scale), int(h * scale)))
+    if USE_OPENCV_ALIGN_FIRST:
+        rect, method = _align_card_opencv(img, target_width, target_height)
         
-        from vietocr_engine import get_ocr_engine
-        ocr = get_ocr_engine()
-        bxs = ocr(small_img, 0)
+    if rect is None:
+        # Fallback to ONNX clustering
+        rect, method = _align_card_onnx(img)
         
-        if bxs:
-            min_x = float('inf')
-            min_y = float('inf')
-            max_x = 0
-            max_y = 0
-            
-            for box, text in bxs:
-                for pt in box:
-                    x, y = pt
-                    min_x = min(min_x, x)
-                    min_y = min(min_y, y)
-                    max_x = max(max_x, x)
-                    max_y = max(max_y, y)
-                    
-            min_x = int(min_x / scale)
-            min_y = int(min_y / scale)
-            max_x = int(max_x / scale)
-            max_y = int(max_y / scale)
-            
-            margin_x = int((max_x - min_x) * 0.05)
-            margin_y = int((max_y - min_y) * 0.05)
-            
-            min_x = max(0, min_x - margin_x)
-            min_y = max(0, min_y - margin_y)
-            max_x = min(w, max_x + margin_x)
-            max_y = min(h, max_y + margin_y)
-            
-            rect = np.array([
-                [min_x, min_y],
-                [max_x, min_y],
-                [max_x, max_y],
-                [min_x, max_y]
-            ], dtype="float32")
-            
-            cv2.rectangle(debug_img, (min_x, min_y), (max_x, max_y), (255, 0, 0), 5)
-            method = "ocr_cluster"
+    if rect is None:
+        # Fallback cuối cùng bằng minAreaRect trên mask
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+        morph = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        cnts, _ = cv2.findContours(morph.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if len(cnts) > 0:
+            c = max(cnts, key=cv2.contourArea)
+            min_rect = cv2.minAreaRect(c)
+            box = cv2.boxPoints(min_rect)
+            box = np.intp(box)
+            rect = order_points(box.astype("float32"))
+            method = "minAreaRect"
         else:
-            # 3. Fallback cuối cùng bằng minAreaRect trên mask
-            _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
-            morph = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-            cnts, _ = cv2.findContours(morph.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            return original, debug_img, "failed"
             
-            if len(cnts) > 0:
-                c = max(cnts, key=cv2.contourArea)
-                min_rect = cv2.minAreaRect(c)
-                box = cv2.boxPoints(min_rect)
-                box = np.intp(box)
-                cv2.drawContours(debug_img, [box], -1, (0, 0, 255), 5)
-                rect = order_points(box.astype("float32"))
-                method = "minAreaRect"
-            else:
-                return original, debug_img, "failed"
+    # Draw debug points
+    if method == "opencv_contour" or method == "minAreaRect":
+        cv2.drawContours(debug_img, [rect.astype("int")], -1, (0, 255, 0) if method == "opencv_contour" else (0, 0, 255), 5)
+    elif method == "onnx_cluster":
+        min_x, min_y = int(rect[0][0]), int(rect[0][1])
+        max_x, max_y = int(rect[2][0]), int(rect[2][1])
+        cv2.rectangle(debug_img, (min_x, min_y), (max_x, max_y), (255, 0, 0), 5)
 
     # Xử lý Warp Perspective
     w1 = np.linalg.norm(rect[2] - rect[3])
@@ -980,6 +1039,12 @@ def extract_ocr_data(image_path_or_cv2img):
         import numpy as np
         import warnings
         import os
+        import time
+        
+        # Benchmarking data
+        global _last_timing
+        _last_timing = {}
+        t_start_all = time.time()
         
         has_glare_warning = False
         
@@ -994,7 +1059,10 @@ def extract_ocr_data(image_path_or_cv2img):
                 return result
 
         # --- BƯỚC 1: XÁC ĐỊNH BIÊN VÀ LÀM PHẲNG THẺ ---
+        t0 = time.time()
         card_img, debug_detect_img, align_method = align_card(img_to_ocr)
+        _last_timing['detect_and_align_card'] = time.time() - t0
+        _last_timing['align_method'] = align_method
         
         debug_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "debug")
         os.makedirs(debug_dir, exist_ok=True)
@@ -1008,12 +1076,18 @@ def extract_ocr_data(image_path_or_cv2img):
         cv2.imwrite(os.path.join(debug_dir, "warped_card_normalized.jpg"), card_img)
 
         # --- BƯỚC 2: TÌM HƯỚNG XOAY CHUẨN DỰA TRÊN WARPED CARD ---
-        rotations = [
-            (None, "Không xoay"),
-            (cv2.ROTATE_90_COUNTERCLOCKWISE, "Xoay trái 90 độ"),
-            (cv2.ROTATE_90_CLOCKWISE, "Xoay phải 90 độ"),
-            (cv2.ROTATE_180, "Xoay 180 độ")
-        ]
+        if align_method == "opencv_contour":
+            rotations = [
+                (None, "Không xoay"),
+                (cv2.ROTATE_180, "Xoay 180 độ")
+            ]
+        else:
+            rotations = [
+                (None, "Không xoay"),
+                (cv2.ROTATE_90_COUNTERCLOCKWISE, "Xoay trái 90 độ"),
+                (cv2.ROTATE_90_CLOCKWISE, "Xoay phải 90 độ"),
+                (cv2.ROTATE_180, "Xoay 180 độ")
+            ]
         
         is_back_side = False
         best_rot_score = -1
@@ -1023,6 +1097,8 @@ def extract_ocr_data(image_path_or_cv2img):
         best_mrz_lines = []
         best_thresh_bottom_img = None
         
+        t0_rot = time.time()
+        t_ocr_total = 0
         for rot_code, rot_name in rotations:
             rotated = card_img if rot_code is None else cv2.rotate(card_img, rot_code)
             hr, wr = rotated.shape[:2]
@@ -1038,7 +1114,9 @@ def extract_ocr_data(image_path_or_cv2img):
             mrz_contrast = cv2.cvtColor(cv2.merge((l2,a,b)), cv2.COLOR_LAB2BGR)
             
             # Lấy text bằng VietOCR
+            t_ocr_start = time.time()
             text_bottom = safe_extract_text(mrz_contrast)
+            t_ocr_total += (time.time() - t_ocr_start)
             thresh_bottom = mrz_contrast # fallback debug image
             
             # Đánh giá điểm (Score)
@@ -1066,6 +1144,9 @@ def extract_ocr_data(image_path_or_cv2img):
             # Dừng sớm nếu đã nhận ra mặt sau với độ tin cậy cao (có cả IDVNM lẫn VNM)
             if best_rot_score >= 700:
                 break
+        
+        _last_timing['orientation_detection'] = (time.time() - t0_rot) - t_ocr_total
+        _last_timing['ocr_full_card'] = t_ocr_total
                 
         # --- BƯỚC 3: XỬ LÝ THEO MẶT THẺ ---
         best_data = {'CCCD': '', 'Họ tên': '', 'Ngày sinh': '', 'OCR Side': '', 'Raw Text Upper': ''}
@@ -1084,6 +1165,7 @@ def extract_ocr_data(image_path_or_cv2img):
             cv2.imwrite(os.path.join(debug_dir, "thresholded_mrz.jpg"), best_thresh_bottom_img)
             
             # LUỒNG 1: MRZ
+            t_mrz = time.time()
             bottom_crop = best_back_rotated_img[int(hr * 0.65):hr, :]
             cv2.imwrite(os.path.join(debug_dir, "bottom_region_mrz.jpg"), bottom_crop)
             
@@ -1173,7 +1255,9 @@ def extract_ocr_data(image_path_or_cv2img):
                     pass # Giữ CCCD gốc từ SMS
                 else:
                     if mrz_cccd: best_data['CCCD'] = mrz_cccd
+            _last_timing['mrz_extraction'] = time.time() - t_mrz
             
+            t_ocr_back = time.time()
             # LUỒNG 2: NGÀY CẤP (Top 70%)
             top_crop = best_back_rotated_img[0:int(hr * 0.70), :]
             cv2.imwrite(os.path.join(debug_dir, "top_region_issue_date.jpg"), top_crop)
@@ -1210,6 +1294,7 @@ def extract_ocr_data(image_path_or_cv2img):
             }
             
             best_data['Raw Text'] = f"--- TOP TEXT (Ngày cấp) ---\n{raw_issue_text}\n\n--- BOTTOM TEXT (MRZ) ---\n{best_raw_mrz_text}"
+            _last_timing['ocr_từng_field'] = time.time() - t_ocr_back
             
             return best_data, best_note, rotated_return
             
@@ -1219,13 +1304,21 @@ def extract_ocr_data(image_path_or_cv2img):
             best_note = "Ảnh mờ hoặc không thể nhận diện được"
             rotated_return = None
             
-            # Cần thử cả 4 hướng vì align_card có thể trả về ảnh dọc (nếu chụp thẻ dọc) hoặc ảnh gốc (nếu fail)
-            front_rotations = [
-                (None, "Không xoay"),
-                (cv2.ROTATE_90_COUNTERCLOCKWISE, "Xoay trái 90 độ"),
-                (cv2.ROTATE_90_CLOCKWISE, "Xoay phải 90 độ"),
-                (cv2.ROTATE_180, "Xoay 180 độ")
-            ]
+            # Cần thử hướng xoay vì align_card có thể trả về ảnh bị xoay
+            # Do thuật toán OpenCV luôn canh lề chuẩn hình chữ nhật nằm ngang (landscape),
+            # nên thẻ chỉ có thể nằm đúng chiều (0 độ) hoặc lật ngược (180 độ).
+            if align_method == "opencv_contour":
+                front_rotations = [
+                    (None, "Không xoay"),
+                    (cv2.ROTATE_180, "Xoay 180 độ")
+                ]
+            else:
+                front_rotations = [
+                    (None, "Không xoay"),
+                    (cv2.ROTATE_90_COUNTERCLOCKWISE, "Xoay trái 90 độ"),
+                    (cv2.ROTATE_90_CLOCKWISE, "Xoay phải 90 độ"),
+                    (cv2.ROTATE_180, "Xoay 180 độ")
+                ]
             
             keywords = ["CỘNG HÒA", "ĐỘC LẬP", "CĂN CƯỚC", "SỐ / NO", "HỌ VÀ TÊN"]
             
@@ -1233,6 +1326,10 @@ def extract_ocr_data(image_path_or_cv2img):
             best_front_data = None
             best_front_img = None
             best_front_note = ""
+            
+            t_front_orient = time.time()
+            t_front_ocr = 0
+            t_front_parse = 0
             
             for rot_code, rot_name in front_rotations:
                 rotated = card_img if rot_code is None else cv2.rotate(card_img, rot_code)
@@ -1244,8 +1341,13 @@ def extract_ocr_data(image_path_or_cv2img):
                 l2 = clahe.apply(l)
                 front_contrast = cv2.cvtColor(cv2.merge((l2,a,b)), cv2.COLOR_LAB2BGR)
                 
+                t_o = time.time()
                 text_rot = safe_extract_text(front_contrast)
+                t_front_ocr += (time.time() - t_o)
+                
+                t_p = time.time()
                 data_rot = parse_ocr_text(text_rot)
+                t_front_parse += (time.time() - t_p)
                 
                 # Chấm điểm độ tin cậy của hướng xoay
                 score = 0
@@ -1288,14 +1390,24 @@ def extract_ocr_data(image_path_or_cv2img):
                 if best_front_score >= 300:
                     break
             
+            _last_timing['orientation_detection'] = (time.time() - t_front_orient) - t_front_ocr - t_front_parse
+            _last_timing['ocr_full_card'] = t_front_ocr
+            _last_timing['parse_fields'] = t_front_parse
+            
             # Nếu điểm quá thấp, có thể align_card crop sai hoặc CLAHE làm hỏng text (thường gặp với ảnh chụp màn hình)
             # Fallback về OCR ảnh gốc toàn phần (không làm nét)
             if best_front_score < 50:
+                t_fallback_orient = time.time()
                 for rot_code, rot_name in front_rotations:
                     rotated = img_to_ocr if rot_code is None else cv2.rotate(img_to_ocr, rot_code)
                     
+                    t_o = time.time()
                     text_rot = safe_extract_text(rotated)
+                    _last_timing['ocr_full_card'] += (time.time() - t_o)
+                    
+                    t_p = time.time()
                     data_rot = parse_ocr_text(text_rot)
+                    _last_timing['parse_fields'] += (time.time() - t_p)
                     
                     score = 0
                     if data_rot.get('CCCD'): score += 100
@@ -1383,7 +1495,34 @@ def extract_ocr_data(image_path_or_cv2img):
                     if merged_p3:
                         best_note += " + Làm nét"
 
-            if not best_data['CCCD'] and not best_data['Họ tên'] and not best_data['Ngày sinh']:
+            max_score = 0
+            if 'best_front_score' in locals() and best_front_score > 0:
+                max_score = max(max_score, best_front_score)
+            if 'best_rot_score' in locals() and best_rot_score > 0:
+                max_score = max(max_score, best_rot_score)
+                
+            is_garbage = (not best_data['CCCD'] and not best_data['Họ tên'] and not best_data['Ngày sinh']) or (max_score < 50)
+            
+            is_suspicious_crop = False
+            if best_data['OCR Side'] == 'Front':
+                if not best_data['Họ tên'] or not best_data['CCCD'] or len(best_data['CCCD']) < 12:
+                    is_suspicious_crop = True
+            elif best_data['OCR Side'] == 'Back':
+                # Require either Issue Date or MRZ
+                if not best_data.get('Ngày cấp CCCD') and not best_data.get('CCCD'):
+                    is_suspicious_crop = True
+            
+            if is_garbage or is_suspicious_crop:
+                # Nếu crop OpenCV fail dẫn đến không đọc được chữ, retry bằng ONNX
+                if USE_OPENCV_ALIGN_FIRST and align_method == "opencv_contour":
+                    import wizard.main
+                    wizard.main.USE_OPENCV_ALIGN_FIRST = False
+                    res_data, res_note, res_img = extract_ocr_data(img_to_ocr)
+                    wizard.main.USE_OPENCV_ALIGN_FIRST = True
+                    if res_note:
+                        res_note = res_note + " (OpenCV crop fail, fallback to ONNX)"
+                    return res_data, res_note, res_img
+                    
                 return best_data, "Ảnh mờ hoặc không thể nhận diện được", rotated_return
                 
             return best_data, best_note, rotated_return
