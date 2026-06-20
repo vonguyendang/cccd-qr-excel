@@ -495,6 +495,7 @@ def parse_ocr_text(text):
                     
                     # Fix một số lỗi OCR dính chữ kinh điển TRƯỚC KHI cắt từ rác (để LEDO -> LE DO không bị chém mất)
                     clean_name = clean_name.replace('BICHINHIEN', 'BICH NHIEN')
+                    clean_name = re.sub(r'^TRANH\b', 'TRAN', clean_name)
                     clean_name = re.sub(r'^(LE|TRAN|NGUYEN|PHAM|VU|VO|DANG|BUI|DO|HO|PHAN|LY|HUYNH|HOANG|NGO)(THI|VAN|DO|NGOC|XUAN|HUU|MINH|DUY|QUOC|BAO|TRUNG)\b', r'\1 \2', clean_name)
                     
                     # Loại bỏ các từ rác ở đầu chuỗi do OCR ảo giác (vd: KILL Vu Thuc Uyen -> Vu Thuc Uyen)
@@ -793,7 +794,7 @@ def parse_ocr_text(text):
                             data['Giới tính'] = 'Nam'
         
                     # --- BƯỚC 4.5: TRÍCH XUẤT NGÀY CẤP ---
-                    if ("ngày, tháng, năm" in line_lower or "date, month, year" in line_lower or "date of issue" in line_lower or "cấp" in line_lower or "ngay cap" in line_lower) and "sinh" not in line_lower and "hết hạn" not in line_lower and "expiry" not in line_lower and "birth" not in line_lower:
+                    if ("ngày, tháng, năm" in line_lower or "date, month, year" in line_lower or "date of issue" in line_lower or "cấp" in line_lower or "ngay cap" in line_lower or "cap:" in line_lower or "cap :" in line_lower) and "sinh" not in line_lower and "hết hạn" not in line_lower and "expiry" not in line_lower and "birth" not in line_lower:
                         for j in range(i, min(i+3, len(lines))):
                             m = re.search(r'\b\d{2}/\d{2}/\d{4}\b', lines[j])
                             if m:
