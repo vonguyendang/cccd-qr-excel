@@ -779,7 +779,6 @@ def parse_ocr_text(text):
                         
                         addr_cleaned = clean_address_string(addr)
                         data['Nơi thường trú gốc'] = addr_cleaned
-                        print(f"[OCR Address] Raw: {addr} | Cleaned: {addr_cleaned}")
         
                     # --- BƯỚC 4.4: TRÍCH XUẤT GIỚI TÍNH (Layer 1 - Label-based line scan) ---
                     if "giới tính" in line_lower or "sex" in line_lower or "gioi tinh" in line_lower:
