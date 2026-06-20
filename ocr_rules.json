@@ -8,7 +8,7 @@
     "(?i)\\s+(c[oó]|có)\\s*[:.,]*$",
     "\\b\\d{10,12}\\b",
     "\\b\\d{4}/\\d{4}\\b",
-    "(?i)[,.\\s]+(cccd|có|co\u0301|of)\\s*[:.,]*\\s*$",
+    "(?i)\\b(cccd|có|co\u0301|of)\\s*[:.,]*\\s*$",
     "(?i)\\b(cccd|có|co\u0301)\\b",
     "(?i)\\b(pplace|ppace|i\\s*place|place\\s*ofresic|ofresic|ddate|ddte|ddate\\s*issue|date\\s*issue|date\\s*ferpiry|ferpiry|ferp[a-z]+|nam\\s+linh|indent|disconning|nterting|interting|disconnected|issue|noi\\s*dang\\s*ky)\\b",
     "(?<![A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂẮẶẦẤƠỜƯỚƯỪ])\\b[A-Z]{6,}\\b",
