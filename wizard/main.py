@@ -1311,6 +1311,10 @@ def extract_ocr_data(image_path_or_cv2img):
                     pass # Giữ CCCD gốc từ SMS
                 else:
                     if mrz_cccd: best_data['CCCD'] = mrz_cccd
+                    
+                mrz_gender = temp_data.get('Giới tính', '') or (temp_data_vietocr.get('Giới tính', '') if 'temp_data_vietocr' in locals() else '')
+                if mrz_gender and not best_data.get('Giới tính'):
+                    best_data['Giới tính'] = mrz_gender
             _last_timing['mrz_extraction'] = time.time() - t_mrz
             
             t_ocr_back = time.time()
