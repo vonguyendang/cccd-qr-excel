@@ -2210,8 +2210,9 @@ def run_wizard(input_dir, normalize_address=True):
                     except Exception: pass
                     
                     # Print logs for this image above the progress bar
-                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim]")
-                    file_logs.append(f"[{os.path.basename(img_path)}] - {img_path}")
+                    p_time = row_data.get('_processing_time', 0)
+                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim] - [yellow]Timing {p_time:.1f}s[/yellow]")
+                    file_logs.append(f"[{os.path.basename(img_path)}] - {img_path} - Timing {p_time:.1f}s")
                     for msg in log_msgs:
                         progress.console.print(f"  {msg}")
                         file_logs.append("  " + Text.from_markup(msg).plain)
@@ -3309,8 +3310,9 @@ def run_reprocess(excel_path, normalize_address=True):
                             f.write('\n')
                     except: pass
                     
-                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim]")
-                    file_logs.append(f"[{os.path.basename(img_path)}] - {img_path}")
+                    p_time = row_data.get('_processing_time', 0)
+                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim] - [yellow]Timing {p_time:.1f}s[/yellow]")
+                    file_logs.append(f"[{os.path.basename(img_path)}] - {img_path} - Timing {p_time:.1f}s")
                     for msg in log_msgs:
                         progress.console.print(f"  {msg}")
                         file_logs.append("  " + Text.from_markup(msg).plain)
