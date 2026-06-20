@@ -1793,7 +1793,9 @@ def run_wizard(input_dir, normalize_address=True):
         Prompt.ask("[dim]Nhấn Enter để thử lại...[/dim]")
         return
 
+    total_raw_images = len(image_paths)
     image_paths = get_unique_images(image_paths)
+    duplicates_count = total_raw_images - len(image_paths)
 
     console.print(f"\n[bold green]✅ Đã quét thư mục và chuẩn bị xử lý {len(image_paths)} file ảnh.[/bold green]")
     all_original_image_paths = image_paths.copy()
@@ -2956,18 +2958,32 @@ def run_wizard(input_dir, normalize_address=True):
     
     from rich.table import Table
     table = Table(title="📊 BÁO CÁO THỐNG KÊ KẾT QUẢ", show_header=True, header_style="bold magenta")
-    table.add_column("Chỉ số đo lường", style="cyan", width=40)
-    table.add_column("Số lượng", justify="right", style="green", width=15)
+    table.add_column("Chỉ số đo lường", style="cyan", width=42)
+    table.add_column("Số lượng", justify="right", style="green", width=12)
+    table.add_column("Tỉ lệ", justify="right", style="yellow", width=10)
     
-    table.add_row("Tổng số ảnh đã đưa vào xử lý", str(len(all_original_image_paths)))
-    table.add_row("Tổng số hồ sơ (công dân) hợp lệ", str(len(processed_data)))
+    table.add_row("[bold]1. THỐNG KÊ ẢNH ĐẦU VÀO[/bold]", "", "")
+    total_imgs = total_raw_images
+    table.add_row("Tổng số file ảnh đã đọc", str(total_imgs), "100.0%")
+    table.add_row("Ảnh trùng lặp bị tự động loại bỏ", str(duplicates_count), f"{(duplicates_count/total_imgs*100):.1f}%" if total_imgs else "0.0%")
+    table.add_row("Ảnh rác / Không thể phân loại (Unknown)", str(len(unknown_image_paths)), f"{(len(unknown_image_paths)/total_imgs*100):.1f}%" if total_imgs else "0.0%")
+    valid_imgs = len(all_original_image_paths) - len(unknown_image_paths)
+    table.add_row("Ảnh đưa vào trích xuất thành công", str(valid_imgs), f"{(valid_imgs/total_imgs*100):.1f}%" if total_imgs else "0.0%")
     
-    qr_count = sum(1 for r in processed_data if 'Lấy bằng OCR' not in str(r.get('Ghi chú', '')))
-    ocr_count = sum(1 for r in processed_data if 'Lấy bằng OCR' in str(r.get('Ghi chú', '')))
-    table.add_row("Dữ liệu trích xuất chuẩn xác bằng QR", str(qr_count))
-    table.add_row("Dữ liệu cứu hộ thành công bằng AI OCR", str(ocr_count))
-    table.add_row("Hồ sơ thiếu/lỗi cần kiểm tra lại (Review)", str(len(review_rows)))
-    table.add_row("Ảnh rác / Không thể phân loại (Unknown)", str(len(unknown_image_paths)))
+    table.add_row("", "", "")
+    table.add_row("[bold]2. THỐNG KÊ HỒ SƠ (CÔNG DÂN)[/bold]", "", "")
+    total_profiles = len(processed_data) + len(review_rows)
+    table.add_row("Tổng số hồ sơ (công dân) quét được", str(total_profiles), "100.0%" if total_profiles else "0.0%")
+    table.add_row("Hồ sơ hoàn thiện đầy đủ", str(len(processed_data)), f"{(len(processed_data)/total_profiles*100):.1f}%" if total_profiles else "0.0%")
+    table.add_row("Hồ sơ thiếu/lỗi cần kiểm tra (Review)", str(len(review_rows)), f"{(len(review_rows)/total_profiles*100):.1f}%" if total_profiles else "0.0%")
+    
+    table.add_row("", "", "")
+    table.add_row("[bold]3. THỐNG KÊ THEO CÔNG NGHỆ[/bold]", "", "")
+    qr_count = sum(1 for r in processed_data if 'Lấy bằng OCR' not in str(r.get('Ghi chú', ''))) + sum(1 for r, _ in review_rows if 'Lấy bằng OCR' not in str(r.get('Ghi chú', '')))
+    ocr_count = sum(1 for r in processed_data if 'Lấy bằng OCR' in str(r.get('Ghi chú', ''))) + sum(1 for r, _ in review_rows if 'Lấy bằng OCR' in str(r.get('Ghi chú', '')))
+    
+    table.add_row("Dữ liệu trích xuất chuẩn xác bằng mã QR", str(qr_count), f"{(qr_count/total_profiles*100):.1f}%" if total_profiles else "0.0%")
+    table.add_row("Dữ liệu cứu hộ thành công bằng AI OCR", str(ocr_count), f"{(ocr_count/total_profiles*100):.1f}%" if total_profiles else "0.0%")
     
     console.print(table)
     console.print()
@@ -3428,16 +3444,18 @@ def run_reprocess(excel_path, normalize_address=True):
 
     from rich.table import Table
     table = Table(title="📊 BÁO CÁO THỐNG KÊ TÁI XỬ LÝ", show_header=True, header_style="bold magenta")
-    table.add_column("Chỉ số đo lường", style="cyan", width=40)
-    table.add_column("Số lượng", justify="right", style="green", width=15)
+    table.add_column("Chỉ số đo lường", style="cyan", width=42)
+    table.add_column("Số lượng", justify="right", style="green", width=12)
+    table.add_column("Tỉ lệ", justify="right", style="yellow", width=10)
     
-    table.add_row("Tổng số dòng trong Excel", str(len(rows_to_process)))
-    table.add_row("Tổng số ảnh đã đưa vào quét lại", str(len(all_images_to_process)))
+    total_imgs = len(all_images_to_process)
+    table.add_row("Tổng số dòng trong Excel", str(len(rows_to_process)), "")
+    table.add_row("Tổng số ảnh đã đưa vào quét lại", str(total_imgs), "100.0%" if total_imgs else "0.0%")
     
     qr_count = sum(1 for r in img_results.values() if 'Lấy bằng OCR' not in str(r.get('Ghi chú', '')))
     ocr_count = sum(1 for r in img_results.values() if 'Lấy bằng OCR' in str(r.get('Ghi chú', '')))
-    table.add_row("Số ảnh đọc mã QR thành công", str(qr_count))
-    table.add_row("Số ảnh phải dùng AI OCR để cứu", str(ocr_count))
+    table.add_row("Số ảnh đọc mã QR thành công", str(qr_count), f"{(qr_count/total_imgs*100):.1f}%" if total_imgs else "0.0%")
+    table.add_row("Số ảnh phải dùng AI OCR để cứu", str(ocr_count), f"{(ocr_count/total_imgs*100):.1f}%" if total_imgs else "0.0%")
     
     console.print(table)
     console.print()
