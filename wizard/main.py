@@ -269,6 +269,8 @@ def parse_ocr_text(text):
                     'OCR Side': '', 'Raw Text Upper': text.upper() if text else '',
                     'Raw Text': text if text else ''
                 }
+                layer1_gender = ''
+                layer2_gender = ''
 
                 if not text.strip():
                     return data
@@ -352,7 +354,7 @@ def parse_ocr_text(text):
                         data['CCCD'] = valid_cccds[0]
                         data['OCR Side'] = 'Front'
                         for line in text_upper.split('\n'):
-                            if 'SỐ' in line or 'CƯỚC' in line:
+                            if any(kw in line for kw in ['SỐ', 'CƯỚC', 'SO GIAY TO', 'CAN CUOC', 'CCCD', 'ĐỊNH DANH', 'DINH DANH']):
                                 m = re.search(r'(?<!\d)([\d\s]{12,25})(?!\d)', line.replace('O','0'))
                                 if m:
                                     val = re.sub(r'\s+', '', m.group(1))
@@ -365,19 +367,17 @@ def parse_ocr_text(text):
                 all_dates = re.findall(r'(?<!\d)\d{2}/\d{2}/\d{4}(?!\d)', text)
     
                 # ---------------------------------------------------------
-                # 3. TRÍCH XUẤT GIỚI TÍNH (Thuật toán Fallback toàn cục)
-                # Lưu ý: Sẽ bị ghi đè nếu lát nữa vòng lặp đọc được dòng chứa chữ "Giới tính" rõ ràng.
-                # Logic: Đếm số từ 'nam' trong toàn văn bản, sau đó trừ đi chữ 'Việt Nam' (Quốc tịch)
+                # 3. TRÍCH XUẤT GIỚI TÍNH (Layer 2 - Global Fallback)
+                # Lưu ý: Chỉ chạy cho mặt trước. Ưu tiên regex từ độc lập, có word boundary.
                 # ---------------------------------------------------------
                 text_lower = text.lower()
-                # Chỉ đếm giới tính rải rác nếu không phải mặt sau (vì mặt sau không có thông tin giới tính)
                 if data['OCR Side'] != 'Back':
                     nam_count = len(re.findall(r'\bnam\b', text_lower))
-                    vietnam_count = len(re.findall(r'việt nam|viet nam|hà nam|quảng nam|hải nam', text_lower))
+                    vietnam_count = len(re.findall(r'việt nam|viet nam|hà nam|quảng nam|hải nam|đông nam|đồng nam|phương nam|tây nam|nam định', text_lower))
                     if nam_count > vietnam_count:
-                        data['Giới tính'] = 'Nam'
+                        layer2_gender = 'Nam'
                     elif re.search(r'\bn[uưứữ][\s]*\b', text_lower) or re.search(r'\bnữ\b', text_lower):
-                        data['Giới tính'] = 'Nữ'
+                        layer2_gender = 'Nữ'
         
                 # ---------------------------------------------------------
                 # 3b. TRÍCH XUẤT TÊN TỪ MRZ LINE 3 (BACK SIDE)
@@ -410,7 +410,7 @@ def parse_ocr_text(text):
                             s = s.replace(bad, good)
                         s = re.sub(r'[CKEAS<]{3,}$', '', s)
                         # Danh sách âm tiết tên Tiếng Việt phổ biến (không dấu)
-                        common_names = "AN ANH BA BAC BAN BANG BAO BE BEN BICH BINH BO BON CA CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEM DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HO HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUE KHUYEN KIEN KIEU KIM KY LA LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LUA LUAN LUC LUONG LUU LY MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGO NGOC NGOI NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAN TOAI TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UYEN VAN VANG VY VI VIEN VIET VINH VO VONG VU VUONG VY XINH XUA XUAN Y YEN"
+                        common_names = "AN ANH BA BAC BACH BAN BANG BAO BE BEN BICH BINH BO BON BUI CA CAM CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CU CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEM DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HO HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUAT KHUE KHUU KHUYEN KIEN KIEU KIM KY LA LAI LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LU LUA LUAN LUC LUONG LUU LY MAC MACH MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGO NGOC NGOI NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAM PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYET QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANG THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAI TOAN TON TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UNG UYEN VAN VANG VI VIEN VIET VINH VO VONG VU VUONG VY XINH XUA XUAN Y YEN"
                         names_list = sorted(list(set(common_names.split())), key=len, reverse=True)
                         pattern = r'(' + '|'.join(names_list) + r')'
                         
@@ -444,8 +444,8 @@ def parse_ocr_text(text):
                             and not ls.startswith('IDVN')
                             and not ls.startswith('VNM')
                         ):
-                            # Dọn dẹp rác padding ở đuôi trước khi tách để không bị dính chữ (VD: CACKICK)
-                            ls_clean = re.sub(r'[CKEIS]+$', '', ls)
+                            # Dọn dẹp padding thực tế
+                            ls_clean = re.sub(r'[<]+$', '', ls)
                             
                             # Tách Họ và Đệm+Tên dựa trên 2 dấu << liên tiếp (OCR -> CC, CK, CE, CEC, KK...)
                             # Bỏ EK ra khỏi danh sách cắt vì EK dễ cắt nhầm tên (VD: LEKK -> L và EK)
@@ -454,6 +454,7 @@ def parse_ocr_text(text):
                                 surname_words = _extract_mrz_name_words(split_parts[0])
                                 given_words   = _extract_mrz_name_words(split_parts[1])
                                 words = surname_words + given_words
+                                
                             else:
                                 words = _extract_mrz_name_words(split_parts[0])
                             
@@ -469,27 +470,37 @@ def parse_ocr_text(text):
                 # ---------------------------------------------------------
                 # 3.5. TRÍCH XUẤT HỌ TÊN VƯỢT DÒNG (Dành cho CCCD đứt nét hoặc SMS screenshot)
                 # ---------------------------------------------------------
-                name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|t[eê]n\s*khai\s*sinh|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n)\s*[:\s]+(.{1,60}?)[,.]?\s*(?:ng[aà]y\s*sinh|date\s*of\s*birth|ng[aà]y,\s*th[aá]ng|dob|sinh\s*ng[aà]y|\bsinh\b\s*:|gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|n[oơ]i\s*th[uư][oờ]ng\s*tr[uú]|qu[eê]\s*qu[aá]n)', text, re.DOTALL)
+                raw_name = ""
+                name_block_matches = re.findall(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|t[eê]n\s*khai\s*sinh|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n)\s*[:\s]+(.{1,60}?)[,.]?\s*(?:ng[aà]y\s*sinh|date\s*of\s*birth|ng[aà]y,\s*th[aá]ng|dob|sinh\s*ng[aà]y|\bsinh\b\s*:|gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|n[oơ]i\s*th[uư][oờ]ng\s*tr[uú]|qu[eê]\s*qu[aá]n)', text, re.DOTALL)
                 
                 # Nếu không tìm thấy, thử tìm theo cấu trúc Single-line (VD: ten: Lam My Linh, Ngay)
-                if not name_block_match:
+                if not name_block_matches:
                     text_oneline = text.replace('\n', ' ')
-                    name_block_match = re.search(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|t[eê]n\s*khai\s*sinh|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n|\bt[eê]n\b)\s*[:\s]+([^\n,.]+)', text_oneline)
+                    name_block_matches = re.findall(r'(?i)(?:h[oọ]\s*(?:v[aà]\s*)?t[eê]n|t[eê]n\s*khai\s*sinh|full\s*name|fui\s*nam|kho\s*v[aà]\s*t[eê]n|\bt[eê]n\b)\s*[:\s]+([^\n,.]+)', text_oneline)
 
                 # Fallback cuối: Tìm các từ viết hoa chuẩn (Title Case) dính liền với chữ Ngày/Sinh (Bị đứt khúc chữ "Họ tên" ở xa)
-                if not name_block_match:
+                if not name_block_matches:
                     text_oneline = text.replace('\n', ' ')
-                    name_block_match = re.search(r'\b([A-Z][a-zA-ZÀ-Ỹà-ỹ]*(?:\s+[A-Z][a-zA-ZÀ-Ỹà-ỹ]*){1,6})\s*[,.]?\s*(?:Ng[aà]y|Sinh|ng[aà]y|sinh)\b', text_oneline)
+                    name_block_matches = re.findall(r'\b([A-Z][a-zA-ZÀ-Ỹà-ỹ]*(?:\s+[A-Z][a-zA-ZÀ-Ỹà-ỹ]*){1,6})\s*[,.]?\s*(?:Ng[aà]y|Sinh|ng[aà]y|sinh)\b', text_oneline)
 
-                if name_block_match:
-                    raw_name = name_block_match.group(1)
+                if name_block_matches:
+                    # Lọc ra các raw_name không chứa số (ưu tiên cao nhất vì tên không chứa số)
+                    no_digit_names = [n for n in name_block_matches if not re.search(r'\d', n)]
+                    if no_digit_names:
+                        raw_name = sorted(no_digit_names, key=len, reverse=True)[0]
+                    else:
+                        raw_name = sorted(name_block_matches, key=len, reverse=True)[0]
                     # Nếu tên bị dính chữ NGAY ở cuối (VD: THI LIEU.NGAY sinh:) thì cắt bỏ
                     raw_name = re.sub(r'(?i)\.?\s*ng[aà]y\s*$', '', raw_name)
                     raw_name = raw_name.replace('.', ' ').replace(',', ' ')
                     name_words = []
+                    has_upper = any(w.isupper() for w in raw_name.split() if len(w) > 1)
                     for w in raw_name.split():
                         cw = re.sub(r'[^a-zA-Z\xC0-\u024F\u1E00-\u1EFF]', '', w)
-                        if len(cw) >= 1:  # Không ép isupper nữa để lấy cả chữ thường (to thi MY AN)
+                        if len(cw) >= 1:
+                            # Lọc rác OCR xen kẽ (VD: LE NGOC cormona THUY LIEU -> bỏ cormona)
+                            if has_upper and cw.islower() and len(cw) >= 4:
+                                continue
                             name_words.append(cw)
                     clean_name = " ".join(name_words).upper()
                     
@@ -563,7 +574,16 @@ def parse_ocr_text(text):
                             
                         # Loại bỏ các chuỗi nhiễu có thể bám ngay cùng dòng
                         val = re.sub(r'(?i)(giới tính|quốc tịch|sex|nationality|(có )?gi[aáàảãạ] trị đ[ếêề]n\s*[:.,]*|expiry|date).*', '', val).strip()
-                        val = re.sub(r'(?i)\b(substates)\b', '', val).strip()
+                        val = re.sub(
+                            r'(?i)\b(substates|date|dater|datero|eas|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
+                            r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
+                            r'indent|vi[eê][nǹ]|nam\s+linh|'
+                            r'place of residence|place of origin|place oforging|transervating|daleoroxic|dale\s*o|'
+                            r'deleofexpin|dele\s*atanting|overstreeter|residence|origin|raforping|expin|'
+                            r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
+                            r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b',
+                            '', val).strip()
+                        val = re.sub(r'(?i)(substates|raforping|expin|họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd|date)', '', val).strip()
                         if len(val) >= 2:
                             addr_parts.append(val)
         
@@ -577,9 +597,10 @@ def parse_ocr_text(text):
                             
                             # CÁC TỪ KHOÁ NGẮT (BREAK) - Rác ngoài thẻ hoặc Mặt sau
                             hard_stops = [
-                                "zalo", "chữ ký", "qr", "từ mã", "đặc điểm nhận dạng",
+                                "zalo", "chữ ký", "chữ ky", "qr", "từ mã", "đặc điểm nhận dạng",
                                 "ngón trỏ trái", "ngón trỏ phải", "ngón trỏ",  # cụ thể hơn "trái"/"phải"
-                                "vân tay trái", "vân tay phải"
+                                "vân tay trái", "vân tay phải",
+                                "hữ ký", "hữ ký với", "mẫu chữ",  # biến thể OCR của "chữ ký" trên mặt sau
                             ]
                             soft_stops = [
                                 "ngày sinh", "date of birth", "ngày, tháng, năm", "date, month",
@@ -603,6 +624,16 @@ def parse_ocr_text(text):
                                 else:
                                     break
                                 
+                            # Bỏ qua dòng aho giac OCR: một từ lặp lại >= 3 lần liên tiếp (VD: "điển điển điển điển...")
+                            _words_in_line = next_lower.split()
+                            if len(_words_in_line) >= 4:
+                                _word_counts = {}
+                                for _w in _words_in_line:
+                                    _word_counts[_w] = _word_counts.get(_w, 0) + 1
+                                _max_repeat = max(_word_counts.values())
+                                if _max_repeat >= 3:
+                                    continue
+
                             clean_line = next_line
                             # Xóa cụm "giá trị đến" và mọi biến thể OCR (có/không dấu)
                             # "gia tri đến", "giá trị đến", "gia tri den", v.v.
@@ -623,13 +654,15 @@ def parse_ocr_text(text):
                             clean_line = re.sub(
                                 r'(?i)\b(substates|date|dater|datero|eas|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
                                 r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
-                                r'indent|vi[eê][nǹ]|nam\s+linh|'
+                                r'indent|vi[eê][nǹ]|nam\s+linh|no[aà]ch|string|'
                                 r'place of residence|place of origin|place oforging|transervating|daleoroxic|dale\s*o|'
-                                r'deleofexpin|dele\s*atanting|overstreeter|residence|origin|'
+                                r'deleofexpin|dele\s*atanting|overstreeter|residence|origin|raforping|expin|'
                                 r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
                                 r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b',
                                 '', clean_line).strip()
-                            clean_line = re.sub(r'(?i)(substates|họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd|date)', '', clean_line).strip()
+                            clean_line = re.sub(r'(?i)(substates|raforping|expin|no[aà]ch|string|họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd|date)', '', clean_line).strip()
+                            # Xóa các từ rác ngắn OCR đếm được (VD: "ngl", "ẫk", "ử", v.v.)
+                            clean_line = re.sub(r'(?i)\b(ngl|hận|ngi)\b', '', clean_line).strip()
                             
                             # Loại bỏ chữ 'Có' rớt lại do cắt cụm 'Có giá trị đến' bị thiếu
                             # Xử lý các dạng: 'Có :', 'Có', 'Có ,' đứng 1 mình hoặc kẹp ở đầu/cuối chuỗi
@@ -782,16 +815,24 @@ def parse_ocr_text(text):
                         addr = re.sub(r'(?i)^[a-z]\s+ngày\s*sinh', '', addr).strip()
                         addr = re.sub(r',\s*,', ',', addr)
                         addr = re.sub(r'\s{2,}', ' ', addr)
+                        
+                        # Sửa các lỗi OCR địa danh kinh điển
+                        addr = re.sub(r'(?i)thành phố cần thơn\b', 'Thành Phố Cần Thơ', addr)
+                        addr = re.sub(r'(?i)cần thơn\b', 'Cần Thơ', addr)
+                        addr = re.sub(r'(?i)lào cần thơ\b', 'Lão, Cần Thơ', addr)
+                        # Xóa rác xuất hiện ở cuối địa chỉ ("ngl", "hận", các từ rác OCR đơn lẻ)
+                        addr = re.sub(r'(?i),?\s*\b(ngl|hận|ngi)\b\s*,?', ',', addr)
+                        addr = re.sub(r',\s*,', ',', addr).strip(',').strip()
                             
                         # Tẩy sạch dấu phẩy thừa do nối chuỗi
                         data['Nơi thường trú gốc'] = re.sub(r',\s*,', ',', addr).lstrip(', ').rstrip('., ')
         
-                    # --- BƯỚC 4.4: TRÍCH XUẤT GIỚI TÍNH (Chính xác từ dòng ghi Giới tính) ---
+                    # --- BƯỚC 4.4: TRÍCH XUẤT GIỚI TÍNH (Layer 1 - Label-based line scan) ---
                     if "giới tính" in line_lower or "sex" in line_lower or "gioi tinh" in line_lower:
                         if "nữ" in line_lower or "nư" in line_lower or "nu" in line_lower:
-                            data['Giới tính'] = 'Nữ'
+                            layer1_gender = 'Nữ'
                         elif "nam" in line_lower:
-                            data['Giới tính'] = 'Nam'
+                            layer1_gender = 'Nam'
         
                     # --- BƯỚC 4.5: TRÍCH XUẤT NGÀY CẤP ---
                     if ("ngày, tháng, năm" in line_lower or "date, month, year" in line_lower or "date of issue" in line_lower or "cấp" in line_lower or "ngay cap" in line_lower or "cap:" in line_lower or "cap :" in line_lower) and "sinh" not in line_lower and "hết hạn" not in line_lower and "expiry" not in line_lower and "birth" not in line_lower:
@@ -816,6 +857,20 @@ def parse_ocr_text(text):
                 if data.get('Họ tên'):
                     # Xoá các phụ âm đứng trơ trọi ở cuối tên do vết xước (VD: TRẦN NGỌC MUỘI T -> TRẦN NGỌC MUỘI)
                     data['Họ tên'] = re.sub(r'\s+[BCDGHKLMNPQRSTVX]$', '', data['Họ tên'], flags=re.IGNORECASE).strip()
+
+                # ---------------------------------------------------------
+                # 6. TỔNG HỢP GIỚI TÍNH TỪ 3 LAYERS
+                # Layer 0 > Layer 1 > Layer 2
+                # ---------------------------------------------------------
+                layer0_gender = ''
+                if data['CCCD'] and len(data['CCCD']) >= 12:
+                    gender_digit = data['CCCD'][3]
+                    if gender_digit in '02468':
+                        layer0_gender = 'Nam'
+                    elif gender_digit in '13579':
+                        layer0_gender = 'Nữ'
+
+                data['Giới tính'] = layer0_gender or layer1_gender or layer2_gender
 
                 return data
 
@@ -1585,9 +1640,8 @@ def fetch_single_address(addr):
     payload = json.dumps({"address": clean_addr})
     
     # Retry tối đa 100 lần đối với lỗi mạng/500
-    # Retry tối đa 10 lần nếu API trả về thành công nhưng data = []
-    empty_data_retries = 0
-    max_empty_retries = 10
+    # Nếu API trả về thành công nhưng data = [] thì chuyển ngay sang backup
+    last_exception = None
     
     for attempt in range(100):
         try:
@@ -1614,31 +1668,61 @@ def fetch_single_address(addr):
                     "converted": converted_addr
                 }
             
-            # API thành công nhưng data rỗng = không tìm thấy địa chỉ
-            if empty_data_retries < max_empty_retries:
-                empty_data_retries += 1
-                time.sleep(1)
-                continue
-                
-            # Đã thử quá số lần vẫn rỗng → từ bỏ
-            return {
-                "original": addr,
-                "success": False,
-                "error": "Không tìm thấy địa chỉ tương ứng"
-            }
+            # API thành công nhưng data rỗng = không tìm thấy địa chỉ → thoát ngay để thử backup
+            break
             
         except Exception as e:
-            # Lỗi 500 hoặc mạng → thử lại sau 2s
+            last_exception = e
+            # Lỗi 500 hoặc mạng → thử lại sau 1s
             if attempt < 99:
                 time.sleep(1)
                 continue
-            else:
-                return {
-                    "original": addr,
-                    "success": False,
-                    "error": f"Lỗi kết nối API sau 100 lần thử ({str(e)})"
-                }
+            break  # hết 100 lần → dùng backup
 
+    # -------------------------------------------------------
+    # BACKUP: Geovina.io.vn — chỉ chạy khi VNHub thất bại
+    # Response field cần lấy: data.full_new_address
+    # -------------------------------------------------------
+    try:
+        import os as _os
+        # X-Demo-Token: Token demo cố định từ geovina.io.vn.
+        # Có thể override bằng env var GEOVINA_DEMO_TOKEN nếu token hết hạn.
+        geovina_token = _os.environ.get(
+            'GEOVINA_DEMO_TOKEN',
+            '1781934356480.952355dc84bfd2c51258d6cc5d0f535768ef30325b749c72679f75e02a1ba6bd'
+        )
+        geovina_headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:152.0) Gecko/20100101 Firefox/152.0',
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,vi;q=0.9,en;q=0.8',
+            'Content-Type': 'application/json',
+            'X-Demo-Token': geovina_token,
+            'Referer': 'https://www.geovina.io.vn/',
+            'Origin': 'https://www.geovina.io.vn',
+        }
+        geo_resp = _address_session.post(
+            'https://www.geovina.io.vn/parse',
+            data=payload,
+            headers=geovina_headers,
+            timeout=15
+        )
+        geo_resp.raise_for_status()
+        geo_data = geo_resp.json()
+
+        full_new = geo_data.get('data', {}).get('full_new_address', '')
+        if geo_data.get('success') and full_new:
+            converted_addr = re.sub(r'\s+', ' ', full_new).strip(', ')
+            return {"original": addr, "success": True, "converted": converted_addr, "source": "geovina_backup"}
+
+        return {"original": addr, "success": False, "error": "Không tìm thấy địa chỉ tương ứng (VNHub + Geovina đều thất bại)"}
+
+    except Exception as geo_err:
+        err_primary = str(last_exception) if last_exception else "data rỗng sau nhiều lần thử"
+        return {
+            "original": addr,
+            "success": False,
+            "error": f"Lỗi kết nối API sau 100 lần thử VNHub ({err_primary}); Geovina backup cũng lỗi ({str(geo_err)})"
+        }
 def call_address_api(address_list, max_workers=4):
     if not address_list:
         return []
