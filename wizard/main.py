@@ -3205,17 +3205,22 @@ def run_reprocess(excel_path, normalize_address=True):
 
     # We need to process both front and back images for each row
     all_images_to_process = set()
+    img_results = {}
     for row in rows_to_process:
         if row['front_name'] and row['front_name'] in img_map:
-            all_images_to_process.add(img_map[row['front_name']])
+            p = img_map[row['front_name']]
+            if p in recovered_data: img_results[p] = recovered_data[p]
+            else: all_images_to_process.add(p)
         if row['back_name'] and row['back_name'] in img_map:
-            all_images_to_process.add(img_map[row['back_name']])
+            p = img_map[row['back_name']]
+            if p in recovered_data: img_results[p] = recovered_data[p]
+            else: all_images_to_process.add(p)
             
     # Thêm ảnh unassigned vào danh sách xử lý
     for p in unassigned_images:
-        all_images_to_process.add(p)
+        if p in recovered_data: img_results[p] = recovered_data[p]
+        else: all_images_to_process.add(p)
             
-    img_results = {}
     with Progress(
         SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
         BarColumn(), TaskProgressColumn(), TimeElapsedColumn(),
@@ -3230,6 +3235,12 @@ def run_reprocess(excel_path, normalize_address=True):
                 try:
                     row_data, log_msgs = future.result()
                     img_results[img_path] = row_data
+                    
+                    try:
+                        with open(reprocess_tmp, 'a', encoding='utf-8') as f:
+                            json.dump({img_path: row_data}, f, ensure_ascii=False)
+                            f.write('\n')
+                    except: pass
                     
                     progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim]")
                     file_logs.append(f"[{os.path.basename(img_path)}] - {img_path}")
