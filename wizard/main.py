@@ -2793,7 +2793,7 @@ def run_wizard(input_dir, normalize_address=True):
         if row.get('Full Image Path Front'): all_matched_paths.add(row['Full Image Path Front'])
         if row.get('Full Image Path Back'): all_matched_paths.add(row['Full Image Path Back'])
 
-    unknown_image_paths = [p for p in image_paths if p not in all_matched_paths]
+    unknown_image_paths = [p for p in all_original_image_paths if p not in all_matched_paths]
 
     ws_unknown = wb.create_sheet(title="Unknown")
     ws_unknown.append(["STT", "Tên file gốc"])
