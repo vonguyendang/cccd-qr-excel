@@ -1073,6 +1073,13 @@ def extract_ocr_data(image_path_or_cv2img):
         _last_timing['detect_and_align_card'] = time.time() - t0
         _last_timing['align_method'] = align_method
         
+        # Tối ưu tốc độ: Thu nhỏ ảnh nếu quá lớn (giữ độ nét nhưng giảm khối lượng tính toán cho AI)
+        card_h, card_w = card_img.shape[:2]
+        max_dim = 1500
+        if max(card_w, card_h) > max_dim:
+            scale = max_dim / max(card_w, card_h)
+            card_img = cv2.resize(card_img, (int(card_w * scale), int(card_h * scale)), interpolation=cv2.INTER_AREA)
+        
         debug_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "debug")
         os.makedirs(debug_dir, exist_ok=True)
         cv2.imwrite(os.path.join(debug_dir, "original_image.jpg"), img_to_ocr)
