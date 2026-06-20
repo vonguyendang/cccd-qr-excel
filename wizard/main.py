@@ -1773,6 +1773,8 @@ def get_unique_images(image_paths):
 
 def run_wizard(input_dir, normalize_address=True):
     from rich.text import Text
+    import time
+    start_time = time.time()
     file_logs = []
     
     # Xóa dấu nháy đơn/kép nếu người dùng kéo thả thư mục vào terminal có sinh ra
@@ -2061,6 +2063,8 @@ def run_wizard(input_dir, normalize_address=True):
     seen_cccds = set()
     
     def process_single_image(img_path):
+        import time
+        t0 = time.time()
         qr_string, engine, err, img, qr_rotated_img = extract_qr_data(img_path)
         
         log_msgs = []
@@ -2154,6 +2158,7 @@ def run_wizard(input_dir, normalize_address=True):
         row_data['Ngày hết hạn'] = calculate_expiry_date(row_data.get('Ngày sinh', ''))
         row_data['Phân loại'] = get_card_type(row_data.get('QR Raw', ''))
         row_data['Ghi chú'] = '; '.join(notes)
+        row_data['_processing_time'] = time.time() - t0
         return row_data, log_msgs
 
     import re
@@ -2985,6 +2990,22 @@ def run_wizard(input_dir, normalize_address=True):
     table.add_row("Dữ liệu trích xuất chuẩn xác bằng mã QR", str(qr_count), f"{(qr_count/total_profiles*100):.1f}%" if total_profiles else "0.0%")
     table.add_row("Dữ liệu cứu hộ thành công bằng AI OCR", str(ocr_count), f"{(ocr_count/total_profiles*100):.1f}%" if total_profiles else "0.0%")
     
+    end_time = time.time()
+    elapsed = end_time - start_time
+    hours, rem = divmod(elapsed, 3600)
+    minutes, seconds = divmod(rem, 60)
+    time_str = f"{int(hours)}h {int(minutes)}m {int(seconds)}s" if hours > 0 else f"{int(minutes)}m {int(seconds)}s"
+    
+    table.add_row("", "", "")
+    table.add_row("[bold]4. HIỆU SUẤT XỬ LÝ[/bold]", "", "")
+    table.add_row("Tổng thời gian thực thi", time_str, "")
+    
+    processing_times = [r.get('_processing_time', 0) for r in extracted_items if r.get('_processing_time')]
+    if processing_times:
+        table.add_row("Tốc độ chậm nhất / 1 ảnh", f"{max(processing_times):.1f}s", "")
+        table.add_row("Tốc độ nhanh nhất / 1 ảnh", f"{min(processing_times):.1f}s", "")
+        table.add_row("Tốc độ trung bình / 1 ảnh", f"{(sum(processing_times) / len(processing_times)):.1f}s", "")
+    
     console.print(table)
     console.print()
 
@@ -3071,7 +3092,8 @@ def clean_address_string(addr):
     return clean_line
 
 def run_reprocess(excel_path, normalize_address=True):
-
+    import time
+    start_time = time.time()
     from rich.text import Text
     import datetime
     file_logs = []
@@ -3245,6 +3267,7 @@ def run_reprocess(excel_path, normalize_address=True):
         
         row_data['Nơi cấp'] = get_place_of_issue(row_data.get('QR Raw', ''))
         row_data['Ngày hết hạn'] = calculate_expiry_date(row_data.get('Ngày sinh', ''))
+        row_data['_processing_time'] = time.time() - t0
         return row_data, log_msgs
 
     # We need to process both front and back images for each row
@@ -3456,6 +3479,22 @@ def run_reprocess(excel_path, normalize_address=True):
     ocr_count = sum(1 for r in img_results.values() if 'Lấy bằng OCR' in str(r.get('Ghi chú', '')))
     table.add_row("Số ảnh đọc mã QR thành công", str(qr_count), f"{(qr_count/total_imgs*100):.1f}%" if total_imgs else "0.0%")
     table.add_row("Số ảnh phải dùng AI OCR để cứu", str(ocr_count), f"{(ocr_count/total_imgs*100):.1f}%" if total_imgs else "0.0%")
+    
+    end_time = time.time()
+    elapsed = end_time - start_time
+    hours, rem = divmod(elapsed, 3600)
+    minutes, seconds = divmod(rem, 60)
+    time_str = f"{int(hours)}h {int(minutes)}m {int(seconds)}s" if hours > 0 else f"{int(minutes)}m {int(seconds)}s"
+    
+    table.add_row("", "", "")
+    table.add_row("[bold]HIỆU SUẤT XỬ LÝ[/bold]", "", "")
+    table.add_row("Tổng thời gian thực thi", time_str, "")
+    
+    processing_times = [r.get('_processing_time', 0) for r in img_results.values() if r.get('_processing_time')]
+    if processing_times:
+        table.add_row("Tốc độ chậm nhất / 1 ảnh", f"{max(processing_times):.1f}s", "")
+        table.add_row("Tốc độ nhanh nhất / 1 ảnh", f"{min(processing_times):.1f}s", "")
+        table.add_row("Tốc độ trung bình / 1 ảnh", f"{(sum(processing_times) / len(processing_times)):.1f}s", "")
     
     console.print(table)
     console.print()
