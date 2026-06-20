@@ -1910,6 +1910,7 @@ def run_wizard(input_dir, normalize_address=True):
             renamed_front_col = col_idx.get('Đổi tên Ảnh mặt trước CCCD/CC')
             renamed_back_col = col_idx.get('Đổi tên Ảnh mặt sau CCCD/CC')
             img_other_col = col_idx.get('Ảnh khác (SMS/Chụp màn hình/...)')
+            renamed_other_col = col_idx.get('Đổi tên Ảnh khác')
             
             if img_front_col is None or img_back_col is None:
                 console.print("[red]❌ File Excel cũ không có cột tên ảnh, không thể quét nối tiếp.[/red]")
@@ -1934,13 +1935,15 @@ def run_wizard(input_dir, normalize_address=True):
                         'Ảnh mặt sau CCCD/CC': row[img_back_col],
                         'Đổi tên Ảnh mặt trước CCCD/CC': row[renamed_front_col] if renamed_front_col is not None else '',
                         'Đổi tên Ảnh mặt sau CCCD/CC': row[renamed_back_col] if renamed_back_col is not None else '',
-                        'Ảnh khác (SMS/Chụp màn hình/...)': row[img_other_col] if img_other_col is not None else ''
+                        'Ảnh khác (SMS/Chụp màn hình/...)': row[img_other_col] if img_other_col is not None else '',
+                        'Đổi tên Ảnh khác': row[renamed_other_col] if renamed_other_col is not None else ''
                     })
                     front = row[img_front_col]
                     back = row[img_back_col]
                     renamed_front = row[renamed_front_col] if renamed_front_col is not None else ''
                     renamed_back = row[renamed_back_col] if renamed_back_col is not None else ''
                     other = row[img_other_col] if img_other_col is not None else ''
+                    renamed_other = row[renamed_other_col] if renamed_other_col is not None else ''
                     
                     if front: processed_images_set.add(str(front))
                     if back: processed_images_set.add(str(back))
@@ -1948,6 +1951,9 @@ def run_wizard(input_dir, normalize_address=True):
                     if renamed_back: processed_images_set.add(str(renamed_back))
                     if other:
                         for p in str(other).split(', '):
+                            if p: processed_images_set.add(p)
+                    if renamed_other:
+                        for p in str(renamed_other).split(', '):
                             if p: processed_images_set.add(p)
         except Exception as e:
             console.print(f"[red]❌ Lỗi đọc file Excel cũ: {e}[/red]")
@@ -2612,7 +2618,7 @@ def run_wizard(input_dir, normalize_address=True):
     headers = [
         "STT", "Họ tên", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
         "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", "QR Raw", 
-        "Ảnh mặt trước CCCD/CC", "Ảnh mặt sau CCCD/CC", "Ảnh khác (SMS/Chụp màn hình/...)", "Đổi tên Ảnh mặt trước CCCD/CC", "Đổi tên Ảnh mặt sau CCCD/CC"
+        "Ảnh mặt trước CCCD/CC", "Ảnh mặt sau CCCD/CC", "Ảnh khác (SMS/Chụp màn hình/...)", "Đổi tên Ảnh mặt trước CCCD/CC", "Đổi tên Ảnh mặt sau CCCD/CC", "Đổi tên Ảnh khác"
     ]
     
     ws.append(headers)
@@ -2625,6 +2631,13 @@ def run_wizard(input_dir, normalize_address=True):
     # Xử lý logic gộp ảnh "Khác"
     for row_data in processed_data:
         if row_data.get('Phân loại') == 'Khác':
+            hoten = row_data['Họ tên'] or 'KhongTen'
+            cccd = row_data['CCCD']
+            cmnd = row_data['CMND']
+            hoten_clean = re.sub(r'[\\/*?:"<>|]', '', hoten)
+            cmnd_str = f"_{cmnd}" if cmnd and cmnd not in ['Không có', 'Chưa xác định'] else ""
+            base_name = f"{hoten_clean}_{cccd}{cmnd_str}"
+            
             imgs = []
             if row_data.get('Ảnh mặt trước CCCD/CC'): imgs.append(row_data['Ảnh mặt trước CCCD/CC'])
             if row_data.get('Ảnh mặt sau CCCD/CC'): imgs.append(row_data['Ảnh mặt sau CCCD/CC'])
@@ -2632,10 +2645,18 @@ def run_wizard(input_dir, normalize_address=True):
             
             anh_khac = row_data.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
             anh_khac_list = []
-            if anh_khac: anh_khac_list.append(anh_khac)
+            if anh_khac: anh_khac_list.extend(str(anh_khac).split(', '))
             anh_khac_list.extend(imgs)
             
+            renamed_list = []
+            for i, p in enumerate(anh_khac_list):
+                ext = os.path.splitext(p)[1]
+                suffix = f"_Khác_{i+1}" if len(anh_khac_list) > 1 else "_Khác"
+                renamed_list.append(f"{base_name}{suffix}{ext}")
+            
             row_data['Ảnh khác (SMS/Chụp màn hình/...)'] = ", ".join(filter(None, anh_khac_list))
+            row_data['Đổi tên Ảnh khác'] = ", ".join(renamed_list)
+            
             row_data['Ảnh mặt trước CCCD/CC'] = ''
             row_data['Ảnh mặt sau CCCD/CC'] = ''
             row_data['Đổi tên Ảnh mặt trước CCCD/CC'] = ''
@@ -2661,7 +2682,8 @@ def run_wizard(input_dir, normalize_address=True):
             row_data.get('Ảnh mặt sau CCCD/CC', ''),
             row_data.get('Ảnh khác (SMS/Chụp màn hình/...)', ''),
             row_data.get('Đổi tên Ảnh mặt trước CCCD/CC', ''),
-            row_data.get('Đổi tên Ảnh mặt sau CCCD/CC', '')
+            row_data.get('Đổi tên Ảnh mặt sau CCCD/CC', ''),
+            row_data.get('Đổi tên Ảnh khác', '')
         ]
         ws.append(row)
         
@@ -2848,23 +2870,51 @@ def run_wizard(input_dir, normalize_address=True):
         with zipfile.ZipFile(rename_zip_path, 'w') as zf:
             count_rename = 0
             for row in processed_data:
-                folder = "CCCD" if row.get("Phân loại") == "Căn cước công dân" else "CC"
-                
-                front_path = row.get('Full Image Path Front')
-                if front_path and not os.path.exists(front_path):
-                    fallback = os.path.join(input_dir, os.path.basename(front_path))
-                    if os.path.exists(fallback): front_path = fallback
-                if front_path and os.path.exists(front_path) and row.get('Đổi tên Ảnh mặt trước CCCD/CC'):
-                    zf.write(front_path, f"{folder}/{row['Đổi tên Ảnh mặt trước CCCD/CC']}")
-                    count_rename += 1
+                if row.get("Phân loại") == "Khác":
+                    folder = "Khác"
+                    if row.get('Ảnh khác (SMS/Chụp màn hình/...)') and row.get('Đổi tên Ảnh khác'):
+                        orig_names = str(row['Ảnh khác (SMS/Chụp màn hình/...)']).split(', ')
+                        new_names = str(row['Đổi tên Ảnh khác']).split(', ')
+                        
+                        full_paths = []
+                        if row.get('Full Image Path Front'): full_paths.append(row['Full Image Path Front'])
+                        if row.get('Full Image Path Back'): full_paths.append(row['Full Image Path Back'])
+                        if row.get('Full OCR Image Path Unknown'): full_paths.append(row['Full OCR Image Path Unknown'])
+                        
+                        for i, orig in enumerate(orig_names):
+                            if i < len(new_names):
+                                new_name = new_names[i]
+                                match_fp = None
+                                for fp in full_paths:
+                                    if os.path.basename(fp) == orig:
+                                        match_fp = fp
+                                        break
+                                
+                                if match_fp:
+                                    if not os.path.exists(match_fp):
+                                        fallback = os.path.join(input_dir, os.path.basename(match_fp))
+                                        if os.path.exists(fallback): match_fp = fallback
+                                    if os.path.exists(match_fp):
+                                        zf.write(match_fp, f"{folder}/{new_name}")
+                                        count_rename += 1
+                else:
+                    folder = "CCCD" if row.get("Phân loại") == "Căn cước công dân" else "CC"
                     
-                back_path = row.get('Full Image Path Back')
-                if back_path and not os.path.exists(back_path):
-                    fallback = os.path.join(input_dir, os.path.basename(back_path))
-                    if os.path.exists(fallback): back_path = fallback
-                if back_path and os.path.exists(back_path) and row.get('Đổi tên Ảnh mặt sau CCCD/CC'):
-                    zf.write(back_path, f"{folder}/{row['Đổi tên Ảnh mặt sau CCCD/CC']}")
-                    count_rename += 1
+                    front_path = row.get('Full Image Path Front')
+                    if front_path and not os.path.exists(front_path):
+                        fallback = os.path.join(input_dir, os.path.basename(front_path))
+                        if os.path.exists(fallback): front_path = fallback
+                    if front_path and os.path.exists(front_path) and row.get('Đổi tên Ảnh mặt trước CCCD/CC'):
+                        zf.write(front_path, f"{folder}/{row['Đổi tên Ảnh mặt trước CCCD/CC']}")
+                        count_rename += 1
+                        
+                    back_path = row.get('Full Image Path Back')
+                    if back_path and not os.path.exists(back_path):
+                        fallback = os.path.join(input_dir, os.path.basename(back_path))
+                        if os.path.exists(fallback): back_path = fallback
+                    if back_path and os.path.exists(back_path) and row.get('Đổi tên Ảnh mặt sau CCCD/CC'):
+                        zf.write(back_path, f"{folder}/{row['Đổi tên Ảnh mặt sau CCCD/CC']}")
+                        count_rename += 1
                     
         console.print(f" [green]✓[/green] Đã tạo [bold]rename.zip[/bold] với {count_rename} file đã được đổi tên (trong CC và CCCD).")
         
