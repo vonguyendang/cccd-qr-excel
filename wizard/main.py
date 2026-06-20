@@ -103,6 +103,8 @@ _VN_SURNAMES = {
     'yen',
 }
 
+_VN_NAME_SYLLABLES = set("AN ANH BA BAC BACH BAN BANG BAO BE BEN BICH BINH BO BON BUI CA CAM CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CU CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEM DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HO HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUAT KHUE KHUU KHUYEN KIEN KIEU KIM KY LA LAI LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LU LUA LUAN LUC LUONG LUU LY MAC MACH MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGO NGOC NGOI NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAM PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYET QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANG THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAI TOAN TON TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UNG UYEN VAN VANG VI VIEN VIET VINH VO VONG VU VUONG VY XINH XUA XUAN Y YEN".lower().split())
+
 def _is_valid_name(s):
     """Tên hợp lệ: 2-5 từ, bắt đầu bằng họ VN phổ biến, không số."""
     if not s or re.search(r'\d', s):
@@ -113,6 +115,7 @@ def _is_valid_name(s):
     # Chuẩn hóa họ: xóa dấu để so sánh
     first = unicodedata.normalize('NFD', words[0].lower())
     first_ascii = ''.join(c for c in first if unicodedata.category(c) != 'Mn')
+    first_ascii = first_ascii.replace('đ', 'd')
     return first_ascii in _VN_SURNAMES
 
 # Danh sách 63 tỉnh/thành phố VN (không dấu, lowercase)
@@ -458,9 +461,8 @@ def parse_ocr_text(text):
                             s = s.replace(bad, good)
                         s = re.sub(r'[CKEAS<]{3,}$', '', s)
                         # Danh sách âm tiết tên Tiếng Việt phổ biến (không dấu)
-                        common_names = "AN ANH BA BAC BACH BAN BANG BAO BE BEN BICH BINH BO BON BUI CA CAM CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUAN CHUNG CHUYEN CON CU CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEM DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HO HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHUAT KHUE KHUU KHUYEN KIEN KIEU KIM KY LA LAI LAM LAN LANG LANH LAP LE LIEN LIEU LINH LOAN LOC LOI LONG LU LUA LUAN LUC LUONG LUU LY MAC MACH MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGO NGOC NGOI NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NU NUOI NUONG OA OANH PHA PHAI PHAM PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUNG PHUONG QUAN QUANG QUE QUOC QUY QUYEN QUYET QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANG THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAI TOAN TON TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UNG UYEN VAN VANG VI VIEN VIET VINH VO VONG VU VUONG VY XINH XUA XUAN Y YEN"
-                        names_list = sorted(list(set(common_names.split())), key=len, reverse=True)
-                        pattern = r'(' + '|'.join(names_list) + r')'
+                        names_list = sorted(list(_VN_NAME_SYLLABLES), key=len, reverse=True)
+                        pattern = r'(?i)(' + '|'.join(names_list) + r')'
                         
                         matches = re.findall(pattern, s)
                         
@@ -546,8 +548,12 @@ def parse_ocr_text(text):
                     for w in raw_name.split():
                         cw = re.sub(r'[^a-zA-Z\xC0-\u024F\u1E00-\u1EFF]', '', w)
                         if len(cw) >= 1:
+                            cw_ascii = unicodedata.normalize('NFD', cw.lower())
+                            cw_ascii = ''.join(c for c in cw_ascii if unicodedata.category(c) != 'Mn').replace('đ', 'd')
+                            is_valid_vn_syllable = cw_ascii in _VN_NAME_SYLLABLES
+                            
                             # Lọc rác OCR xen kẽ (VD: LE NGOC cormona THUY LIEU -> bỏ cormona)
-                            if has_upper and cw.islower() and len(cw) >= 4:
+                            if has_upper and cw.islower() and len(cw) >= 4 and not is_valid_vn_syllable:
                                 continue
                             name_words.append(cw)
                     clean_name = " ".join(name_words).upper()
@@ -561,7 +567,7 @@ def parse_ocr_text(text):
                     words_upper = clean_name.split()
                     while len(words_upper) > 2:
                         first = unicodedata.normalize('NFD', words_upper[0].lower())
-                        first_ascii = ''.join(c for c in first if unicodedata.category(c) != 'Mn')
+                        first_ascii = ''.join(c for c in first if unicodedata.category(c) != 'Mn').replace('đ', 'd')
                         if first_ascii in _VN_SURNAMES:
                             break
                         words_upper.pop(0)
