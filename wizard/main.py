@@ -4,9 +4,21 @@ import PIL.Image
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
 import sys
+
+import torch
+if torch.cuda.is_available():
+    try:
+        torch.cuda.set_per_process_memory_fraction(0.6)
+    except Exception: pass
 IN_COLAB = 'COLAB_RELEASE_TAG' in os.environ
 REFRESH_RATE = 0.01666 if IN_COLAB else 10
 import sys
+
+import torch
+if torch.cuda.is_available():
+    try:
+        torch.cuda.set_per_process_memory_fraction(0.6)
+    except Exception: pass
 import glob
 import tempfile
 import uuid
@@ -21,6 +33,12 @@ import pillow_heif
 import numpy as np
 from PIL import Image
 import sys
+
+import torch
+if torch.cuda.is_available():
+    try:
+        torch.cuda.set_per_process_memory_fraction(0.6)
+    except Exception: pass
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from vietocr_engine import extract_text_from_image
 import re
