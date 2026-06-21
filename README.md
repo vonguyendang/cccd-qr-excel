@@ -1,5 +1,7 @@
 # Công Cụ Quét Mã QR CCCD Ra Excel Toàn Diện (Hỗ Trợ Thẻ Căn Cước Mới)
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/vonguyendang/cccd-qr-excel/blob/main/CCCD_QR_Excel_Colab.ipynb)
+
 Dự án này cung cấp một công cụ mạnh mẽ giúp bạn dễ dàng bóc tách thông tin từ mã QR và xử lý cả những trường hợp không có mã QR (quét bằng AI OCR) trên Thẻ Căn cước công dân (CCCD) và **Thẻ Căn cước mẫu mới (2024)**, sau đó xuất ra file Excel tự động. 
 Hệ thống còn được tích hợp API (`tienich.vnhub.com`) để **chuẩn hóa địa chỉ thường trú gốc** sang tên đơn vị hành chính cấp xã/phường mới nhất.
 
@@ -52,6 +54,7 @@ Ví dụ: Lấy *Họ tên, Ngày sinh* ở mặt trước đắp chung với *N
 
 Xem hướng dẫn chi tiết cho từng chế độ tại các thư mục thành phần:
 
+* 🚀 **[Hướng dẫn chạy trực tiếp trên Google Colab (Tốc độ cao, Không cần cài đặt)](./docs/Huong_Dan_Colab.md)**
 * 👉 **[Hướng dẫn sử dụng Web App (Giao diện trực quan & Camera Mobile)](./webapp/README.md)**
 * 👉 **[Hướng dẫn sử dụng Script CLI (Chạy bằng lệnh)](./wizard/README.md)**
 
