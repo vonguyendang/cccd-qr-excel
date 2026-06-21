@@ -1,4 +1,7 @@
 import os
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import PIL.Image
 if not hasattr(PIL.Image, 'ANTIALIAS'):
