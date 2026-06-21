@@ -4,7 +4,7 @@ import PIL.Image
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
 import sys
-IN_COLAB = 'google.colab' in sys.modules
+IN_COLAB = 'COLAB_RELEASE_TAG' in os.environ
 REFRESH_RATE = 0.00833 if IN_COLAB else 10
 import sys
 import glob
