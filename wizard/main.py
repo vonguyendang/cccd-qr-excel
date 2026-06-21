@@ -1746,6 +1746,23 @@ def get_unique_images(image_paths):
     seen_dhash = []
     duplicates_count = 0
     
+    # Sắp xếp danh sách file để ưu tiên giữ lại:
+    # 1. Các file đã được đánh số (ưu tiên số nhỏ hơn)
+    # 2. Các file cũ hơn (được thêm vào trước)
+    def sort_key(p):
+        base = os.path.splitext(os.path.basename(p))[0]
+        try:
+            mtime = os.path.getmtime(p)
+        except Exception:
+            mtime = float('inf')
+            
+        if base.isdigit():
+            return (0, int(base), mtime)
+        else:
+            return (1, float('inf'), mtime)
+            
+    image_paths.sort(key=sort_key)
+    
     def get_dhash(img_path):
         try:
             with Image.open(img_path) as img:
@@ -1996,12 +2013,11 @@ def run_wizard(input_dir, normalize_address=True):
         action_word = "bổ sung" if incremental_scan else "gốc"
         mode = 'a' if incremental_scan else 'w'
         
-        # Lọc những ảnh thực sự cần zip/rename (bỏ qua những ảnh đã bị đổi tên ở lần crash trước)
         files_to_process = []
         for p in image_paths:
             base = os.path.splitext(os.path.basename(p))[0]
-            if incremental_scan and base.isdigit() and int(base) > max_renamed_idx:
-                pass # Bỏ qua ảnh đã được đổi tên do crash
+            if base.isdigit():
+                pass # Tuyệt đối không bao giờ đổi tên lại những file đã được đánh số (dù là do crash hay từ lần quét cũ)
             else:
                 files_to_process.append(p)
 
@@ -2094,6 +2110,7 @@ def run_wizard(input_dir, normalize_address=True):
     
     def process_single_image(img_path):
         import time
+        console.print(f"[dim]⏳ Bắt đầu đưa vào AI: {os.path.basename(img_path)}...[/dim]")
         t0 = time.time()
         qr_string, engine, err, img, qr_rotated_img = extract_qr_data(img_path)
         
@@ -2213,47 +2230,55 @@ def run_wizard(input_dir, normalize_address=True):
     
     with progress:
         task_id = progress.add_task("[cyan]Đang quét ảnh...", total=len(image_paths))
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-            future_to_img = {executor.submit(process_single_image, path): path for path in image_paths}
-            for future in concurrent.futures.as_completed(future_to_img):
-                img_path = future_to_img[future]
-                try:
-                    row_data, log_msgs = future.result()
-                    extracted_items.append(row_data)
-                    
-                    # Ghi realtime backup
-                    try:
-                        import csv
-                        file_exists = os.path.exists(realtime_csv) and os.path.getsize(realtime_csv) > 0
-                        csv_keys = ['Họ tên', 'CCCD', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Địa chỉ chuẩn hóa mới', 'Ngày cấp CCCD', 'Nơi cấp', 'Ngày hết hạn', 'Phân loại', 'Ghi chú', 'QR Raw', 'Image Path', 'Full Image Path', 'Scan Type', 'OCR Side', 'Raw Text Upper', 'Raw Text']
-                        with open(realtime_csv, 'a', newline='', encoding='utf-8-sig') as f:
-                            writer = csv.DictWriter(f, fieldnames=csv_keys, extrasaction='ignore')
-                            if not file_exists:
-                                writer.writeheader()
-                            writer.writerow(row_data)
-                    except Exception: pass
-                    
-                    try:
-                        with open(realtime_log, 'a', encoding='utf-8') as f:
-                            f.write(f"[{os.path.basename(img_path)}] - {img_path}\n")
-                            for msg in log_msgs:
-                                f.write("  " + Text.from_markup(msg).plain + "\n")
-                    except Exception: pass
-                    
-                    # Print logs for this image above the progress bar
-                    p_time = row_data.get('_processing_time', 0)
-                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim] - [yellow]Timing {p_time:.1f}s[/yellow]")
-                    file_logs.append(f"[{os.path.basename(img_path)}] - {img_path} - Timing {p_time:.1f}s")
-                    for msg in log_msgs:
-                        progress.console.print(f"  {msg}")
-                        file_logs.append("  " + Text.from_markup(msg).plain)
-                except Exception as exc:
-                    err = f"❌ Lỗi khi xử lý ảnh {os.path.basename(img_path)}: {exc}"
-                    progress.console.print(f"[bold red]{err}[/bold red]")
-                    file_logs.append(err)
-                finally:
-                    progress.advance(task_id)
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=num_threads)
+        future_to_img = {executor.submit(process_single_image, path): path for path in image_paths}
+        for future in concurrent.futures.as_completed(future_to_img):
+            img_path = future_to_img[future]
+            try:
+                row_data, log_msgs = future.result(timeout=300)
+            except concurrent.futures.TimeoutError:
+                err = f"❌ Lỗi: Ảnh {os.path.basename(img_path)} làm treo AI quá 300s (5 phút). Đã tự động bỏ qua!"
+                progress.console.print(f"[bold red]{err}[/bold red]")
+                file_logs.append(err)
+                progress.advance(task_id)
+                continue
+            except Exception as exc:
+                err = f"❌ Lỗi khi xử lý ảnh {os.path.basename(img_path)}: {exc}"
+                progress.console.print(f"[bold red]{err}[/bold red]")
+                file_logs.append(err)
+                progress.advance(task_id)
+                continue
                 
+            extracted_items.append(row_data)
+            
+            # Ghi realtime backup
+            try:
+                import csv
+                file_exists = os.path.exists(realtime_csv) and os.path.getsize(realtime_csv) > 0
+                csv_keys = ['Họ tên', 'CCCD', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Địa chỉ chuẩn hóa mới', 'Ngày cấp CCCD', 'Nơi cấp', 'Ngày hết hạn', 'Phân loại', 'Ghi chú', 'QR Raw', 'Image Path', 'Full Image Path', 'Scan Type', 'OCR Side', 'Raw Text Upper', 'Raw Text']
+                with open(realtime_csv, 'a', newline='', encoding='utf-8-sig') as f:
+                    writer = csv.DictWriter(f, fieldnames=csv_keys, extrasaction='ignore')
+                    if not file_exists:
+                        writer.writeheader()
+                    writer.writerow(row_data)
+            except Exception: pass
+            
+            try:
+                with open(realtime_log, 'a', encoding='utf-8') as f:
+                    f.write(f"[{os.path.basename(img_path)}] - {img_path}\n")
+                    for msg in log_msgs:
+                        f.write("  " + Text.from_markup(msg).plain + "\n")
+            except Exception: pass
+            
+            # Print logs for this image above the progress bar
+            p_time = row_data.get('_processing_time', 0)
+            progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim] - [yellow]Timing {p_time:.1f}s[/yellow]")
+            file_logs.append(f"[{os.path.basename(img_path)}] - {img_path} - Timing {p_time:.1f}s")
+            for msg in log_msgs:
+                progress.console.print(f"  {msg}")
+                file_logs.append("  " + Text.from_markup(msg).plain)
+                
+            progress.advance(task_id)
     console.print(Panel(f"[bold cyan]🔄 BẮT ĐẦU GỘP DỮ LIỆU...[/bold cyan]", border_style="green"))
     for item in extracted_items:
         cccd = item.get('CCCD')
@@ -3327,32 +3352,43 @@ def run_reprocess(excel_path, normalize_address=True):
         console=console,
     ) as progress:
         task_id = progress.add_task("[cyan]Đang quét ảnh...", total=len(all_images_to_process))
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-            future_to_img = {executor.submit(process_single_image, path): path for path in all_images_to_process}
-            for future in concurrent.futures.as_completed(future_to_img):
-                img_path = future_to_img[future]
-                try:
-                    row_data, log_msgs = future.result()
-                    img_results[img_path] = row_data
-                    
-                    try:
-                        with open(reprocess_tmp, 'a', encoding='utf-8') as f:
-                            json.dump({img_path: row_data}, f, ensure_ascii=False)
-                            f.write('\n')
-                    except: pass
-                    
-                    p_time = row_data.get('_processing_time', 0)
-                    progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim] - [yellow]Timing {p_time:.1f}s[/yellow]")
-                    file_logs.append(f"[{os.path.basename(img_path)}] - {img_path} - Timing {p_time:.1f}s")
-                    for msg in log_msgs:
-                        progress.console.print(f"  {msg}")
-                        file_logs.append("  " + Text.from_markup(msg).plain)
-                except Exception as exc:
-                    err = f"❌ Lỗi khi xử lý ảnh {os.path.basename(img_path)}: {exc}"
-                    progress.console.print(f"[bold red]{err}[/bold red]")
-                    file_logs.append(err)
-                finally:
-                    progress.advance(task_id)
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=num_threads)
+        future_to_img = {executor.submit(process_single_image, path): path for path in all_images_to_process}
+        for future in concurrent.futures.as_completed(future_to_img):
+            img_path = future_to_img[future]
+            try:
+                row_data, log_msgs = future.result(timeout=600)
+            except concurrent.futures.TimeoutError:
+                err = f"❌ Lỗi: Ảnh {os.path.basename(img_path)} làm treo AI quá 600s (10 phút). Bỏ qua!"
+                progress.console.print(f"[bold red]{err}[/bold red]")
+                file_logs.append(err)
+                progress.advance(task_id)
+                continue
+            except Exception as exc:
+                err = f"❌ Lỗi khi xử lý ảnh {os.path.basename(img_path)}: {exc}"
+                progress.console.print(f"[bold red]{err}[/bold red]")
+                file_logs.append(err)
+                progress.advance(task_id)
+                continue
+                
+            img_results[img_path] = row_data
+                
+            try:
+                with open(reprocess_tmp, 'a', encoding='utf-8') as f:
+                    json.dump({img_path: row_data}, f, ensure_ascii=False)
+                    f.write('\n')
+            except: pass
+            
+            p_time = row_data.get('_processing_time', 0)
+            progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim] - [yellow]Timing {p_time:.1f}s[/yellow]")
+            file_logs.append(f"[{os.path.basename(img_path)}] - {img_path} - Timing {p_time:.1f}s")
+            for msg in log_msgs:
+                progress.console.print(f"  {msg}")
+                file_logs.append("  " + Text.from_markup(msg).plain)
+                
+            progress.advance(task_id)
+            
+        executor.shutdown(wait=False, cancel_futures=True)
 
     # Merge results back into Excel rows
     # We prioritize keeping existing non-empty values, but overwrite if OCR found new data
