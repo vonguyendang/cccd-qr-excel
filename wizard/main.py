@@ -1,4 +1,8 @@
 import os
+
+import PIL.Image
+if not hasattr(PIL.Image, 'ANTIALIAS'):
+    PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
 import sys
 IN_COLAB = 'google.colab' in sys.modules
 REFRESH_RATE = 0.00833 if IN_COLAB else 10
