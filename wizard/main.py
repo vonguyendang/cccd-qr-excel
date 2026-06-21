@@ -2280,10 +2280,12 @@ def run_wizard(input_dir, normalize_address=True):
             
             # Print logs for this image above the progress bar
             p_time = row_data.get('_processing_time', 0)
-            progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim] - [yellow]Timing {p_time:.1f}s[/yellow]")
+            if not IN_COLAB:
+                progress.console.print(f"[bold][{os.path.basename(img_path)}][/bold] - [dim]{img_path}[/dim] - [yellow]Timing {p_time:.1f}s[/yellow]")
             file_logs.append(f"[{os.path.basename(img_path)}] - {img_path} - Timing {p_time:.1f}s")
             for msg in log_msgs:
-                progress.console.print(f"  {msg}")
+                if not IN_COLAB:
+                    progress.console.print(f"  {msg}")
                 file_logs.append("  " + Text.from_markup(msg).plain)
                 
             progress.advance(task_id)
@@ -2559,11 +2561,13 @@ def run_wizard(input_dir, normalize_address=True):
                             if result.get('success'):
                                 new_addr = result.get('converted', '')
                                 status_text = f"[green]✓[/green] {short_addr}"
-                                api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold green]{new_addr}[/bold green]")
+                                if not IN_COLAB:
+                                    api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold green]{new_addr}[/bold green]")
                             else:
                                 err_msg = result.get('error', 'Lỗi không xác định')
                                 status_text = f"[red]✗[/red] {short_addr}"
-                                api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold red]{err_msg}[/bold red]")
+                                if not IN_COLAB:
+                                    api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold red]{err_msg}[/bold red]")
                                 
                             api_progress.update(api_task, advance=1, status=status_text)
 
