@@ -1,5 +1,8 @@
 import os
 import sys
+IN_COLAB = 'google.colab' in sys.modules
+REFRESH_RATE = 0.00833 if IN_COLAB else 10
+import sys
 import glob
 import tempfile
 import uuid
@@ -2226,6 +2229,7 @@ def run_wizard(input_dir, normalize_address=True):
         ETAColumn(),
         SpeedColumn(),
         console=console,
+        refresh_per_second=REFRESH_RATE,
     )
     
     with progress:
@@ -2527,6 +2531,7 @@ def run_wizard(input_dir, normalize_address=True):
             TextColumn("⏳ ETA:"),
             TimeRemainingColumn(),
             console=console,
+            refresh_per_second=REFRESH_RATE,
         ) as api_progress:
             api_task = api_progress.add_task(
                 "[cyan]Đang chuẩn hóa địa chỉ...",
