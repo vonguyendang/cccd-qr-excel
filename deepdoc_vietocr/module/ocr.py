@@ -22,7 +22,14 @@ import os
 from huggingface_hub import snapshot_download
 
 from utils.file_utils import get_project_base_directory
-from utils.settings import PARALLEL_DEVICES
+
+PARALLEL_DEVICES = None
+try:
+    import torch.cuda
+    PARALLEL_DEVICES = torch.cuda.device_count()
+except Exception:
+    pass
+
 from .operators import *  # noqa: F403
 from . import operators
 import math
