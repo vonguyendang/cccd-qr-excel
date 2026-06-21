@@ -151,7 +151,7 @@ class TextRecognizer:
         #config['weights'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'vietocr', 'weight', 'vgg_transformer.pth')
 
         config['cnn']['pretrained'] = True
-        config['device'] = 'cpu'
+        config['device'] = f'cuda:{device_id}' if device_id is not None and torch.cuda.is_available() else ('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.detector = Predictor(config)
 
     def __call__(self, img_list):
