@@ -1,5 +1,14 @@
 import os
 import warnings
+
+# Giới hạn số luồng của OpenMP/MKL để tránh thread explosion khi chạy ThreadPoolExecutor
+# PHẢI ĐẶT TRƯỚC KHI IMPORT TORCH, CV2
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -7,25 +16,12 @@ import PIL.Image
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
 import sys
-
-import torch
-if torch.cuda.is_available():
-    try:
-        torch.cuda.set_per_process_memory_fraction(0.6)
-    except Exception: pass
-IN_COLAB = 'COLAB_RELEASE_TAG' in os.environ
-REFRESH_RATE = 0.00833 if IN_COLAB else 10
-import sys
-
-import torch
-if torch.cuda.is_available():
-    try:
-        torch.cuda.set_per_process_memory_fraction(0.6)
-    except Exception: pass
 import glob
 import tempfile
 import uuid
 import cv2
+cv2.setNumThreads(1)
+
 from pyzbar.pyzbar import decode
 from pyzbar.pyzbar import ZBarSymbol
 import openpyxl
@@ -35,13 +31,16 @@ import datetime
 import pillow_heif
 import numpy as np
 from PIL import Image
-import sys
 
 import torch
 if torch.cuda.is_available():
     try:
         torch.cuda.set_per_process_memory_fraction(0.6)
     except Exception: pass
+
+IN_COLAB = 'COLAB_RELEASE_TAG' in os.environ
+REFRESH_RATE = 0.00833 if IN_COLAB else 10
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from vietocr_engine import extract_text_from_image
 import re
