@@ -44,12 +44,12 @@ REFRESH_RATE = 0.00833 if IN_COLAB else 10
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from vietocr_engine import extract_text_from_image
 import re
+import json
+import warnings
 import unicodedata
 import concurrent.futures
 import zipfile
 import threading
-import warnings
-import json
 import difflib
 
 # Caches cho Rule-based & Fuzzy Matching
@@ -1149,18 +1149,19 @@ def extract_ocr_data(image_path_or_cv2img):
             # Crop bottom 35% từ ảnh thẻ ĐÃ WARP
             bottom_crop = rotated[int(hr * 0.65):hr, :]
             
-            # Tiền xử lý cho VietOCR (Tăng contrast ảnh màu)
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-            lab = cv2.cvtColor(bottom_crop, cv2.COLOR_BGR2LAB)
-            l, a, b = cv2.split(lab)
-            l2 = clahe.apply(l)
-            mrz_contrast = cv2.cvtColor(cv2.merge((l2,a,b)), cv2.COLOR_LAB2BGR)
-            
-            # Lấy text bằng VietOCR
+            # Lấy text bằng Tesseract thay vì VietOCR để tăng tốc X10
             t_ocr_start = time.time()
-            text_bottom = safe_extract_text(mrz_contrast)
+            import pytesseract
+            
+            gray_bottom = cv2.cvtColor(bottom_crop, cv2.COLOR_BGR2GRAY)
+            hr_b, wr_b = gray_bottom.shape[:2]
+            resized_b = cv2.resize(gray_bottom, (wr_b*2, hr_b*2), interpolation=cv2.INTER_CUBIC)
+            bordered = cv2.copyMakeBorder(resized_b, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=[255])
+            thresh_bottom = cv2.threshold(bordered, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+            
+            custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<'
+            text_bottom = pytesseract.image_to_string(thresh_bottom, config=custom_config)
             t_ocr_total += (time.time() - t_ocr_start)
-            thresh_bottom = mrz_contrast # fallback debug image
             
             # Đánh giá điểm (Score)
             upper_text = text_bottom.upper()
@@ -1688,6 +1689,7 @@ def fetch_single_address(addr):
             'Accept-Language': 'en-US,vi;q=0.9,en;q=0.8',
             'Content-Type': 'application/json',
             'X-Demo-Token': geovina_token,
+            'X-Api-Key': 'gvn_5740dceda5cb2424b787f1153da3802a721ae3f6',
             'Referer': 'https://www.geovina.io.vn/',
             'Origin': 'https://www.geovina.io.vn',
         }
@@ -2129,6 +2131,9 @@ def run_wizard(input_dir, normalize_address=True):
     console.print("\n")
     console.print(Panel(f"[bold cyan]🚀 BẮT ĐẦU XỬ LÝ {len(image_paths)} ẢNH VỚI {num_threads} LUỒNG...[/bold cyan]", border_style="green"))
 
+    # Đặt lại start_time để loại bỏ thời gian chờ người dùng nhập lệnh
+    start_time = time.time()
+
     temp_rotated_dir = os.path.join(tempfile.gettempdir(), f"cccd_exports_{uuid.uuid4().hex[:8]}")
     os.makedirs(temp_rotated_dir, exist_ok=True)
 
@@ -2140,6 +2145,7 @@ def run_wizard(input_dir, normalize_address=True):
         if not IN_COLAB:
             console.print(f"[dim]⏳ Bắt đầu đưa vào AI: {os.path.basename(img_path)}...[/dim]")
         t0 = time.time()
+        
         qr_string, engine, err, img, qr_rotated_img = extract_qr_data(img_path)
         
         log_msgs = []
@@ -2177,7 +2183,6 @@ def run_wizard(input_dir, normalize_address=True):
             if img is not None:
                 log_msgs.append(f"[yellow]⚠️ Không đọc được QR, đang thử quét OCR...[/yellow]")
                 
-                # Mỗi thread có instance model riêng (thread-local) nên không cần lock
                 ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
                 
                 if rotated_img is not None:
@@ -3168,12 +3173,33 @@ def clean_address_string(addr):
     # 6. Fuzzy Matching từng đoạn qua dấu phẩy
     segments = [s.strip() for s in clean_line.split(',') if s.strip()]
     corrected_segments = []
+    
+    # Caching strategies for optimization
+    global VALID_LOCS_LOWER_MAP, CLEAN_ADDRESS_SEGMENT_CACHE
+    if 'VALID_LOCS_LOWER_MAP' not in globals() or VALID_LOCS_LOWER_MAP is None:
+        VALID_LOCS_LOWER_MAP = {loc.lower(): loc for loc in (valid_locs or [])}
+    if 'CLEAN_ADDRESS_SEGMENT_CACHE' not in globals() or CLEAN_ADDRESS_SEGMENT_CACHE is None:
+        CLEAN_ADDRESS_SEGMENT_CACHE = {}
+        
     for seg in segments:
         if valid_locs and 3 <= len(seg) <= 45:
+            if seg in CLEAN_ADDRESS_SEGMENT_CACHE:
+                corrected_segments.append(CLEAN_ADDRESS_SEGMENT_CACHE[seg])
+                continue
+                
+            seg_lower = seg.lower()
+            if VALID_LOCS_LOWER_MAP and seg_lower in VALID_LOCS_LOWER_MAP:
+                matched = VALID_LOCS_LOWER_MAP[seg_lower]
+                CLEAN_ADDRESS_SEGMENT_CACHE[seg] = matched
+                corrected_segments.append(matched)
+                continue
+                
             matches = difflib.get_close_matches(seg, valid_locs, n=1, cutoff=0.85)
             if matches:
+                CLEAN_ADDRESS_SEGMENT_CACHE[seg] = matches[0]
                 corrected_segments.append(matches[0])
             else:
+                CLEAN_ADDRESS_SEGMENT_CACHE[seg] = seg
                 corrected_segments.append(seg)
         else:
             corrected_segments.append(seg)
@@ -3303,11 +3329,16 @@ def run_reprocess(excel_path, normalize_address=True):
         console.print("[yellow]Đã hủy quá trình.[/yellow]")
         return
     
+    # Đặt lại start_time để loại bỏ thời gian chờ người dùng nhập lệnh
+    start_time = time.time()
+    
     # Process images for missing rows
     import concurrent.futures
     
     # Helper to reprocess a single image
     def process_single_image(img_path):
+        import time
+        t0 = time.time()
         qr_string, engine, err, img, qr_rotated_img = extract_qr_data(img_path)
         log_msgs = []
         row_data = {}
@@ -3364,6 +3395,7 @@ def run_reprocess(excel_path, normalize_address=True):
     # We need to process both front and back images for each row
     all_images_to_process = set()
     img_results = {}
+    recovered_data = {}
     for row in rows_to_process:
         if row['front_name'] and row['front_name'] in img_map:
             p = img_map[row['front_name']]
