@@ -3169,7 +3169,7 @@ def clean_address_string(addr):
     segments = [s.strip() for s in clean_line.split(',') if s.strip()]
     corrected_segments = []
     for seg in segments:
-        if valid_locs and len(seg) >= 3:
+        if valid_locs and 3 <= len(seg) <= 45:
             matches = difflib.get_close_matches(seg, valid_locs, n=1, cutoff=0.85)
             if matches:
                 corrected_segments.append(matches[0])
