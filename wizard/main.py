@@ -2138,7 +2138,8 @@ def run_wizard(input_dir, normalize_address=True):
     
     def process_single_image(img_path):
         import time
-        console.print(f"[dim]⏳ Bắt đầu đưa vào AI: {os.path.basename(img_path)}...[/dim]")
+        if not IN_COLAB:
+            console.print(f"[dim]⏳ Bắt đầu đưa vào AI: {os.path.basename(img_path)}...[/dim]")
         t0 = time.time()
         qr_string, engine, err, img, qr_rotated_img = extract_qr_data(img_path)
         
