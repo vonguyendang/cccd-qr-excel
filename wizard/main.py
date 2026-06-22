@@ -3566,6 +3566,8 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                     if name_val and str(name_val).strip() and str(name_val).strip() != "None":
                         cleaned_name = clean_name_string(str(name_val))
                         if cleaned_name:
+                            if cleaned_name != str(name_val):
+                                file_logs.append(f"[LÀM SẠCH HỌ TÊN] {str(name_val)} -> {cleaned_name}")
                             row[name_idx].value = cleaned_name
                             row[name_idx].font = Font(color="FF0000")
 
@@ -3579,6 +3581,8 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                 if mode == "1":
                     if is_ocr:
                         cleaned_val = clean_address_string(raw_addr)
+                        if cleaned_val != raw_addr:
+                            file_logs.append(f"[LÀM SẠCH ĐỊA CHỈ GỐC] {raw_addr} -> {cleaned_val}")
                         row[orig_idx].value = cleaned_val
                         row[orig_idx].font = Font(color="FF0000")
                         address_to_normalize.add(cleaned_val)
@@ -3590,6 +3594,8 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                         should_process_address = process_all_rows or is_norm_empty
                         if should_process_address:
                             cleaned_val = clean_address_string(raw_addr)
+                            if cleaned_val != raw_addr:
+                                file_logs.append(f"[LÀM SẠCH ĐỊA CHỈ GỐC] {raw_addr} -> {cleaned_val}")
                             row[orig_idx].value = cleaned_val
                             row[orig_idx].font = Font(color="FF0000")
                             address_to_normalize.add(cleaned_val)
