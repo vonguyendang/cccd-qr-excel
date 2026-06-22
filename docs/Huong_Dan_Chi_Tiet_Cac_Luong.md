@@ -85,9 +85,12 @@ Trong mọi môi trường (Web App, CLI, Colab), quá trình quét được thi
 2. **Bước 2: Cung cấp Đường Dẫn Thư Mục Ảnh**
    - Kéo thả thư mục chứa ảnh CCCD vào cửa sổ Terminal và nhấn Enter.
 3. **Bước 3: Hệ Thống Tự Động (Auto-Flow & Sub-flows)**
-   - *Luồng Quét Mới:* Thanh tiến trình (Progress Bar) chạy từ đầu.
-   - *Luồng Quét Nối Tiếp:* Nếu trước đó bạn đã quét thư mục này nhưng bị dừng (VD quét được 50/100 ảnh), hệ thống sẽ thông báo: *"Phát hiện dữ liệu cũ, bỏ qua 50 ảnh đã quét..."* và chạy tiếp từ ảnh 51.
-   - *Luồng Tái Xử Lý:* Cuối tiến trình, chương trình sẽ gom các ảnh không đọc nổi QR sang riêng một tệp. Nó tự động gọi Deepdoc VietOCR (đã chỉnh sửa bù sáng, quay tự động) để rà quét lại lần 2 các ảnh này.
+   - *Luồng Quét Mới:* Thanh tiến trình (Progress Bar) chạy từ đầu. Tự động sao lưu tiến trình (Realtime Backup), có thể bấm Ctrl+C để dừng và chạy tiếp bất cứ lúc nào.
+   - *Luồng Quét Nối Tiếp:* Nếu trước đó bạn đã quét thư mục này nhưng bị dừng, hệ thống sẽ thông báo và tự động khôi phục dữ liệu từ file backup JSON để chạy tiếp các ảnh còn lại.
+   - *Luồng Tái Xử Lý (Chuyên sâu):* Khi bạn nhập file Excel kết quả cũ vào, hệ thống cung cấp 3 chế độ tái xử lý mạnh mẽ:
+     - **Mode 1 (Tái bổ sung thông tin OCR):** Chuyên dùng để quét lại các dòng ảnh báo lỗi hoặc thiếu trường thông tin (VD: Tôn giáo, Quê quán) bằng AI OCR tăng cường. Nó đắp bù trực tiếp dữ liệu mới vào file Excel gốc mà không ghi đè dữ liệu cũ.
+     - **Mode 2 (Làm đẹp & Chuẩn hóa toàn bộ):** KHÔNG gọi AI tốn thời gian. Chế độ này dùng để tẩy rác, xóa ký tự thừa cho tên/địa chỉ theo luật `ocr_rules.json`, sau đó gọi API chuẩn hóa.
+     - **Mode 3 (Chỉ chuẩn hóa):** Cập nhật lại cấu trúc địa chỉ mới từ VNHub/Geovina mà không thay đổi địa chỉ gốc ban đầu.
 4. **Bước 4: Nhận Thành Quả**
    - Mở thư mục `wizard/exports/`.
    - Nhận 1 file `.xlsx`, 1 file Log tiến trình và 5 file ZIP phân loại (Original, Rename, QR_scanned, OCR_scanned, Duplicate).
@@ -138,3 +141,5 @@ Trong mọi môi trường (Web App, CLI, Colab), quá trình quét được thi
    - Dùng chung ID (Số CCCD/CMND) ghép mặt trước, mặt sau với nhau. Bù đắp dữ liệu chéo nhau.
 5. **Luồng Lọc Trùng Lặp:**
    - Trong 1 luồng quét, hệ thống tự bắt các bức ảnh chụp nhiều lần cho 1 mặt thẻ, giữ ảnh tốt nhất, đẩy ảnh thừa vào `duplicate.zip`.
+6. **Cơ chế Sao Lưu & Cứu Hộ Thời Gian Thực (Realtime Recovery):**
+   - Mọi tiến trình quét ảnh OCR hay gọi API đều được lưu nháp lập tức ra file JSON Lines (`_reprocess_recovery.jsonl`, `_api_recovery.jsonl`). Chống mất trắng dữ liệu khi cúp điện, mất mạng hay dừng đột ngột bằng Ctrl+C. Hệ thống cũng tích hợp cơ chế tự động theo dõi tốc độ dòng/giây (it/s) để người dùng dễ kiểm soát tiến độ.
