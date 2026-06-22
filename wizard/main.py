@@ -16,6 +16,12 @@ import PIL.Image
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
 import sys
+import logging
+logging.basicConfig(filename='debug_flow.log', level=logging.INFO, 
+                    format='%(asctime)s - [%(threadName)s] - %(message)s')
+def LOG(msg):
+    logging.info(msg)
+
 import glob
 import tempfile
 import uuid
@@ -1076,6 +1082,7 @@ def align_card(img, target_width=1000, target_height=630):
     return warped, debug_img, method
 
 def extract_ocr_data(image_path_or_cv2img):
+    LOG('Started extract_ocr_data')
     """
     Hàm xử lý OCR (Trích xuất văn bản từ ảnh) bằng AI.
     Hỗ trợ chia 2 luồng độc lập cho mặt sau CCCD (Ngày cấp và MRZ).
@@ -1118,7 +1125,9 @@ def extract_ocr_data(image_path_or_cv2img):
 
         # --- BƯỚC 1: XÁC ĐỊNH BIÊN VÀ LÀM PHẲNG THẺ ---
         t0 = time.time()
+        LOG('Calling align_card')
         card_img, debug_detect_img, align_method = align_card(img_to_ocr)
+        LOG(f'Finished align_card, method={align_method}')
         _last_timing['detect_and_align_card'] = time.time() - t0
         _last_timing['align_method'] = align_method
         
@@ -1466,13 +1475,23 @@ def extract_ocr_data(image_path_or_cv2img):
             
             # Nếu điểm quá thấp, có thể align_card crop sai hoặc CLAHE làm hỏng text (thường gặp với ảnh chụp màn hình)
             # Fallback về OCR ảnh gốc toàn phần (không làm nét)
-            if best_front_score < 50:
+            # Tối ưu: Nếu là opencv_contour thì sẽ được retry với ONNX sau, không cần tốn thời gian fallback gốc
+            if best_front_score < 50 and align_method != "opencv_contour":
+                # Resize ảnh gốc nếu quá lớn để tránh nghẽn CPU (DBNet trên ảnh 12MP tốn >20s)
+                h_orig, w_orig = img_to_ocr.shape[:2]
+                img_fallback = img_to_ocr.copy()
+                if max(h_orig, w_orig) > 1500:
+                    sc = 1500 / max(h_orig, w_orig)
+                    img_fallback = cv2.resize(img_fallback, (int(w_orig * sc), int(h_orig * sc)), interpolation=cv2.INTER_AREA)
+
                 t_fallback_orient = time.time()
                 for rot_code, rot_name in front_rotations:
-                    rotated = img_to_ocr if rot_code is None else cv2.rotate(img_to_ocr, rot_code)
+                    rotated = img_fallback if rot_code is None else cv2.rotate(img_fallback, rot_code)
                     
                     t_o = time.time()
+                    LOG(f'Calling safe_extract_text fast_mode=True rot={rot_name}')
                     text_rot = safe_extract_text(rotated, fast_mode=True)
+                    LOG('Finished safe_extract_text')
                     _last_timing['ocr_full_card'] += (time.time() - t_o)
                     
                     t_p = time.time()
@@ -1537,7 +1556,9 @@ def extract_ocr_data(image_path_or_cv2img):
                 l2 = clahe.apply(l)
                 img_contrast = cv2.cvtColor(cv2.merge((l2,a,b)), cv2.COLOR_LAB2BGR)
                 
+                LOG('Calling safe_extract_text fast_mode=False (contrast)')
                 text_p2 = safe_extract_text(img_contrast)
+                LOG('Finished safe_extract_text')
                 data_p2 = parse_ocr_text(text_p2)
                 
                 merged = False
@@ -1555,7 +1576,9 @@ def extract_ocr_data(image_path_or_cv2img):
                     kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
                     img_sharpen = cv2.filter2D(best_img, -1, kernel)
                     
+                    LOG('Calling safe_extract_text fast_mode=False (sharpen)')
                     text_p3 = safe_extract_text(img_sharpen)
+                    LOG('Finished safe_extract_text')
                     data_p3 = parse_ocr_text(text_p3)
                     
                     merged_p3 = False
@@ -1587,13 +1610,14 @@ def extract_ocr_data(image_path_or_cv2img):
             if is_garbage or is_suspicious_crop:
                 # Nếu crop OpenCV fail dẫn đến không đọc được chữ, retry bằng ONNX
                 if USE_OPENCV_ALIGN_FIRST and align_method == "opencv_contour":
-                    import wizard.main
-                    wizard.main.USE_OPENCV_ALIGN_FIRST = False
-                    res_data, res_note, res_img = extract_ocr_data(img_to_ocr)
-                    wizard.main.USE_OPENCV_ALIGN_FIRST = True
-                    if res_note:
-                        res_note = res_note + " (OpenCV crop fail, fallback to ONNX)"
-                    return res_data, res_note, res_img
+                    USE_OPENCV_ALIGN_FIRST = False
+                    try:
+                        res_data, res_note, res_img = extract_ocr_data(img_to_ocr)
+                        if res_note:
+                            res_note = res_note + " (OpenCV crop fail, fallback to ONNX)"
+                        return res_data, res_note, res_img
+                    finally:
+                        USE_OPENCV_ALIGN_FIRST = True
                     
                 return best_data, "Ảnh mờ hoặc không thể nhận diện được", rotated_return
                 
@@ -1638,6 +1662,7 @@ _address_session.mount('http://', _adapter)
 _address_session.mount('https://', _adapter)
 
 def fetch_single_address(addr):
+    LOG(f'Started fetch_single_address for {addr}')
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:151.0) Gecko/20100101 Firefox/151.0',
         'Accept': 'application/json, text/plain, */*',
@@ -1660,7 +1685,7 @@ def fetch_single_address(addr):
     # Nếu API trả về thành công nhưng data = [] thì chuyển ngay sang backup
     last_exception = None
     
-    for attempt in range(3):
+    for attempt in range(30):
         try:
             response = _address_session.post(
                 'https://tienich.vnhub.com/api/wards',
@@ -1686,16 +1711,20 @@ def fetch_single_address(addr):
                     "_processing_time": time.time() - t0
                 }
             
-            # API thành công nhưng data rỗng = không tìm thấy địa chỉ → thoát ngay để thử backup
+            # Nếu API trả về data rỗng, có thể do Rate Limit ngầm từ VNHub
+            # Ngủ 2s rồi thử lại
+            if attempt < 29:
+                time.sleep(2)
+                continue
             break
             
         except Exception as e:
             last_exception = e
             # Lỗi 500 hoặc mạng → thử lại sau 1s
-            if attempt < 99:
+            if attempt < 29:
                 time.sleep(1)
                 continue
-            break  # hết 100 lần → dùng backup
+            break  # hết 30 lần → dùng backup
 
     # -------------------------------------------------------
     # BACKUP: Geovina.io.vn — chỉ chạy khi VNHub thất bại
@@ -1725,13 +1754,20 @@ def fetch_single_address(addr):
         }
         
         try:
-            geo_resp = _address_session.post(
-                'https://www.geovina.io.vn/parse',
-                data=payload,
-                headers=geovina_headers,
-                timeout=15
-            )
-            geo_resp.raise_for_status()
+            # Retry nội bộ cho Geovina (tránh 429 Too Many Requests)
+            for geo_attempt in range(4):
+                geo_resp = _address_session.post(
+                    'https://www.geovina.io.vn/parse',
+                    data=payload,
+                    headers=geovina_headers,
+                    timeout=15
+                )
+                if geo_resp.status_code == 429:
+                    time.sleep(2)
+                    continue
+                geo_resp.raise_for_status()
+                break
+                
             geo_data = geo_resp.json()
             
             is_token_error = False
@@ -1761,7 +1797,7 @@ def fetch_single_address(addr):
             return {
                 "original": addr,
                 "success": False,
-                "error": f"Lỗi kết nối API sau 100 lần thử VNHub ({err_primary}); Geovina backup cũng lỗi ({str(geo_err)})",
+                "error": f"Lỗi kết nối API sau nhiều lần thử VNHub ({err_primary}); Geovina backup cũng lỗi ({str(geo_err)})",
                 "_processing_time": time.time() - t0
             }
 def call_address_api(address_list, max_workers=4):
@@ -2065,6 +2101,10 @@ def run_wizard(input_dir, normalize_address=True):
             if crashed_items:
                 console.print(f"[bold green]✅ Đã phục hồi {len(crashed_items)} kết quả scan bị gián đoạn từ {os.path.basename(realtime_csv)}.[/bold green]")
                 incremental_scan = True
+                # Khôi phục file log tạm
+                if os.path.exists(realtime_log):
+                    with open(realtime_log, 'r', encoding='utf-8') as flog:
+                        file_logs.extend(flog.read().splitlines())
         except Exception as e:
             pass
 
@@ -2078,10 +2118,15 @@ def run_wizard(input_dir, normalize_address=True):
                 max_renamed_idx = int(base)
                 
         if not new_image_paths:
-            console.print("\n[bold green]✅ Không tìm thấy ảnh mới nào được chép thêm vào. Kết thúc quá trình quét nối tiếp![/bold green]")
-            return
-        console.print(f"[bold green]✅ Đã tự động lọc ra [yellow]{len(new_image_paths)}[/yellow] ảnh mới cần xử lý.[/bold green]")
-        image_paths = new_image_paths
+            if crashed_items:
+                console.print("\n[bold green]✅ Không tìm thấy ảnh mới nào. Đang tiến hành xuất dữ liệu đã phục hồi ra Excel...[/bold green]")
+                image_paths = []
+            else:
+                console.print("\n[bold green]✅ Không tìm thấy ảnh mới nào được chép thêm vào. Kết thúc quá trình quét nối tiếp![/bold green]")
+                return
+        else:
+            console.print(f"[bold green]✅ Đã tự động lọc ra [yellow]{len(new_image_paths)}[/yellow] ảnh mới cần xử lý.[/bold green]")
+            image_paths = new_image_paths
 
     # --- AUTO BACKUP AND RENAME LOGIC ---
     zip_path = os.path.join(input_dir, "original.zip")
@@ -2812,7 +2857,7 @@ def run_wizard(input_dir, normalize_address=True):
         
         # Tô màu nền vàng cho các dòng lấy bằng OCR hoặc không đọc được
         note_str = row_data.get('Ghi chú', '')
-        if "Lấy bằng OCR" in note_str or "Không đọc được" in note_str:
+        if "Lấy bằng OCR" in note_str or "không đọc được" in note_str:
             yellow_fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
             for cell in ws[ws.max_row]:
                 cell.fill = yellow_fill
@@ -2987,11 +3032,13 @@ def run_wizard(input_dir, normalize_address=True):
         
         # 1. original.zip
         original_zip_path = os.path.join(exports_dir, 'original.zip')
+        count_original = 0
         with zipfile.ZipFile(original_zip_path, 'w') as zf:
             for path in all_original_image_paths:
                 if os.path.exists(path):
                     zf.write(path, os.path.basename(path))
-        console.print(f" [green]✓[/green] Đã tạo [bold]original.zip[/bold] với {len(image_paths)} file.")
+                    count_original += 1
+        console.print(f" [green]✓[/green] Đã tạo [bold]original.zip[/bold] với {count_original} file.")
         
         # 2. rename.zip
         rename_zip_path = os.path.join(exports_dir, 'rename.zip')
@@ -3980,7 +4027,9 @@ def check_and_prompt_geovina_token(current_failed_token=None):
             console.print("[yellow]Bỏ qua Geovina trên Colab (Có thể set biến môi trường os.environ['GEOVINA_TOKEN']). Chuyển sang dùng VNHub.[/yellow]\n")
             return False
         else:
-            new_token = Prompt.ask("\n[bold cyan]Nhập X-Demo-Token mới (hoặc 'skip')[/bold cyan]").strip().strip('\'"')
+            LOG("WARNING: Token expired. Cannot prompt in background thread. Failing gracefully.")
+            console.print("[bold red]⚠️ Token Geovina hết hạn! Để nhập Token mới, vui lòng chạy lệnh ở terminal, hoặc cập nhật biến môi trường GEOVINA_TOKEN.[/bold red]")
+            return False
             
             if new_token.lower() == 'skip':
                 console.print("[yellow]Đã bỏ qua kiểm tra Geovina. Hệ thống sẽ tiếp tục chạy với VNHub.[/yellow]\n")
