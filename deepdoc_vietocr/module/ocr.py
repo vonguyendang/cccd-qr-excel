@@ -447,6 +447,15 @@ class OCR:
             time_dict['all'] = end - start
             return None, None, time_dict
 
+        if len(dt_boxes) > 80:
+            # Sort by area (descending) and keep top 80 largest boxes to prevent CPU starvation on noisy backgrounds
+            def box_area(box):
+                w = np.linalg.norm(box[0] - box[1])
+                h = np.linalg.norm(box[0] - box[3])
+                return w * h
+            dt_boxes = sorted(list(dt_boxes), key=box_area, reverse=True)[:80]
+            dt_boxes = np.array(dt_boxes)
+
         img_crop_list = []
 
         dt_boxes = self.sorted_boxes(dt_boxes)
