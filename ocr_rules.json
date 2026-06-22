@@ -2,7 +2,7 @@
   "blacklist_patterns": [
     "(?i)(c[oó]\\s+)?gi[aáàảãạ]\\s*tr[iị]\\s*(đ[ếeêề]n|den|đen)\\s*[:.,]*",
     "(?i)(expiry|h[eế]t\\s*h[aạ]n|ferpiry|telefoxpir|date\\s*ferpiry|date\\s*ferp[a-z]*|n[oơ]i\\s*c[aấ]p|ng[aà]y\\s*c[aấ]p|b[oộ]\\s*c[oô]ng\\s*an|c[uụ]c\\s*c[aả]nh\\s*s[aá]t|gi[oớ]i\\s*t[ií]nh|qu[oố]c\\s*t[iị]ch|sex|nationality|qu[eê]\\s*qu[aá]n|khai\\s*sinh|ng[aà]y\\s*sinh|i\\s*date|birth|data\\s*ofespry)",
-    "(?i)\\b(date|dater|place\\s*of\\s*res[a-z]*|place\\s*ofresic|i\\s*place|pplace|ppace|place|date\\s*of\\s*issue|ddate|ddate\\s*issue|dddate|ddate\\s*issue|date\\s*issue|issue|indent|vi[eê][nǹ]|nam\\s+linh|place of residence|place of origin|place oforging|transervating|daleoroxic|dale\\s*o|deleofexpin|overstreeter|residence|origin|họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\\b",
+    "(?i)\\b(date|dater|place\\s*of\\s*res[a-z]*|place\\s*ofresic|i\\s*place|pplace|ppace|place|date\\s*of\\s*issue|ddate|ddate\\s*issue|dddate|ddate\\s*issue|date\\s*issue|issue|indent|vi[eê][nǹ]|nam\\s+linh|place of residence|place of origin|place oforging|transervating|daleoroxic|dale\\s*o|deleofexpin|overstreeter|residence|origin|họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|sedest|ingave|1tho|nams|cang 10/000020|notter|dilonfurgure|cachoro|stard|fui nam|kho và tên|of|cccd)\\b",
     "(?i)(họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)",
     "(?i)^(c[oó]|có)\\s*[:.,]*\\s*",
     "(?i)\\s+(c[oó]|có)\\s*[:.,]*$",
