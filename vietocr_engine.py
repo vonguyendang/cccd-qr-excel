@@ -18,65 +18,37 @@ if deepdoc_path not in sys.path:
 
 from module.ocr import OCR
 
-# Sử dụng ProcessPoolExecutor để chạy OCR ở một process hoàn toàn độc lập,
-# tránh 100% lỗi deadlock của PyTorch/ONNX khi kết hợp với ThreadPoolExecutor trên MacOS.
 import threading
-import concurrent.futures
-import multiprocessing
+import torch
 
-_process_pool = None
-_pool_lock = threading.Lock()
-
-def _run_ocr_in_process(img_array, device_id):
-    """
-    Hàm này chạy hoàn toàn trong một Worker Process tách biệt.
-    Không bao giờ đụng độ với GIL hoặc ThreadPool của Process chính.
-    """
-    import os, sys
-    in_colab = 'COLAB_RELEASE_TAG' in os.environ
-    if in_colab:
-        sys.stdout = open(os.devnull, 'w')
-        sys.stderr = open(os.devnull, 'w')
-        
-    import torch
-    try:
-        torch.set_num_threads(1)
-    except:
-        pass
-        
-    from module.ocr import OCR
-    global _local_ocr
-    if '_local_ocr' not in globals():
-        _local_ocr = OCR()
-        
-    bxs = _local_ocr(img_array, device_id)
-    return bxs
+_ocr_engine = None
+_ocr_lock = threading.Lock()
 
 def get_ocr_engine():
-    # Hàm này không còn cần thiết khởi tạo model ở main process nữa
-    # vì model sẽ được khởi tạo an toàn bên trong Worker Process.
-    pass
+    global _ocr_engine
+    if _ocr_engine is None:
+        try:
+            torch.set_num_threads(1)
+        except Exception:
+            pass
+        _ocr_engine = OCR()
+    return _ocr_engine
 
 def extract_text_from_image(img, return_orientation=False):
     """
     Trích xuất text tiếng Việt từ ảnh (numpy array hoặc PIL Image)
     """
-    global _process_pool
-    
     if isinstance(img, Image.Image):
         img_array = np.array(img.convert('RGB'))
     else:
         img_array = img
         
     try:
-        with _pool_lock:
-            if _process_pool is None:
-                ctx = multiprocessing.get_context('spawn')
-                _process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=1, mp_context=ctx)
-                
-        # Gửi ảnh sang Process phụ để chạy AI, chờ nhận kết quả
-        future = _process_pool.submit(_run_ocr_in_process, img_array, 0)
-        bxs = future.result(timeout=120) # Thêm timeout 120s chống kẹt vĩnh viễn
+        # Sử dụng threading.Lock() để đảm bảo chỉ 1 luồng được chạy OCR tại 1 thời điểm.
+        # Ngăn chặn lỗi deadlock của PyTorch/ONNX khi chạy song song.
+        with _ocr_lock:
+            engine = get_ocr_engine()
+            bxs = engine(img_array, 0)
         
         if not bxs:
             return ("", False) if return_orientation else ""
