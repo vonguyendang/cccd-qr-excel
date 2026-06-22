@@ -3913,20 +3913,66 @@ def check_and_prompt_geovina_token(current_failed_token=None):
         console.print("5. Trong phần [cyan]Request Headers[/cyan], tìm dòng [bold]X-Demo-Token[/bold] và copy giá trị của nó.")
         console.print("\n[dim]Lưu ý: Nếu bạn không có mạng hoặc không muốn cập nhật bây giờ, hãy gõ 'skip' để bỏ qua (Hệ thống sẽ chỉ dùng VNHub).[/dim]")
         
-        new_token = Prompt.ask("\n[bold cyan]Nhập X-Demo-Token mới (hoặc 'skip')[/bold cyan]").strip().strip('\'"')
+        in_colab = 'google.colab' in sys.modules or 'IPython' in sys.modules
         
-        if new_token.lower() == 'skip':
-            console.print("[yellow]Đã bỏ qua kiểm tra Geovina. Hệ thống sẽ tiếp tục chạy với VNHub.[/yellow]\n")
-            return False
-        elif new_token:
-            with console.status("[bold green]Đang kiểm tra lại token mới...", spinner="dots"):
-                is_ok = _test_token(new_token)
-            if is_ok:
-                os.environ['GEOVINA_DEMO_TOKEN'] = new_token
-                console.print("[bold green]✅ Token mới hợp lệ! Hệ thống sẽ tiếp tục quá trình xử lý.[/bold green]\n")
-                return True
-            else:
-                console.print("[bold red]❌ Token mới vẫn không hợp lệ. Vui lòng thử lại![/bold red]")
+        if in_colab:
+            console.print("\n[bold cyan]⚠️ PHÁT HIỆN ĐANG CHẠY TRÊN COLAB/JUPYTER![/bold cyan]")
+            console.print("[yellow]Do Colab không hỗ trợ nhập liệu trực tiếp lúc đang chạy luồng ngầm, vui lòng làm theo cách sau:[/yellow]")
+            console.print("👉 Tạo một file tên là [bold green]geovina_token.txt[/bold green] ở thư mục gốc (nơi chứa source code).")
+            console.print("👉 Mở file đó ra, dán Token mới vào, sau đó lưu lại (Ctrl+S / Cmd+S).")
+            console.print("👉 Hệ thống đang theo dõi file này và sẽ tự động đọc Token ngay khi bạn lưu...")
+            console.print("[dim](Gõ chữ 'skip' vào file và lưu lại nếu muốn bỏ qua Geovina)[/dim]\n")
+            
+            # Tạo sẵn file rỗng cho người dùng dễ thấy
+            try:
+                if not os.path.exists("geovina_token.txt"):
+                    open("geovina_token.txt", "w").close()
+            except:
+                pass
+                
+            while True:
+                if os.path.exists("geovina_token.txt"):
+                    try:
+                        with open("geovina_token.txt", "r", encoding="utf-8") as f:
+                            new_token = f.read().strip().strip('\'"')
+                        
+                        if new_token:
+                            if new_token.lower() == 'skip':
+                                console.print("[yellow]Đã bỏ qua kiểm tra Geovina. Hệ thống sẽ tiếp tục chạy với VNHub.[/yellow]\n")
+                                try: os.remove("geovina_token.txt")
+                                except: pass
+                                return False
+                                
+                            with console.status("[bold green]Đang kiểm tra lại token từ file...", spinner="dots"):
+                                is_ok = _test_token(new_token)
+                            if is_ok:
+                                os.environ['GEOVINA_DEMO_TOKEN'] = new_token
+                                console.print("[bold green]✅ Token mới hợp lệ! Hệ thống sẽ tiếp tục quá trình xử lý.[/bold green]\n")
+                                try: os.remove("geovina_token.txt")
+                                except: pass
+                                return True
+                            else:
+                                console.print("[bold red]❌ Token trong file không hợp lệ. Vui lòng mở file geovina_token.txt dán lại token khác và lưu![/bold red]")
+                                # Xóa nội dung để chờ người dùng nhập lại (người dùng copy paste token mới)
+                                open("geovina_token.txt", "w").close()
+                    except Exception as e:
+                        pass
+                time.sleep(2)
+        else:
+            new_token = Prompt.ask("\n[bold cyan]Nhập X-Demo-Token mới (hoặc 'skip')[/bold cyan]").strip().strip('\'"')
+            
+            if new_token.lower() == 'skip':
+                console.print("[yellow]Đã bỏ qua kiểm tra Geovina. Hệ thống sẽ tiếp tục chạy với VNHub.[/yellow]\n")
+                return False
+            elif new_token:
+                with console.status("[bold green]Đang kiểm tra lại token mới...", spinner="dots"):
+                    is_ok = _test_token(new_token)
+                if is_ok:
+                    os.environ['GEOVINA_DEMO_TOKEN'] = new_token
+                    console.print("[bold green]✅ Token mới hợp lệ! Hệ thống sẽ tiếp tục quá trình xử lý.[/bold green]\n")
+                    return True
+                else:
+                    console.print("[bold red]❌ Token mới vẫn không hợp lệ. Vui lòng thử lại![/bold red]")
     return True
 
 
