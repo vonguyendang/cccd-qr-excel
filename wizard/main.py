@@ -3861,17 +3861,50 @@ def check_and_prompt_geovina_token(current_failed_token=None):
             except:
                 return False
 
-    current_token = os.environ.get(
-        'GEOVINA_DEMO_TOKEN',
-        '1782095814853.ab6fc10225b874be936bd6fe9a020c6e0a5418e03a1215c0463d5628c91083e7'
-    )
+        def _auto_fetch_token():
+            try:
+                html_resp = requests.get(
+                    'https://www.geovina.io.vn/',
+                    headers={
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:152.0) Gecko/20100101 Firefox/152.0',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                    },
+                    timeout=10
+                )
+                import re
+                match = re.search(r'window\.__DEMO_TOKEN__\s*=\s*[\'"]([^\'"]+)[\'"]', html_resp.text)
+                if match:
+                    return match.group(1)
+            except:
+                pass
+            return None
+
+    current_token = os.environ.get('GEOVINA_DEMO_TOKEN', '')
+    
+    # Lúc đầu chạy, nếu token trống, ta thử auto-fetch luôn
+    if not current_token:
+        with console.status("[bold green]Đang tự động lấy Token Geovina...", spinner="dots"):
+            auto_tok = _auto_fetch_token()
+            if auto_tok and _test_token(auto_tok):
+                os.environ['GEOVINA_DEMO_TOKEN'] = auto_tok
+                return True
+
+    current_token = os.environ.get('GEOVINA_DEMO_TOKEN', '1782095814853.ab6fc10225b874be936bd6fe9a020c6e0a5418e03a1215c0463d5628c91083e7')
 
     with console.status("[bold green]Đang kiểm tra trạng thái API Geovina...", spinner="dots"):
         is_ok = _test_token(current_token)
 
     while not is_ok:
-        console.print("\n[bold red]⚠️ CẢNH BÁO: Token dự phòng Geovina đã hết hạn hoặc không hợp lệ![/bold red]")
-        console.print("[yellow]Hướng dẫn lấy Token mới:[/yellow]")
+        console.print("\n[bold red]⚠️ Token dự phòng Geovina đã hết hạn hoặc không hợp lệ![/bold red]")
+        
+        with console.status("[bold green]Đang thử tự động gia hạn Token mới...", spinner="dots"):
+            auto_tok = _auto_fetch_token()
+            if auto_tok and _test_token(auto_tok):
+                os.environ['GEOVINA_DEMO_TOKEN'] = auto_tok
+                console.print("[bold green]✅ Đã tự động gia hạn thành công Token Geovina![/bold green]\n")
+                return True
+                
+        console.print("[yellow]Tự động gia hạn thất bại. Hướng dẫn lấy Token thủ công:[/yellow]")
         console.print("1. Mở trình duyệt web truy cập: [cyan]https://www.geovina.io.vn/[/cyan]")
         console.print("2. Nhấn F12 (hoặc Chuột phải -> Inspect) để mở Developer Tools, chuyển sang tab [cyan]Network[/cyan].")
         console.print("3. Bấm nút [cyan]Tách địa chỉ[/cyan] trên trang web.")
