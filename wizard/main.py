@@ -2081,6 +2081,31 @@ def run_wizard(input_dir, normalize_address=True):
                     if renamed_other:
                         for p in str(renamed_other).split(', '):
                             if p: processed_images_set.add(p)
+                            
+                # Đọc thêm các sheet phụ (nếu có) để không quét lại ảnh lỗi/trùng lặp
+                if 'duplicate' in wb.sheetnames:
+                    ws_dup = wb['duplicate']
+                    for row in ws_dup.iter_rows(min_row=2, values_only=True):
+                        if len(row) >= 2 and row[1]:
+                            processed_images_set.add(str(row[1]))
+                            
+                if 'Unknown' in wb.sheetnames:
+                    ws_unk = wb['Unknown']
+                    for row in ws_unk.iter_rows(min_row=2, values_only=True):
+                        if len(row) >= 2 and row[1]:
+                            processed_images_set.add(str(row[1]))
+                            
+                if 'QR_scanned' in wb.sheetnames:
+                    ws_qr = wb['QR_scanned']
+                    for row in ws_qr.iter_rows(min_row=2, values_only=True):
+                        if len(row) >= 2 and row[1]:
+                            processed_images_set.add(str(row[1]))
+                            
+                if 'OCR_scanned' in wb.sheetnames:
+                    ws_ocr = wb['OCR_scanned']
+                    for row in ws_ocr.iter_rows(min_row=2, values_only=True):
+                        if len(row) >= 2 and row[1]:
+                            processed_images_set.add(str(row[1]))
         except Exception as e:
             console.print(f"[red]❌ Lỗi đọc file Excel cũ: {e}[/red]")
             incremental_scan = False
