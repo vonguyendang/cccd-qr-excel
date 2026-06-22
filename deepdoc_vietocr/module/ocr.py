@@ -429,7 +429,7 @@ class OCR:
             texts.append(text)
         return texts
 
-    def __call__(self, img, device_id = 0, cls=True):
+    def __call__(self, img, device_id = 0, cls=True, max_boxes=80):
         time_dict = {'det': 0, 'rec': 0, 'cls': 0, 'all': 0}
         if device_id is None:
             device_id = 0
@@ -447,13 +447,13 @@ class OCR:
             time_dict['all'] = end - start
             return None, None, time_dict
 
-        if len(dt_boxes) > 80:
-            # Sort by area (descending) and keep top 80 largest boxes to prevent CPU starvation on noisy backgrounds
+        if max_boxes is not None and len(dt_boxes) > max_boxes:
+            # Sort by area (descending) and keep top 'max_boxes' largest boxes to prevent CPU starvation
             def box_area(box):
                 w = np.linalg.norm(box[0] - box[1])
                 h = np.linalg.norm(box[0] - box[3])
                 return w * h
-            dt_boxes = sorted(list(dt_boxes), key=box_area, reverse=True)[:80]
+            dt_boxes = sorted(list(dt_boxes), key=box_area, reverse=True)[:max_boxes]
             dt_boxes = np.array(dt_boxes)
 
         img_crop_list = []

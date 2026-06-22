@@ -1106,11 +1106,11 @@ def extract_ocr_data(image_path_or_cv2img):
         
         has_glare_warning = False
         
-        def safe_extract_text(*args, **kwargs):
+        def safe_extract_text(img, fast_mode=False):
             nonlocal has_glare_warning
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                result = extract_text_from_image(*args, **kwargs)
+                result = extract_text_from_image(img, fast_mode=fast_mode)
                 for warning in w:
                     if issubclass(warning.category, RuntimeWarning) and "invalid value encountered in divide" in str(warning.message):
                         has_glare_warning = True
@@ -1339,7 +1339,7 @@ def extract_ocr_data(image_path_or_cv2img):
             l2 = clahe.apply(l)
             img_contrast = cv2.cvtColor(cv2.merge((l2,a,b)), cv2.COLOR_LAB2BGR)
             
-            raw_issue_text = safe_extract_text(img_contrast)
+            raw_issue_text = safe_extract_text(img_contrast, fast_mode=True)
             
             issue_date = ""
             lines = raw_issue_text.split('\n')
@@ -1412,7 +1412,7 @@ def extract_ocr_data(image_path_or_cv2img):
                 front_contrast = cv2.cvtColor(cv2.merge((l2,a,b)), cv2.COLOR_LAB2BGR)
                 
                 t_o = time.time()
-                text_rot = safe_extract_text(front_contrast)
+                text_rot = safe_extract_text(front_contrast, fast_mode=True)
                 t_front_ocr += (time.time() - t_o)
                 
                 t_p = time.time()
@@ -1472,7 +1472,7 @@ def extract_ocr_data(image_path_or_cv2img):
                     rotated = img_to_ocr if rot_code is None else cv2.rotate(img_to_ocr, rot_code)
                     
                     t_o = time.time()
-                    text_rot = safe_extract_text(rotated)
+                    text_rot = safe_extract_text(rotated, fast_mode=True)
                     _last_timing['ocr_full_card'] += (time.time() - t_o)
                     
                     t_p = time.time()
@@ -1542,7 +1542,9 @@ def extract_ocr_data(image_path_or_cv2img):
                 
                 merged = False
                 for k, v in data_p2.items():
-                    if v and not best_data.get(k):
+                    # fast_mode có thể trích xuất thiếu chữ (VD: tên thiếu chữ cuối do box nhỏ bị loại bỏ)
+                    # Nên OCR toàn phần phải được ưu tiên ghi đè nếu nó tìm thấy dữ liệu
+                    if v:
                         best_data[k] = v
                         merged = True
                         
