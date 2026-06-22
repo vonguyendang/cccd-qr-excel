@@ -1689,7 +1689,6 @@ def fetch_single_address(addr):
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:152.0) Gecko/20100101 Firefox/152.0',
             'Accept': 'application/json',
             'Accept-Language': 'en-US,vi;q=0.9,en;q=0.8',
-            'Accept-Encoding': 'gzip, deflate, br, zstd',
             'Content-Type': 'application/json',
             'X-Demo-Token': geovina_token,
             'X-Api-Key': 'gvn_5740dceda5cb2424b787f1153da3802a721ae3f6',
@@ -3821,7 +3820,6 @@ def check_and_prompt_geovina_token():
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:152.0) Gecko/20100101 Firefox/152.0',
                 'Accept': 'application/json',
                 'Accept-Language': 'en-US,vi;q=0.9,en;q=0.8',
-                'Accept-Encoding': 'gzip, deflate, br, zstd',
                 'Content-Type': 'application/json',
                 'X-Demo-Token': token,
                 'X-Api-Key': 'gvn_5740dceda5cb2424b787f1153da3802a721ae3f6',
@@ -3831,7 +3829,7 @@ def check_and_prompt_geovina_token():
             res = requests.post(
                 'https://www.geovina.io.vn/parse',
                 headers=geovina_headers,
-                json={"address": "Hà Nội"},
+                json={"address": "Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh"},
                 timeout=5
             )
             return res.json().get('success', False)
@@ -3856,7 +3854,7 @@ def check_and_prompt_geovina_token():
         console.print("5. Trong phần [cyan]Request Headers[/cyan], tìm dòng [bold]X-Demo-Token[/bold] và copy giá trị của nó.")
         console.print("\n[dim]Lưu ý: Nếu bạn không có mạng hoặc không muốn cập nhật bây giờ, hãy gõ 'skip' để bỏ qua (Hệ thống sẽ chỉ dùng VNHub).[/dim]")
         
-        new_token = Prompt.ask("\n[bold cyan]Nhập X-Demo-Token mới (hoặc 'skip')[/bold cyan]").strip()
+        new_token = Prompt.ask("\n[bold cyan]Nhập X-Demo-Token mới (hoặc 'skip')[/bold cyan]").strip().strip('\'"')
         
         if new_token.lower() == 'skip':
             console.print("[yellow]Đã bỏ qua kiểm tra Geovina. Hệ thống sẽ tiếp tục chạy với VNHub.[/yellow]\n")
