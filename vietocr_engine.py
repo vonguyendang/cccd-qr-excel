@@ -18,38 +18,41 @@ if deepdoc_path not in sys.path:
 
 from module.ocr import OCR
 
-# Thread-local storage: mỗi thread giữ instance model riêng, tránh lỗi PyTorch khi đa luồng
+# Sử dụng 1 instance duy nhất (global) thay vì thread-local để tránh deadlock trên Mac và tràn RAM
 import threading
-_thread_local = threading.local()
-
+_global_ocr_instance = None
 _init_lock = threading.Lock()
+_inference_lock = threading.Lock()
 
 def get_ocr_engine():
-    if not hasattr(_thread_local, 'ocr_instance') or _thread_local.ocr_instance is None:
+    global _global_ocr_instance
+    if _global_ocr_instance is None:
         import os, sys
         in_colab = 'COLAB_RELEASE_TAG' in os.environ
         
         with _init_lock:
-            if not in_colab:
-                print("Đang khởi tạo AI Model Deepdoc_VietOCR (lần đầu sẽ mất vài giây)...")
-            import torch
-            try:
-                torch.set_num_threads(1)
-            except:
-                pass
-            
-            old_stdout, old_stderr = sys.stdout, sys.stderr
-            if in_colab:
-                sys.stdout = open(os.devnull, 'w')
-                sys.stderr = open(os.devnull, 'w')
-            try:
-                _thread_local.ocr_instance = OCR()
-            finally:
+            # Double check inside the lock
+            if _global_ocr_instance is None:
+                if not in_colab:
+                    print("Đang khởi tạo AI Model Deepdoc_VietOCR (lần đầu sẽ mất vài giây)...")
+                import torch
+                try:
+                    torch.set_num_threads(1)
+                except:
+                    pass
+                
+                old_stdout, old_stderr = sys.stdout, sys.stderr
                 if in_colab:
-                    sys.stdout.close()
-                    sys.stderr.close()
-                    sys.stdout, sys.stderr = old_stdout, old_stderr
-    return _thread_local.ocr_instance
+                    sys.stdout = open(os.devnull, 'w')
+                    sys.stderr = open(os.devnull, 'w')
+                try:
+                    _global_ocr_instance = OCR()
+                finally:
+                    if in_colab:
+                        sys.stdout.close()
+                        sys.stderr.close()
+                        sys.stdout, sys.stderr = old_stdout, old_stderr
+    return _global_ocr_instance
 
 def extract_text_from_image(img, return_orientation=False):
     """
@@ -62,7 +65,8 @@ def extract_text_from_image(img, return_orientation=False):
         
     try:
         ocr = get_ocr_engine()
-        bxs = ocr(img_array, 0) # device_id = 0
+        with _inference_lock:
+            bxs = ocr(img_array, 0) # device_id = 0
         if not bxs:
             return ("", False) if return_orientation else ""
             
