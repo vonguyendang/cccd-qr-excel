@@ -2599,11 +2599,13 @@ def run_wizard(input_dir, normalize_address=True):
                             if result.get('success'):
                                 new_addr = result.get('converted', '')
                                 status_text = f"[green]✓[/green] {short_addr}"
+                                file_logs.append(f"[{processed_count}/{total_addrs}] CHUẨN HÓA OK: {orig_addr} -> {new_addr}")
                                 if DEBUG_MODE and not IN_COLAB:
                                     api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold green]{new_addr}[/bold green]")
                             else:
                                 err_msg = result.get('error', 'Lỗi không xác định')
                                 status_text = f"[red]✗[/red] {short_addr}"
+                                file_logs.append(f"[{processed_count}/{total_addrs}] CHUẨN HÓA LỖI: {orig_addr} -> {err_msg}")
                                 if DEBUG_MODE and not IN_COLAB:
                                     api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold red]{err_msg}[/bold red]")
                                 
@@ -3645,11 +3647,13 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                             if result.get('success'):
                                 new_addr = result.get('converted', '')
                                 status_text = f"[green]✓[/green] {short_addr}"
+                                file_logs.append(f"[{processed_count}/{total_addrs}] CHUẨN HÓA OK: {orig_addr} -> {new_addr}")
                                 if DEBUG_MODE and not IN_COLAB:
                                     api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold green]{new_addr}[/bold green]")
                             else:
                                 err_msg = result.get('error', 'Lỗi không xác định')
                                 status_text = f"[red]✗[/red] {short_addr}"
+                                file_logs.append(f"[{processed_count}/{total_addrs}] CHUẨN HÓA LỖI: {orig_addr} -> {err_msg}")
                                 if DEBUG_MODE and not IN_COLAB:
                                     api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold red]{err_msg}[/bold red]")
                                 
@@ -3698,6 +3702,7 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                                 if result.get('success'):
                                     new_addr = result.get('converted', '')
                                     status_text = f"[green]✓[/green] {short_addr}"
+                                    file_logs.append(f"[LÀM SẠCH] [{processed_count}/{total_retries}] LÀM ĐẸP & CHUẨN HÓA OK: {cleaned_addr} -> {new_addr}")
                                     if DEBUG_MODE and not IN_COLAB:
                                         retry_progress.console.print(f"[bold cyan][{processed_count}/{total_retries}][/bold cyan] [dim]Từ:[/dim] [yellow]{cleaned_addr}[/yellow]\n{' '*(len(str(total_retries))*2 + 5)}[dim]→  [/dim] [bold green]{new_addr}[/bold green]")
                                     result['final_cleaned_orig'] = cleaned_addr
@@ -3706,6 +3711,7 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                                 else:
                                     err_msg = result.get('error', 'Lỗi không xác định')
                                     status_text = f"[red]✗[/red] {short_addr}"
+                                    file_logs.append(f"[LÀM SẠCH] [{processed_count}/{total_retries}] LÀM ĐẸP & CHUẨN HÓA LỖI: {cleaned_addr} -> {err_msg}")
                                     if DEBUG_MODE and not IN_COLAB:
                                         retry_progress.console.print(f"[bold cyan][{processed_count}/{total_retries}][/bold cyan] [dim]Từ:[/dim] [yellow]{cleaned_addr}[/yellow]\n{' '*(len(str(total_retries))*2 + 5)}[dim]→  [/dim] [bold red]{err_msg}[/bold red]")
                                 retry_progress.update(retry_task, advance=1, status=status_text)
