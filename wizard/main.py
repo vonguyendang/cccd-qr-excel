@@ -24,6 +24,8 @@ cv2.setNumThreads(1)
 
 from pyzbar.pyzbar import decode
 from pyzbar.pyzbar import ZBarSymbol
+import zxingcpp
+import pytesseract
 import openpyxl
 from openpyxl.styles import Font, PatternFill
 import requests
@@ -244,7 +246,6 @@ def extract_qr_data(image_path):
         def _try_scan(scan_img):
             # 1. zxingcpp
             try:
-                import zxingcpp
                 res = zxingcpp.read_barcode(scan_img)
                 if res and res.text:
                     if not re.search(r'[^\x00-\x7FÀ-ỹ\s\|\:\-/\.]', res.text):
