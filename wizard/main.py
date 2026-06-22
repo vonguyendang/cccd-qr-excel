@@ -1677,10 +1677,8 @@ def fetch_single_address(addr):
     # BACKUP: Geovina.io.vn — chỉ chạy khi VNHub thất bại
     # Response field cần lấy: data.full_new_address
     # -------------------------------------------------------
-    try:
-        import os as _os
-        # X-Demo-Token: Token demo cố định từ geovina.io.vn.
-        # Có thể override bằng env var GEOVINA_DEMO_TOKEN nếu token hết hạn.
+    import os as _os
+    while True:
         geovina_token = _os.environ.get(
             'GEOVINA_DEMO_TOKEN',
             '1782095814853.ab6fc10225b874be936bd6fe9a020c6e0a5418e03a1215c0463d5628c91083e7'
@@ -1701,30 +1699,47 @@ def fetch_single_address(addr):
             'Priority': 'u=0',
             'TE': 'trailers'
         }
-        geo_resp = _address_session.post(
-            'https://www.geovina.io.vn/parse',
-            data=payload,
-            headers=geovina_headers,
-            timeout=15
-        )
-        geo_resp.raise_for_status()
-        geo_data = geo_resp.json()
+        
+        try:
+            geo_resp = _address_session.post(
+                'https://www.geovina.io.vn/parse',
+                data=payload,
+                headers=geovina_headers,
+                timeout=15
+            )
+            geo_resp.raise_for_status()
+            geo_data = geo_resp.json()
+            
+            is_token_error = False
+            if geo_resp.status_code in (401, 403):
+                is_token_error = True
+            elif not geo_data.get('success'):
+                err_text = geo_data.get('error', '').lower()
+                if "token" in err_text or "hết hạn" in err_text or "không hợp lệ" in err_text or "unauthorized" in err_text:
+                    is_token_error = True
+                    
+            if is_token_error:
+                updated = check_and_prompt_geovina_token(current_failed_token=geovina_token)
+                if updated:
+                    continue # Thử lại với token mới
+                else:
+                    return {"original": addr, "success": False, "error": geo_data.get('error', 'Token Geovina đã hết hạn và người dùng đã bỏ qua.'), "_processing_time": time.time() - t0}
 
-        full_new = geo_data.get('data', {}).get('full_new_address', '')
-        if geo_data.get('success') and full_new:
-            converted_addr = re.sub(r'\s+', ' ', full_new).strip(', ')
-            return {"original": addr, "success": True, "converted": converted_addr, "source": "geovina_backup", "_processing_time": time.time() - t0}
+            full_new = geo_data.get('data', {}).get('full_new_address', '')
+            if geo_data.get('success') and full_new:
+                converted_addr = re.sub(r'\s+', ' ', full_new).strip(', ')
+                return {"original": addr, "success": True, "converted": converted_addr, "source": "geovina_backup", "_processing_time": time.time() - t0}
 
-        return {"original": addr, "success": False, "error": "Không tìm thấy địa chỉ tương ứng (VNHub + Geovina đều thất bại)", "_processing_time": time.time() - t0}
+            return {"original": addr, "success": False, "error": geo_data.get('error', "Không tìm thấy địa chỉ tương ứng (VNHub + Geovina đều thất bại)"), "_processing_time": time.time() - t0}
 
-    except Exception as geo_err:
-        err_primary = str(last_exception) if last_exception else "data rỗng sau nhiều lần thử"
-        return {
-            "original": addr,
-            "success": False,
-            "error": f"Lỗi kết nối API sau 100 lần thử VNHub ({err_primary}); Geovina backup cũng lỗi ({str(geo_err)})",
-            "_processing_time": time.time() - t0
-        }
+        except Exception as geo_err:
+            err_primary = str(last_exception) if last_exception else "data rỗng sau nhiều lần thử"
+            return {
+                "original": addr,
+                "success": False,
+                "error": f"Lỗi kết nối API sau 100 lần thử VNHub ({err_primary}); Geovina backup cũng lỗi ({str(geo_err)})",
+                "_processing_time": time.time() - t0
+            }
 def call_address_api(address_list, max_workers=4):
     if not address_list:
         return []
@@ -3811,30 +3826,40 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
     console.print(table)
     console.print()
 
-def check_and_prompt_geovina_token():
+import threading
+GEOVINA_TOKEN_LOCK = threading.Lock()
+
+def check_and_prompt_geovina_token(current_failed_token=None):
     """Kiểm tra token Geovina xem còn hạn không và hướng dẫn người dùng nhập mới nếu hết hạn."""
     import os, requests
-    def _test_token(token):
-        try:
-            geovina_headers = {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:152.0) Gecko/20100101 Firefox/152.0',
-                'Accept': 'application/json',
-                'Accept-Language': 'en-US,vi;q=0.9,en;q=0.8',
-                'Content-Type': 'application/json',
-                'X-Demo-Token': token,
-                'X-Api-Key': 'gvn_5740dceda5cb2424b787f1153da3802a721ae3f6',
-                'Referer': 'https://www.geovina.io.vn/',
-                'Origin': 'https://www.geovina.io.vn'
-            }
-            res = requests.post(
-                'https://www.geovina.io.vn/parse',
-                headers=geovina_headers,
-                json={"address": "Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh"},
-                timeout=5
-            )
-            return res.json().get('success', False)
-        except:
-            return False
+    
+    with GEOVINA_TOKEN_LOCK:
+        if current_failed_token is not None:
+            latest_token = os.environ.get('GEOVINA_DEMO_TOKEN', '')
+            if latest_token and latest_token != current_failed_token:
+                return True # Đã có thread khác cập nhật token thành công
+                
+        def _test_token(token):
+            try:
+                geovina_headers = {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:152.0) Gecko/20100101 Firefox/152.0',
+                    'Accept': 'application/json',
+                    'Accept-Language': 'en-US,vi;q=0.9,en;q=0.8',
+                    'Content-Type': 'application/json',
+                    'X-Demo-Token': token,
+                    'X-Api-Key': 'gvn_5740dceda5cb2424b787f1153da3802a721ae3f6',
+                    'Referer': 'https://www.geovina.io.vn/',
+                    'Origin': 'https://www.geovina.io.vn'
+                }
+                res = requests.post(
+                    'https://www.geovina.io.vn/parse',
+                    headers=geovina_headers,
+                    json={"address": "Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh"},
+                    timeout=5
+                )
+                return res.json().get('success', False)
+            except:
+                return False
 
     current_token = os.environ.get(
         'GEOVINA_DEMO_TOKEN',
@@ -3858,15 +3883,17 @@ def check_and_prompt_geovina_token():
         
         if new_token.lower() == 'skip':
             console.print("[yellow]Đã bỏ qua kiểm tra Geovina. Hệ thống sẽ tiếp tục chạy với VNHub.[/yellow]\n")
-            break
+            return False
         elif new_token:
             with console.status("[bold green]Đang kiểm tra lại token mới...", spinner="dots"):
                 is_ok = _test_token(new_token)
             if is_ok:
                 os.environ['GEOVINA_DEMO_TOKEN'] = new_token
                 console.print("[bold green]✅ Token mới hợp lệ! Hệ thống sẽ tiếp tục quá trình xử lý.[/bold green]\n")
+                return True
             else:
                 console.print("[bold red]❌ Token mới vẫn không hợp lệ. Vui lòng thử lại![/bold red]")
+    return True
 
 
 def main():
