@@ -2297,6 +2297,11 @@ def run_wizard(input_dir, normalize_address=True):
         refresh_per_second=REFRESH_RATE,
     )
     
+    # PRE-LOAD OCR ENGINE TO AVOID MACOS MULTITHREADING DEADLOCK
+    console.print(Panel(f"[bold cyan]🤖 ĐANG KHỞI TẠO AI MODEL...[/bold cyan]", border_style="green"))
+    from vietocr_engine import get_ocr_engine
+    get_ocr_engine()
+    
     with progress:
         task_id = progress.add_task("[cyan]Đang quét ảnh...", total=len(image_paths))
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=num_threads)
@@ -3499,6 +3504,11 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             if p in recovered_data: img_results[p] = recovered_data[p]
             else: all_images_to_process.add(p)
                 
+        # PRE-LOAD OCR ENGINE TO AVOID MACOS MULTITHREADING DEADLOCK
+        console.print(Panel(f"[bold cyan]🤖 ĐANG KHỞI TẠO AI MODEL...[/bold cyan]", border_style="green"))
+        from vietocr_engine import get_ocr_engine
+        get_ocr_engine()
+
         with Progress(
             SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
             BarColumn(), TaskProgressColumn(), CountColumn(), TimeElapsedColumn(),
