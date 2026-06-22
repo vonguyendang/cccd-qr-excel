@@ -2227,7 +2227,10 @@ def run_wizard(input_dir, normalize_address=True):
             
             # Fallback to OCR
             if img is not None:
-                log_msgs.append(f"[yellow]⚠️ Không đọc được QR, đang thử quét OCR...[/yellow]")
+                ocr_msg = f"[yellow]⚠️ Không đọc được QR, đang thử quét OCR... (Có thể mất 30-60s/ảnh trên CPU, vui lòng đợi)[/yellow]"
+                log_msgs.append(ocr_msg)
+                if not IN_COLAB:
+                    console.print(f"  {ocr_msg}")
                 
                 ocr_data, ocr_note, rotated_img = extract_ocr_data(img)
                 
