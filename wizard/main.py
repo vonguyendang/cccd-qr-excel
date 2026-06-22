@@ -1623,6 +1623,7 @@ def fetch_single_address(addr):
         'Referer': 'https://tienich.vnhub.com/'
     }
     import json, time, re
+    t0 = time.time()
     
     # Tiền xử lý: API VNHub rất nhạy cảm với khoảng trắng thừa, đặc biệt là khoảng trắng trước dấu phẩy
     # Ví dụ: "Số Nhà 137B , Trần Hưng Đạo ," -> lỗi data: []
@@ -1657,7 +1658,8 @@ def fetch_single_address(addr):
                 return {
                     "original": addr,
                     "success": True,
-                    "converted": converted_addr
+                    "converted": converted_addr,
+                    "_processing_time": time.time() - t0
                 }
             
             # API thành công nhưng data rỗng = không tìm thấy địa chỉ → thoát ngay để thử backup
@@ -1705,16 +1707,17 @@ def fetch_single_address(addr):
         full_new = geo_data.get('data', {}).get('full_new_address', '')
         if geo_data.get('success') and full_new:
             converted_addr = re.sub(r'\s+', ' ', full_new).strip(', ')
-            return {"original": addr, "success": True, "converted": converted_addr, "source": "geovina_backup"}
+            return {"original": addr, "success": True, "converted": converted_addr, "source": "geovina_backup", "_processing_time": time.time() - t0}
 
-        return {"original": addr, "success": False, "error": "Không tìm thấy địa chỉ tương ứng (VNHub + Geovina đều thất bại)"}
+        return {"original": addr, "success": False, "error": "Không tìm thấy địa chỉ tương ứng (VNHub + Geovina đều thất bại)", "_processing_time": time.time() - t0}
 
     except Exception as geo_err:
         err_primary = str(last_exception) if last_exception else "data rỗng sau nhiều lần thử"
         return {
             "original": addr,
             "success": False,
-            "error": f"Lỗi kết nối API sau 100 lần thử VNHub ({err_primary}); Geovina backup cũng lỗi ({str(geo_err)})"
+            "error": f"Lỗi kết nối API sau 100 lần thử VNHub ({err_primary}); Geovina backup cũng lỗi ({str(geo_err)})",
+            "_processing_time": time.time() - t0
         }
 def call_address_api(address_list, max_workers=4):
     if not address_list:
@@ -2558,10 +2561,12 @@ def run_wizard(input_dir, normalize_address=True):
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TaskProgressColumn(),
+            CountColumn(),
             TextColumn("[bold]{task.fields[status]}"),
             TimeElapsedColumn(),
             TextColumn("⏳ ETA:"),
             TimeRemainingColumn(),
+            SpeedColumn(),
             console=console,
             refresh_per_second=REFRESH_RATE,
         ) as api_progress:
@@ -3098,9 +3103,16 @@ def run_wizard(input_dir, normalize_address=True):
     
     processing_times = [r.get('_processing_time', 0) for r in extracted_items if r.get('_processing_time')]
     if processing_times:
-        table.add_row("Tốc độ chậm nhất / 1 ảnh", f"{max(processing_times):.1f}s", "")
-        table.add_row("Tốc độ nhanh nhất / 1 ảnh", f"{min(processing_times):.1f}s", "")
-        table.add_row("Tốc độ trung bình / 1 ảnh", f"{(sum(processing_times) / len(processing_times)):.1f}s", "")
+        table.add_row("Tốc độ OCR chậm nhất / 1 ảnh", f"{max(processing_times):.1f}s", "")
+        table.add_row("Tốc độ OCR nhanh nhất / 1 ảnh", f"{min(processing_times):.1f}s", "")
+        table.add_row("Tốc độ OCR trung bình / 1 ảnh", f"{(sum(processing_times) / len(processing_times)):.1f}s", "")
+        
+    if normalize_address and 'address_map' in locals() and address_map:
+        api_processing_times = [r.get('_processing_time', 0) for r in address_map.values() if r.get('_processing_time')]
+        if api_processing_times:
+            table.add_row("Tốc độ gọi API chậm nhất / 1 dòng", f"{max(api_processing_times):.2f}s", "")
+            table.add_row("Tốc độ gọi API nhanh nhất / 1 dòng", f"{min(api_processing_times):.2f}s", "")
+            table.add_row("Tốc độ gọi API trung bình / 1 dòng", f"{(sum(api_processing_times) / len(api_processing_times)):.2f}s", "")
     
     console.print(table)
     console.print()
@@ -3402,6 +3414,33 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
     img_results = {}
     recovered_data = {}
     
+    reprocess_tmp = excel_path.replace('.xlsx', '_reprocess_recovery.jsonl')
+    if mode == "1" and os.path.exists(reprocess_tmp):
+        try:
+            with open(reprocess_tmp, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.strip():
+                        data = json.loads(line.strip())
+                        recovered_data.update(data)
+            if recovered_data:
+                console.print(f"[bold green]✅ Đã phục hồi {len(recovered_data)} kết quả quét ảnh bị gián đoạn từ {os.path.basename(reprocess_tmp)}.[/bold green]")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Lỗi đọc file phục hồi ảnh: {e}[/yellow]")
+            
+    api_recovery_file = excel_path.replace('.xlsx', '_api_recovery.jsonl')
+    recovered_api = {}
+    if os.path.exists(api_recovery_file):
+        try:
+            with open(api_recovery_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.strip():
+                        data = json.loads(line.strip())
+                        recovered_api.update(data)
+            if recovered_api:
+                console.print(f"[bold green]✅ Đã phục hồi {len(recovered_api)} kết quả API bị gián đoạn từ {os.path.basename(api_recovery_file)}.[/bold green]")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Lỗi đọc file phục hồi API: {e}[/yellow]")
+    
     if mode == "1":
         for row in rows_to_process:
             if row['front_name'] and row['front_name'] in img_map:
@@ -3561,16 +3600,21 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
 
     # Nơi chuẩn hóa địa chỉ
     if normalize_address and address_to_normalize:
-        console.print(Panel(f"[bold cyan]🌐 ĐANG CHUẨN BỊ GỌI API CHUẨN HÓA CHO {len(address_to_normalize)} ĐỊA CHỈ DUY NHẤT VỚI {api_threads} LUỒNG...[/bold cyan]", border_style="green"))
-        address_map = {}
-        unique_addresses = list(address_to_normalize)
-        batch_size = 100
-        total_addrs = len(unique_addresses)
+        address_map = recovered_api.copy()
+        
+        # Chỉ gọi API cho những địa chỉ chưa có kết quả (bao gồm cả thành công và thất bại)
+        pending_addresses = [addr for addr in address_to_normalize if addr not in address_map]
+        
+        if pending_addresses:
+            console.print(Panel(f"[bold cyan]🌐 ĐANG CHUẨN BỊ GỌI API CHUẨN HÓA CHO {len(pending_addresses)} ĐỊA CHỈ DUY NHẤT VỚI {api_threads} LUỒNG...[/bold cyan]", border_style="green"))
+            unique_addresses = pending_addresses
+            batch_size = 100
+            total_addrs = len(unique_addresses)
         processed_count = 0
         with Progress(
             SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
-            BarColumn(), TaskProgressColumn(), TextColumn("[bold]{task.fields[status]}"),
-            TimeElapsedColumn(), TextColumn("⏳ ETA:"), TimeRemainingColumn(), console=console,
+            BarColumn(), TaskProgressColumn(), CountColumn(), TextColumn("[bold]{task.fields[status]}"),
+            TimeElapsedColumn(), TextColumn("⏳ ETA:"), TimeRemainingColumn(), SpeedColumn(), console=console,
         ) as api_progress:
             api_task = api_progress.add_task("[cyan]Đang chuẩn hóa địa chỉ...", total=total_addrs, status="")
             for i in range(0, total_addrs, batch_size):
@@ -3584,6 +3628,13 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                             orig_addr = result['original']
                             address_map[orig_addr] = result
                             short_addr = orig_addr[:45]
+                            
+                            try:
+                                with open(api_recovery_file, 'a', encoding='utf-8') as f:
+                                    json.dump({orig_addr: result}, f, ensure_ascii=False)
+                                    f.write('\n')
+                            except: pass
+                            
                             if result.get('success'):
                                 new_addr = result.get('converted', '')
                                 status_text = f"[green]✓[/green] {short_addr}"
@@ -3594,6 +3645,7 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                                 status_text = f"[red]✗[/red] {short_addr}"
                                 if DEBUG_MODE and not IN_COLAB:
                                     api_progress.console.print(f"[bold cyan][{processed_count}/{total_addrs}][/bold cyan] [dim]Từ:[/dim] [yellow]{orig_addr}[/yellow]\n{' '*(len(str(total_addrs))*2 + 5)}[dim]→  [/dim] [bold red]{err_msg}[/bold red]")
+                                
                             api_progress.update(api_task, advance=1, status=status_text)
                             
         # Xử lý Retry: Làm đẹp các địa chỉ gọi API thất bại và thử lại
@@ -3615,8 +3667,8 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             processed_count = 0
             with Progress(
                 SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
-                BarColumn(), TaskProgressColumn(), TextColumn("[bold]{task.fields[status]}"),
-                TimeElapsedColumn(), TextColumn("⏳ ETA:"), TimeRemainingColumn(), console=console,
+                BarColumn(), TaskProgressColumn(), CountColumn(), TextColumn("[bold]{task.fields[status]}"),
+                TimeElapsedColumn(), TextColumn("⏳ ETA:"), TimeRemainingColumn(), SpeedColumn(), console=console,
             ) as retry_progress:
                 retry_task = retry_progress.add_task("[yellow]Đang thử lại...", total=total_retries, status="")
                 for i in range(0, total_retries, batch_size):
@@ -3629,6 +3681,13 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                             if result and 'original' in result:
                                 cleaned_addr = result['original']
                                 short_addr = cleaned_addr[:45]
+                                
+                                try:
+                                    with open(api_recovery_file, 'a', encoding='utf-8') as f:
+                                        json.dump({cleaned_addr: result}, f, ensure_ascii=False)
+                                        f.write('\n')
+                                except: pass
+                                
                                 if result.get('success'):
                                     new_addr = result.get('converted', '')
                                     status_text = f"[green]✓[/green] {short_addr}"
@@ -3680,6 +3739,10 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
     console.print(f"File kết quả được lưu tại: [yellow]{os.path.abspath(reprocess_out)}[/yellow]")
     console.print(f"File log chi tiết được lưu tại: [yellow]{os.path.abspath(log_filename)}[/yellow]")
     console.print("🎉"*15 + "\n")
+    
+    # Xóa file tạm
+    if os.path.exists(reprocess_tmp): os.remove(reprocess_tmp)
+    if os.path.exists(api_recovery_file): os.remove(api_recovery_file)
 
     from rich.table import Table
     table = Table(title="📊 BÁO CÁO THỐNG KÊ TÁI XỬ LÝ", show_header=True, header_style="bold magenta")
@@ -3712,9 +3775,20 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
     if mode == "1":
         processing_times = [r.get('_processing_time', 0) for r in img_results.values() if r.get('_processing_time')]
         if processing_times:
-            table.add_row("Tốc độ chậm nhất / 1 ảnh", f"{max(processing_times):.1f}s", "")
-            table.add_row("Tốc độ nhanh nhất / 1 ảnh", f"{min(processing_times):.1f}s", "")
-            table.add_row("Tốc độ trung bình / 1 ảnh", f"{(sum(processing_times) / len(processing_times)):.1f}s", "")
+            table.add_row("Tốc độ OCR chậm nhất / 1 ảnh", f"{max(processing_times):.1f}s", "")
+            table.add_row("Tốc độ OCR nhanh nhất / 1 ảnh", f"{min(processing_times):.1f}s", "")
+            table.add_row("Tốc độ OCR trung bình / 1 ảnh", f"{(sum(processing_times) / len(processing_times)):.1f}s", "")
+            
+    if normalize_address and address_map:
+        api_processing_times = [r.get('_processing_time', 0) for r in address_map.values() if r.get('_processing_time')]
+        success_api_count = sum(1 for r in address_map.values() if r.get('success'))
+        total_api_count = len(address_map)
+        table.add_row("Số địa chỉ chuẩn hóa thành công", str(success_api_count), f"{(success_api_count/total_api_count*100):.1f}%" if total_api_count else "0.0%")
+        
+        if api_processing_times:
+            table.add_row("Tốc độ gọi API chậm nhất / 1 dòng", f"{max(api_processing_times):.2f}s", "")
+            table.add_row("Tốc độ gọi API nhanh nhất / 1 dòng", f"{min(api_processing_times):.2f}s", "")
+            table.add_row("Tốc độ gọi API trung bình / 1 dòng", f"{(sum(api_processing_times) / len(api_processing_times)):.2f}s", "")
     
     console.print(table)
     console.print()
@@ -3755,7 +3829,10 @@ def main():
             console.print("[2] Tái xử lý (Chỉ quét lại các ảnh bị lỗi/thiếu thông tin từ file Excel cũ)")
             console.print("[3] Thoát")
             
-            choice = Prompt.ask("\n[bold yellow]Nhập lựa chọn của bạn[/bold yellow]", choices=["1", "2", "3"], default="1")
+            choice = Prompt.ask("\n[bold yellow]Nhập lựa chọn của bạn (1/2/3)[/bold yellow]", default="1").strip()
+            while choice not in ["1", "2", "3"]:
+                console.print("[red]Lựa chọn không hợp lệ, vui lòng nhập 1, 2 hoặc 3.[/red]")
+                choice = Prompt.ask("\n[bold yellow]Nhập lựa chọn của bạn (1/2/3)[/bold yellow]", default="1").strip()
             
             if choice == "3":
                 console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
@@ -3769,12 +3846,19 @@ def main():
                 console.print("[2] Làm đẹp địa chỉ gốc & Chuẩn hóa địa chỉ mới (Không quét OCR)")
                 console.print("[3] Chỉ cập nhật lại địa chỉ chuẩn hóa từ địa chỉ gốc (Không quét OCR)")
                 
-                reprocess_mode = Prompt.ask("\n[bold yellow]Nhập lựa chọn của bạn[/bold yellow]", choices=["1", "2", "3"], default="1")
+                reprocess_mode = Prompt.ask("\n[bold yellow]Nhập lựa chọn của bạn (1/2/3)[/bold yellow]", default="1").strip()
+                while reprocess_mode not in ["1", "2", "3"]:
+                    console.print("[red]Lựa chọn không hợp lệ, vui lòng nhập 1, 2 hoặc 3.[/red]")
+                    reprocess_mode = Prompt.ask("\n[bold yellow]Nhập lựa chọn của bạn (1/2/3)[/bold yellow]", default="1").strip()
                 
                 process_all_rows = False
                 if reprocess_mode in ["2", "3"]:
                     console.print("\n[bold yellow]Bạn muốn xử lý cho toàn bộ danh sách, hay chỉ những dòng chưa có Địa chỉ chuẩn hóa?[/bold yellow]")
-                    process_all_choice = Prompt.ask("[1] Toàn bộ danh sách\n[2] Chỉ dòng bị trống\nChọn", choices=["1", "2"], default="1")
+                    console.print("[1] Toàn bộ danh sách\n[2] Chỉ dòng bị trống")
+                    process_all_choice = Prompt.ask("Chọn (1/2)", default="1").strip()
+                    while process_all_choice not in ["1", "2"]:
+                        console.print("[red]Lựa chọn không hợp lệ, vui lòng nhập 1 hoặc 2.[/red]")
+                        process_all_choice = Prompt.ask("Chọn (1/2)", default="1").strip()
                     process_all_rows = (process_all_choice == "1")
                 
                 excel_path = Prompt.ask("\n[bold cyan]Nhập đường dẫn file Excel cũ (hoặc gõ 'q' để quay lại menu)[/bold cyan]").strip().strip('\'"')
@@ -3784,8 +3868,8 @@ def main():
                     console.print(f"\n[bold red]❌ Lỗi: File '{excel_path}' không hợp lệ hoặc không tồn tại.[/bold red]")
                     continue
                     
+                DEBUG_MODE = Confirm.ask("\n[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (in chi tiết log quá trình xử lý) không?[/bold yellow]", default=DEBUG_MODE)
                 if reprocess_mode == "1":
-                    DEBUG_MODE = Confirm.ask("\n[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=DEBUG_MODE)
                     do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng) không?[/bold yellow]", default=True)
                 else:
                     do_normalize = True # Bắt buộc phải chuẩn hóa trong mode 2, 3
