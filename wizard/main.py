@@ -1683,17 +1683,24 @@ def fetch_single_address(addr):
         # Có thể override bằng env var GEOVINA_DEMO_TOKEN nếu token hết hạn.
         geovina_token = _os.environ.get(
             'GEOVINA_DEMO_TOKEN',
-            '1781934356480.952355dc84bfd2c51258d6cc5d0f535768ef30325b749c72679f75e02a1ba6bd'
+            '1782095814853.ab6fc10225b874be936bd6fe9a020c6e0a5418e03a1215c0463d5628c91083e7'
         )
         geovina_headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:152.0) Gecko/20100101 Firefox/152.0',
             'Accept': 'application/json',
             'Accept-Language': 'en-US,vi;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
             'Content-Type': 'application/json',
             'X-Demo-Token': geovina_token,
             'X-Api-Key': 'gvn_5740dceda5cb2424b787f1153da3802a721ae3f6',
             'Referer': 'https://www.geovina.io.vn/',
             'Origin': 'https://www.geovina.io.vn',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'Priority': 'u=0',
+            'TE': 'trailers'
         }
         geo_resp = _address_session.post(
             'https://www.geovina.io.vn/parse',
@@ -3793,6 +3800,64 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
     console.print(table)
     console.print()
 
+def check_and_prompt_geovina_token():
+    """Kiểm tra token Geovina xem còn hạn không và hướng dẫn người dùng nhập mới nếu hết hạn."""
+    import os, requests
+    def _test_token(token):
+        try:
+            geovina_headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:152.0) Gecko/20100101 Firefox/152.0',
+                'Accept': 'application/json',
+                'Accept-Language': 'en-US,vi;q=0.9,en;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br, zstd',
+                'Content-Type': 'application/json',
+                'X-Demo-Token': token,
+                'X-Api-Key': 'gvn_5740dceda5cb2424b787f1153da3802a721ae3f6',
+                'Referer': 'https://www.geovina.io.vn/',
+                'Origin': 'https://www.geovina.io.vn'
+            }
+            res = requests.post(
+                'https://www.geovina.io.vn/parse',
+                headers=geovina_headers,
+                json={"address": "Hà Nội"},
+                timeout=5
+            )
+            return res.json().get('success', False)
+        except:
+            return False
+
+    current_token = os.environ.get(
+        'GEOVINA_DEMO_TOKEN',
+        '1782095814853.ab6fc10225b874be936bd6fe9a020c6e0a5418e03a1215c0463d5628c91083e7'
+    )
+
+    with console.status("[bold green]Đang kiểm tra trạng thái API Geovina...", spinner="dots"):
+        is_ok = _test_token(current_token)
+
+    while not is_ok:
+        console.print("\n[bold red]⚠️ CẢNH BÁO: Token dự phòng Geovina đã hết hạn hoặc không hợp lệ![/bold red]")
+        console.print("[yellow]Hướng dẫn lấy Token mới:[/yellow]")
+        console.print("1. Mở trình duyệt web truy cập: [cyan]https://www.geovina.io.vn/[/cyan]")
+        console.print("2. Nhấn F12 (hoặc Chuột phải -> Inspect) để mở Developer Tools, chuyển sang tab [cyan]Network[/cyan].")
+        console.print("3. Bấm nút [cyan]Tách địa chỉ[/cyan] trên trang web.")
+        console.print("4. Trong tab Network, click vào request có tên là [cyan]parse[/cyan].")
+        console.print("5. Trong phần [cyan]Request Headers[/cyan], tìm dòng [bold]X-Demo-Token[/bold] và copy giá trị của nó.")
+        console.print("\n[dim]Lưu ý: Nếu bạn không có mạng hoặc không muốn cập nhật bây giờ, hãy gõ 'skip' để bỏ qua (Hệ thống sẽ chỉ dùng VNHub).[/dim]")
+        
+        new_token = Prompt.ask("\n[bold cyan]Nhập X-Demo-Token mới (hoặc 'skip')[/bold cyan]").strip()
+        
+        if new_token.lower() == 'skip':
+            console.print("[yellow]Đã bỏ qua kiểm tra Geovina. Hệ thống sẽ tiếp tục chạy với VNHub.[/yellow]\n")
+            break
+        elif new_token:
+            with console.status("[bold green]Đang kiểm tra lại token mới...", spinner="dots"):
+                is_ok = _test_token(new_token)
+            if is_ok:
+                os.environ['GEOVINA_DEMO_TOKEN'] = new_token
+                console.print("[bold green]✅ Token mới hợp lệ! Hệ thống sẽ tiếp tục quá trình xử lý.[/bold green]\n")
+            else:
+                console.print("[bold red]❌ Token mới vẫn không hợp lệ. Vui lòng thử lại![/bold red]")
+
 
 def main():
     global DEBUG_MODE
@@ -3816,12 +3881,14 @@ def main():
             do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng) không?[/bold yellow]", default=True)
             
             if input_dir.endswith('.xlsx') and os.path.isfile(input_dir):
+                if do_normalize: check_and_prompt_geovina_token()
                 run_reprocess(input_dir, normalize_address=do_normalize)
                 if not Confirm.ask("\n[bold yellow]Bạn có muốn tiếp tục xử lý thư mục khác không?[/bold yellow]"):
                     console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
                     break
                 continue
             else:
+                if do_normalize: check_and_prompt_geovina_token()
                 run_wizard(input_dir, normalize_address=do_normalize)
         else:
             console.print("\n[bold cyan]--- VUI LÒNG CHỌN LUỒNG XỬ LÝ ---[/bold cyan]")
@@ -3874,6 +3941,7 @@ def main():
                 else:
                     do_normalize = True # Bắt buộc phải chuẩn hóa trong mode 2, 3
                 
+                if do_normalize: check_and_prompt_geovina_token()
                 run_reprocess(excel_path, mode=reprocess_mode, process_all_rows=process_all_rows, normalize_address=do_normalize)
             else:
                 console.print("\n[yellow][Hướng dẫn][/yellow]: Kéo thả thư mục chứa ảnh vào cửa sổ này, hoặc copy đường dẫn thư mục và dán vào đây.")
@@ -3886,6 +3954,7 @@ def main():
                         
                 do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng và tốn thêm thời gian) không?[/bold yellow]", default=True)
                 
+                if do_normalize: check_and_prompt_geovina_token()
                 run_wizard(input_dir, normalize_address=do_normalize)
                 
             first_run = False
