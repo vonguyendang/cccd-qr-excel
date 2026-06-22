@@ -482,7 +482,8 @@ def parse_ocr_text(text):
                             "CHUYNH": "HUYNH",
                             "CHUY": "THUY",
                             "CANHCHATHUC": "ANH THU",
-                            "INK": "KIM"
+                            "INK": "KIM",
+                            "TING": "TRINH"
                         }
                         for bad, good in ocr_fixes.items():
                             s = s.replace(bad, good)
@@ -515,19 +516,19 @@ def parse_ocr_text(text):
                             continue
                             
                         # MRZ Line 3 chứa tên, KHÔNG có số, KHÔNG có dấu tiếng Việt
-                        # OCR đọc dấu << thành CK, CC, CE, KCK... và có thể ảo giác lặp lại nên nới lỏng len <= 65
+                        # OCR đọc dấu << thành CK, CC, CE, KCK, KS... và có thể ảo giác lặp lại nên nới lỏng len <= 65
                         if (15 <= len(ls) <= 65
                             and re.match(r'^[A-Z<]+$', ls)  # Chỉ gồm chữ cái A-Z và < (không có số, không dấu)
-                            and re.search(r'[<CKE]{2}', ls) # Chắc chắn có ít nhất 1 cụm 2 ký tự độn (CK, CC, CE...) thay cho <<
+                            and re.search(r'[<CKES]{2}', ls) # Chắc chắn có ít nhất 1 cụm 2 ký tự độn (CK, CC, CE, KS...) thay cho <<
                             and not ls.startswith('IDVN')
                             and not ls.startswith('VNM')
                         ):
                             # Dọn dẹp padding thực tế
                             ls_clean = re.sub(r'[<]+$', '', ls)
                             
-                            # Tách Họ và Đệm+Tên dựa trên 2 dấu << liên tiếp (OCR -> CC, CK, CE, CEC, KK...)
+                            # Tách Họ và Đệm+Tên dựa trên 2 dấu << liên tiếp (OCR -> CC, CK, CE, CEC, KK, KS...)
                             # Bỏ EK ra khỏi danh sách cắt vì EK dễ cắt nhầm tên (VD: LEKK -> L và EK)
-                            split_parts = re.split(r'CK|CEC|KCK|CC|CE|CS|KK', ls_clean, maxsplit=1)
+                            split_parts = re.split(r'CK|CEC|KCK|CC|CE|CS|KK|KS', ls_clean, maxsplit=1)
                             if len(split_parts) == 2:
                                 surname_words = _extract_mrz_name_words(split_parts[0])
                                 given_words   = _extract_mrz_name_words(split_parts[1])
@@ -832,6 +833,15 @@ def parse_ocr_text(text):
                     try:
                         if int(first_date.split('/')[-1]) < 2020:
                             data['Ngày sinh'] = first_date
+                    except: pass
+
+                # Fallback cho Ngày cấp (Mặt sau chỉ có 1 ngày duy nhất là Ngày cấp)
+                if not data['Ngày cấp CCCD'] and data['OCR Side'] == 'Back' and all_dates:
+                    # Lấy ngày cuối cùng tìm thấy (tránh nhầm với ngày sinh nếu ảnh ghép 2 mặt)
+                    last_date = all_dates[-1]
+                    try:
+                        if int(last_date.split('/')[-1]) >= 2016:
+                            data['Ngày cấp CCCD'] = last_date
                     except: pass
 
                 # Hậu xử lý (Post-processing) làm sạch rác do OCR đọc lem viền
@@ -1637,13 +1647,13 @@ def fetch_single_address(addr):
     # Nếu API trả về thành công nhưng data = [] thì chuyển ngay sang backup
     last_exception = None
     
-    for attempt in range(100):
+    for attempt in range(3):
         try:
             response = _address_session.post(
                 'https://tienich.vnhub.com/api/wards',
                 data=payload,
                 headers=headers,
-                timeout=15
+                timeout=5
             )
             response.raise_for_status()
             res_data = response.json()
@@ -2343,7 +2353,10 @@ def run_wizard(input_dir, normalize_address=True):
     console.print(Panel(f"[bold cyan]🔄 BẮT ĐẦU GỘP DỮ LIỆU...[/bold cyan]", border_style="green"))
     for item in extracted_items:
         cccd = item.get('CCCD')
-        if not cccd: continue
+        if not cccd:
+            # Lưu lại bằng 1 ID giả để không bị mất ảnh này trong báo cáo (đẩy vào Sheet Review)
+            cccd = f"UNKNOWN_{item.get('Image Path', 'NoName')}"
+            item['CCCD'] = cccd
         
         is_new_record = False
         if cccd not in records:
@@ -2911,6 +2924,8 @@ def run_wizard(input_dir, normalize_address=True):
     review_rows = []
     for row in processed_data:
         missing = [f for f in REQUIRED_FIELDS if not row.get(f)]
+        if 'UNKNOWN' in str(row.get('CCCD', '')):
+            missing.append('CCCD')
         if missing:
             review_rows.append((row, missing))
 
@@ -2931,12 +2946,15 @@ def run_wizard(input_dir, normalize_address=True):
         ws_review.column_dimensions[col[0].column_letter].width = 30
 
     # --- Sheet "Unknown": ảnh không thuộc dòng nào (không đọc được CCCD) ---
-    all_matched_paths = set()
+    all_matched_basenames = set()
     for row in processed_data:
-        if row.get('Full Image Path Front'): all_matched_paths.add(row['Full Image Path Front'])
-        if row.get('Full Image Path Back'): all_matched_paths.add(row['Full Image Path Back'])
+        if row.get('Full Image Path Front'): all_matched_basenames.add(os.path.basename(row['Full Image Path Front']))
+        if row.get('Full Image Path Back'): all_matched_basenames.add(os.path.basename(row['Full Image Path Back']))
+    for row, _ in review_rows:
+        if row.get('Full Image Path Front'): all_matched_basenames.add(os.path.basename(row['Full Image Path Front']))
+        if row.get('Full Image Path Back'): all_matched_basenames.add(os.path.basename(row['Full Image Path Back']))
 
-    unknown_image_paths = [p for p in all_original_image_paths if p not in all_matched_paths]
+    unknown_image_paths = [p for p in all_original_image_paths if os.path.basename(p) not in all_matched_basenames]
 
     ws_unknown = wb.create_sheet(title="Unknown")
     ws_unknown.append(["STT", "Tên file gốc"])
@@ -2964,7 +2982,7 @@ def run_wizard(input_dir, normalize_address=True):
         rename_zip_path = os.path.join(exports_dir, 'rename.zip')
         with zipfile.ZipFile(rename_zip_path, 'w') as zf:
             count_rename = 0
-            for row in processed_data:
+            for row in processed_data + [r[0] for r in review_rows]:
                 if row.get("Phân loại") == "Khác":
                     folder = "Khác"
                     if row.get('Ảnh khác (SMS/Chụp màn hình/...)') and row.get('Đổi tên Ảnh khác'):
@@ -3038,7 +3056,7 @@ def run_wizard(input_dir, normalize_address=True):
     # 5. ReadQR.zip: ảnh có dòng Ghi chú chứa "Đọc mã QR"
     readqr_image_paths = []
     added_readqr = set()
-    for row in processed_data:
+    for row in processed_data + [r[0] for r in review_rows]:
         if 'Đọc mã QR' in row.get('Ghi chú', ''):
             for field in ['Full Image Path Front', 'Full Image Path Back']:
                 p = row.get(field)
@@ -3050,7 +3068,7 @@ def run_wizard(input_dir, normalize_address=True):
     # 6. ReadOCR.zip: ảnh có dòng Ghi chú chứa "Lấy bằng OCR"
     readocr_image_paths = []
     added_readocr = set()
-    for row in processed_data:
+    for row in processed_data + [r[0] for r in review_rows]:
         if 'Lấy bằng OCR' in row.get('Ghi chú', ''):
             for field in ['Full Image Path Front', 'Full Image Path Back']:
                 p = row.get(field)
@@ -3097,7 +3115,7 @@ def run_wizard(input_dir, normalize_address=True):
     table.add_row("Tổng số file ảnh đã đọc", str(total_imgs), "100.0%")
     table.add_row("Ảnh trùng lặp bị tự động loại bỏ", str(duplicates_count), f"{(duplicates_count/total_imgs*100):.1f}%" if total_imgs else "0.0%")
     table.add_row("Ảnh rác / Không thể phân loại (Unknown)", str(len(unknown_image_paths)), f"{(len(unknown_image_paths)/total_imgs*100):.1f}%" if total_imgs else "0.0%")
-    valid_imgs = len(all_original_image_paths) - len(unknown_image_paths)
+    valid_imgs = total_imgs - duplicates_count - len(unknown_image_paths)
     table.add_row("Ảnh đưa vào trích xuất thành công", str(valid_imgs), f"{(valid_imgs/total_imgs*100):.1f}%" if total_imgs else "0.0%")
     
     table.add_row("", "", "")
@@ -3924,40 +3942,28 @@ def check_and_prompt_geovina_token(current_failed_token=None):
             console.print("[dim](Gõ chữ 'skip' vào file và lưu lại nếu muốn bỏ qua Geovina)[/dim]\n")
             
             # Tạo sẵn file rỗng cho người dùng dễ thấy
-            try:
-                if not os.path.exists("geovina_token.txt"):
-                    open("geovina_token.txt", "w").close()
-            except:
-                pass
+        if in_colab:
+            env_token = os.environ.get('GEOVINA_TOKEN', '')
+            if env_token:
+                is_ok = _test_token(env_token)
+                if is_ok:
+                    os.environ['GEOVINA_DEMO_TOKEN'] = env_token
+                    console.print("[bold green]✅ Đã load GEOVINA_TOKEN từ biến môi trường![/bold green]\n")
+                    return True
+            
+            # Kiểm tra file geovina_token.txt 1 lần duy nhất thay vì loop
+            if os.path.exists("geovina_token.txt"):
+                try:
+                    with open("geovina_token.txt", "r", encoding="utf-8") as f:
+                        new_token = f.read().strip().strip('\'"')
+                    if new_token and new_token.lower() != 'skip':
+                        if _test_token(new_token):
+                            os.environ['GEOVINA_DEMO_TOKEN'] = new_token
+                            return True
+                except: pass
                 
-            while True:
-                if os.path.exists("geovina_token.txt"):
-                    try:
-                        with open("geovina_token.txt", "r", encoding="utf-8") as f:
-                            new_token = f.read().strip().strip('\'"')
-                        
-                        if new_token:
-                            if new_token.lower() == 'skip':
-                                console.print("[yellow]Đã bỏ qua kiểm tra Geovina. Hệ thống sẽ tiếp tục chạy với VNHub.[/yellow]\n")
-                                try: os.remove("geovina_token.txt")
-                                except: pass
-                                return False
-                                
-                            with console.status("[bold green]Đang kiểm tra lại token từ file...", spinner="dots"):
-                                is_ok = _test_token(new_token)
-                            if is_ok:
-                                os.environ['GEOVINA_DEMO_TOKEN'] = new_token
-                                console.print("[bold green]✅ Token mới hợp lệ! Hệ thống sẽ tiếp tục quá trình xử lý.[/bold green]\n")
-                                try: os.remove("geovina_token.txt")
-                                except: pass
-                                return True
-                            else:
-                                console.print("[bold red]❌ Token trong file không hợp lệ. Vui lòng mở file geovina_token.txt dán lại token khác và lưu![/bold red]")
-                                # Xóa nội dung để chờ người dùng nhập lại (người dùng copy paste token mới)
-                                open("geovina_token.txt", "w").close()
-                    except Exception as e:
-                        pass
-                time.sleep(2)
+            console.print("[yellow]Bỏ qua Geovina trên Colab (Có thể set biến môi trường os.environ['GEOVINA_TOKEN']). Chuyển sang dùng VNHub.[/yellow]\n")
+            return False
         else:
             new_token = Prompt.ask("\n[bold cyan]Nhập X-Demo-Token mới (hoặc 'skip')[/bold cyan]").strip().strip('\'"')
             
