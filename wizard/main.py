@@ -243,7 +243,17 @@ def extract_qr_data(image_path):
         if img is None:
             return None, None, "Lỗi đọc file ảnh", None
 
-        def _try_scan(scan_img):
+        def _try_scan(original_scan_img):
+            # Cắt giảm kích thước nếu ảnh quá lớn để tránh treo (hang) vô thời hạn ở thư viện C++
+            h, w = original_scan_img.shape[:2]
+            max_dim = 1500.0
+            scale = 1.0
+            if max(h, w) > max_dim:
+                scale = max_dim / max(h, w)
+                scan_img = cv2.resize(original_scan_img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+            else:
+                scan_img = original_scan_img
+
             # 1. zxingcpp
             try:
                 res = zxingcpp.read_barcode(scan_img)
@@ -252,7 +262,7 @@ def extract_qr_data(image_path):
                         pos = res.position
                         cx = (pos.top_left.x + pos.bottom_right.x) / 2
                         cy = (pos.top_left.y + pos.bottom_right.y) / 2
-                        return res.text, "zxing-cpp", (cx, cy)
+                        return res.text, "zxing-cpp", (cx / scale, cy / scale)
             except Exception:
                 pass
 
@@ -273,7 +283,7 @@ def extract_qr_data(image_path):
                         rect = obj.rect
                         cx = rect.left + rect.width / 2
                         cy = rect.top + rect.height / 2
-                        return txt, "pyzbar", (cx, cy)
+                        return txt, "pyzbar", (cx / scale, cy / scale)
 
             # 3. wechat_qrcode
             global detector
@@ -287,7 +297,7 @@ def extract_qr_data(image_path):
                                 pts = points[0]
                                 cx = sum(p[0] for p in pts) / 4
                                 cy = sum(p[1] for p in pts) / 4
-                                return txt, "WeChat QRCode", (cx, cy)
+                                return txt, "WeChat QRCode", (cx / scale, cy / scale)
                 except Exception:
                     pass
             
