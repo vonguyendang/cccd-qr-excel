@@ -1,0 +1,118 @@
+2026-06-23 09:51:59,641 - 
+--- Processing 1.jpg ---
+2026-06-23 09:52:00,020 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:00,022 - 
+--- Processing 10.jpg ---
+2026-06-23 09:52:00,167 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:00,168 - 
+--- Processing 11.jpg ---
+2026-06-23 09:52:00,234 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:00,234 - 
+--- Processing 12.jpg ---
+2026-06-23 09:52:00,536 - [Layout-First] Contour found: 4 points. Warp successful. Rotation detected: False
+2026-06-23 09:52:00,544 - [Layout-First] Crop box: (256, 270) to (838, 513)
+2026-06-23 09:52:00,919 - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-23 09:52:10,735 - [Layout-First] OCR Text:
+Leffindox lingers
+Ngon tro phai
+Rehiniedance
+Viễn Quốc Hùng
+000002002082090208
+032781NVKIKK
+BOIKTOANKBAKK
+2026-06-23 09:52:10,749 - [Result] FAIL (No anchor found in OCR text. Fallback candidate.)
+2026-06-23 09:52:10,751 - 
+--- Processing 13.jpg ---
+2026-06-23 09:52:10,853 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:10,853 - 
+--- Processing 14.jpg ---
+2026-06-23 09:52:11,021 - [Layout-First] Contour found: 4 points. Warp successful. Rotation detected: False
+2026-06-23 09:52:11,024 - [Layout-First] Crop box: (256, 270) to (838, 513)
+2026-06-23 09:52:15,831 - [Layout-First] OCR Text:
+Họ và tên 1 Full name:
+NGUYÊN THI QUYỀN TRÂN TH
+Ngày sinh / Date of birth: 3
+24/12/2003
+Giới tính / Sex Nữ
+Quốc tịch//Nationality: Việt Nam
+Quê quán 1 Place of origing nguy
+Thanh Hòa, Phụng Hiệp, Hậu Giang Nam
+Nơi thường trú I Place ofresidence Ấp Phú Xuân
+2026-06-23 09:52:15,831 - [Result] PASS
+2026-06-23 09:52:15,833 - 
+--- Processing 15.jpg ---
+2026-06-23 09:52:15,881 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:15,881 - 
+--- Processing 16.jpg ---
+2026-06-23 09:52:16,024 - [Layout-First] Contour found: 4 points. Warp successful. Rotation detected: False
+2026-06-23 09:52:16,027 - [Layout-First] Crop box: (256, 270) to (838, 513)
+2026-06-23 09:52:18,983 - [Layout-First] OCR Text:
+Controconate
+Lm Công Nguyên
+050548093303005054
+08812243VNMKKKKKKK
+HIKQUYENKTRANKKIKKING
+2026-06-23 09:52:18,984 - [Result] FAIL (No anchor found in OCR text. Fallback candidate.)
+2026-06-23 09:52:18,986 - 
+--- Processing 17.jpg ---
+2026-06-23 09:52:19,028 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:19,029 - 
+--- Processing 18.jpg ---
+2026-06-23 09:52:19,177 - [Layout-First] Contour found: 4 points. Warp successful. Rotation detected: False
+2026-06-23 09:52:19,179 - [Layout-First] Crop box: (256, 270) to (838, 513)
+2026-06-23 09:52:19,277 - [Layout-First] OCR Text:
+
+2026-06-23 09:52:19,277 - [Result] FAIL (No anchor found in OCR text. Fallback candidate.)
+2026-06-23 09:52:19,278 - 
+--- Processing 2.jpg ---
+2026-06-23 09:52:19,339 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:19,342 - 
+--- Processing 3.jpg ---
+2026-06-23 09:52:19,497 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:19,499 - 
+--- Processing 4.jpg ---
+2026-06-23 09:52:19,777 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:19,780 - 
+--- Processing 5.jpg ---
+2026-06-23 09:52:19,973 - [Layout-First] Contour found: 4 points. Warp successful. Rotation detected: False
+2026-06-23 09:52:19,975 - [Layout-First] Crop box: (256, 270) to (838, 513)
+2026-06-23 09:52:20,171 - [Layout-First] OCR Text:
+
+2026-06-23 09:52:20,172 - [Result] FAIL (No anchor found in OCR text. Fallback candidate.)
+2026-06-23 09:52:20,172 - 
+--- Processing 6.jpg ---
+2026-06-23 09:52:20,885 - [Layout-First] Contour found: 4 points. Warp successful. Rotation detected: True
+2026-06-23 09:52:20,886 - [Layout-First] Crop box: (256, 270) to (838, 513)
+2026-06-23 09:52:21,421 - [Layout-First] OCR Text:
+
+2026-06-23 09:52:21,421 - [Result] FAIL (No anchor found in OCR text. Fallback candidate.)
+2026-06-23 09:52:21,425 - 
+--- Processing 7.jpg ---
+2026-06-23 09:52:21,512 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:21,514 - 
+--- Processing 8.jpg ---
+2026-06-23 09:52:21,679 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:21,680 - 
+--- Processing 9.jpg ---
+2026-06-23 09:52:21,981 - [Layout-First] fallback_candidate=true, Reason: Contour not found
+2026-06-23 09:52:21,982 - 
+=== SUMMARY ===
+2026-06-23 09:52:21,983 - 1.jpg: FAIL
+2026-06-23 09:52:21,983 - 10.jpg: FAIL
+2026-06-23 09:52:21,984 - 11.jpg: FAIL
+2026-06-23 09:52:21,984 - 12.jpg: FAIL
+2026-06-23 09:52:21,984 - 13.jpg: FAIL
+2026-06-23 09:52:21,984 - 14.jpg: PASS
+2026-06-23 09:52:21,984 - 15.jpg: FAIL
+2026-06-23 09:52:21,985 - 16.jpg: FAIL
+2026-06-23 09:52:21,985 - 17.jpg: FAIL
+2026-06-23 09:52:21,985 - 18.jpg: FAIL
+2026-06-23 09:52:21,985 - 2.jpg: FAIL
+2026-06-23 09:52:21,985 - 3.jpg: FAIL
+2026-06-23 09:52:21,985 - 4.jpg: FAIL
+2026-06-23 09:52:21,986 - 5.jpg: FAIL
+2026-06-23 09:52:21,986 - 6.jpg: FAIL
+2026-06-23 09:52:21,986 - 7.jpg: FAIL
+2026-06-23 09:52:21,986 - 8.jpg: FAIL
+2026-06-23 09:52:21,986 - 9.jpg: FAIL
+2026-06-23 09:52:21,986 - Total: 18, Pass: 1, Fail: 17

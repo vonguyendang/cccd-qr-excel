@@ -1,0 +1,1025 @@
+2026-06-22 15:20:17,945 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-22 15:20:17,946 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-22 15:20:17,976 - [ThreadPoolExecutor-0_0] - Finished align_card, method=opencv_contour
+2026-06-22 15:20:19,051 - [ThreadPoolExecutor-0_0] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU2026-06-23 09:09:48,934 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 09:09:48,935 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 09:09:49,119 - [ThreadPoolExecutor-0_1] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-23 09:09:49,402 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 09:09:49,402 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 09:09:49,453 - [ThreadPoolExecutor-0_0] - Finished align_card, method=opencv_contour
+2026-06-23 09:09:52,611 - [ThreadPoolExecutor-0_0] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx reuses cached model
+2026-06-23 09:09:52,674 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 09:09:52,674 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 09:09:52,804 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 09:09:53,205 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 09:09:53,206 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 09:09:53,303 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 09:09:58,726 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 09:10:02,128 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:10:07,313 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:10:14,436 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 09:10:15,448 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 09:10:15,449 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 09:10:17,283 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:10:18,418 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 09:10:21,538 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 09:10:21,545 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 09:10:27,127 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 09:10:27,131 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 09:10:34,793 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 09:10:35,249 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 09:10:35,249 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 09:10:39,415 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 09:10:41,755 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 09:10:42,214 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 09:10:42,214 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 09:10:46,855 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 09:10:47,847 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:10:56,325 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 09:10:56,331 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 09:10:59,437 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 09:10:59,437 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 09:11:04,471 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:11:05,110 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 09:11:08,008 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 09:11:08,245 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 09:11:08,246 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 09:11:11,253 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 09:11:14,685 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 09:11:14,688 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 09:11:17,784 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:11:19,902 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:11:25,444 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 09:11:26,349 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 09:11:26,349 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 09:11:26,409 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 09:11:31,738 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 09:11:31,830 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 09:11:35,050 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 09:11:35,053 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 09:11:45,452 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 09:11:45,826 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 09:11:45,827 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 09:11:45,866 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 09:11:48,798 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 09:11:49,368 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 09:11:49,368 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 09:11:52,606 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 09:11:54,547 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:11:58,065 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 09:11:58,066 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 09:12:00,498 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:12:01,725 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 09:12:06,761 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 09:12:06,764 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 09:12:09,048 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 09:12:09,052 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 09:12:11,595 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 09:12:11,596 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 09:12:14,236 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 09:12:18,791 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 09:12:19,371 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 09:12:19,372 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 09:12:19,416 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 09:12:22,202 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 09:12:34,053 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:12:37,314 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=True rot=Không xoay
+2026-06-23 09:12:45,488 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 09:12:45,495 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 09:12:48,155 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 09:12:48,156 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=True rot=Xoay trái 90 độ
+2026-06-23 09:12:57,841 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 09:13:09,294 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 09:13:09,304 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=True rot=Xoay phải 90 độ
+2026-06-23 09:13:27,356 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:13:33,367 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 09:13:33,378 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=True rot=Xoay 180 độ
+2026-06-23 09:13:39,130 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 09:13:39,134 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 09:13:44,902 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 09:13:44,929 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 09:13:50,229 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 09:13:56,188 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 09:13:56,189 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 09:14:00,816 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 09:14:01,005 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for Số Nhà 569, Ấp Bình An, Bình Thành, Lấp Vò, Đồng Tháp
+2026-06-23 09:14:01,027 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for 18/5, Bịnh Phó Anh, Detaring, Long Tuyền, Bình Thủy, Cần Thơ
+2026-06-23 09:14:01,033 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for Ấp Phú Xuân, Thạnh Hòa, Phụng Hiệp, Hậu Giang
+2026-06-23 09:14:01,034 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for 98/78 Trần, Disconterping, Hưng Đạo, An Nghiệp, Ninh Kiều, Cần Thơ
+2026-06-23 09:14:01,216 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for 78/389 Đường Cách Mạng Khóm 10, Phường 1, Thành phố Bạc Liêu, Bạc Liêu
+2026-06-23 11:02:48,287 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 11:02:48,289 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 11:02:48,565 - [ThreadPoolExecutor-0_1] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-23 11:02:49,380 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 11:02:49,380 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 11:02:49,450 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 11:02:49,685 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 11:02:49,686 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 11:02:49,783 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 11:02:49,894 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 11:02:49,896 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 11:02:49,984 - [ThreadPoolExecutor-0_0] - Finished align_card, method=opencv_contour
+2026-06-23 11:02:53,478 - [ThreadPoolExecutor-0_3] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx reuses cached model
+2026-06-23 11:02:58,809 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 11:03:12,660 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:03:19,448 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:03:22,456 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:03:27,046 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 11:03:34,079 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:03:34,089 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:03:39,067 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 11:03:39,071 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:03:46,286 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 11:03:46,286 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 11:03:50,177 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 11:03:54,025 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:03:59,807 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 11:04:03,239 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:04:11,619 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 11:04:11,619 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 11:04:16,087 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 11:04:16,087 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 11:04:16,394 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 11:04:20,455 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 11:04:20,460 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:04:23,636 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 11:04:34,352 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 11:04:45,887 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 11:04:45,887 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 11:04:49,135 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:04:52,703 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 11:04:56,564 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 11:04:56,566 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 11:05:00,666 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 11:05:04,864 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 11:05:04,868 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:05:08,102 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:05:10,233 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:05:15,556 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 11:05:20,573 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 11:05:20,639 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:05:24,069 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:05:24,073 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:05:32,442 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 11:05:32,442 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 11:05:32,520 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 11:05:39,208 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 11:05:43,076 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:05:57,294 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 11:05:57,298 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 11:05:57,408 - [ThreadPoolExecutor-0_1] - Finished align_card, method=opencv_contour
+2026-06-23 11:06:15,033 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 11:06:15,036 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 11:06:18,977 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:06:21,058 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 11:06:24,204 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:06:33,796 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 11:06:33,822 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:06:58,592 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 11:06:58,625 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:07:06,477 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 11:07:06,478 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 11:07:09,765 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 11:07:11,333 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 11:07:19,960 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 11:07:24,324 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 11:07:24,324 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 11:07:29,029 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 11:07:42,261 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 11:07:42,262 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 11:07:42,376 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 11:08:10,843 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=True rot=Không xoay
+2026-06-23 11:08:14,055 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:08:21,202 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:08:21,205 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=True rot=Xoay trái 90 độ
+2026-06-23 11:08:28,044 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 11:08:28,049 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:08:37,480 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:08:37,483 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=True rot=Xoay phải 90 độ
+2026-06-23 11:08:47,655 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 11:08:55,498 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:09:00,807 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:09:00,812 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=True rot=Xoay 180 độ
+2026-06-23 11:09:12,159 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 11:09:12,163 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:09:15,373 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:09:15,379 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:09:20,671 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 11:09:34,192 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:09:34,201 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:09:49,145 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:09:53,848 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for Ap 9, Date of oxpiry, Thuận Hưng, H. Long Mỹ, Hầu Giang
+2026-06-23 11:09:53,862 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for 18/5, Bình Phó A, Long Tuyền, Bình Thủy, Cần Thơ
+2026-06-23 11:09:53,876 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for 78/389 Đường Cách Mạng Khóm 10, Phường 1, Thành phố Bạc Liêu, Bạc Liêu
+2026-06-23 11:09:53,877 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for 98/78 Trần, Disconters, Hưng Đạo, An Nghiệp, Ninh Kiơn Thơ
+2026-06-23 11:09:54,111 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for Ấp Phú Xuân, Thạnh Hòa, Phụng Hiệp, Hậu Giang
+2026-06-23 11:09:54,116 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for Số Nhà 569, Ấp Bình An, Bình Thành, Lấp Vò, Đồng Tháp
+2026-06-23 11:55:04,411 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 11:55:04,413 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 11:55:04,684 - [ThreadPoolExecutor-0_0] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-23 11:55:05,683 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 11:55:05,683 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 11:55:05,704 - [ThreadPoolExecutor-0_1] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx reuses cached model
+2026-06-23 11:55:05,775 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 11:55:05,775 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 11:55:05,812 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 11:55:05,856 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 11:55:05,856 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 11:55:05,875 - [ThreadPoolExecutor-0_2] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx reuses cached model
+2026-06-23 11:55:20,661 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 11:55:20,818 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 11:55:22,655 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 11:55:26,361 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 11:55:26,361 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 11:55:29,679 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:55:30,655 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 11:55:41,687 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 11:55:47,226 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:55:55,434 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 11:55:55,435 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 11:56:04,554 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 11:56:07,736 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 11:56:07,736 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 11:56:09,792 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:56:13,002 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 11:56:15,965 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:56:15,976 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:56:19,170 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:56:24,495 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 11:56:24,499 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:56:33,270 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:56:38,754 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 11:56:43,133 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 11:56:53,468 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 11:56:53,469 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 11:56:57,993 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 11:56:59,942 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 11:56:59,943 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 11:57:06,778 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 11:57:07,114 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 11:57:07,115 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 11:57:07,170 - [ThreadPoolExecutor-0_0] - Finished align_card, method=opencv_contour
+2026-06-23 11:57:20,953 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:57:26,010 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 11:57:26,011 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 11:57:30,938 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 11:57:36,533 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 11:57:39,929 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 11:57:39,929 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 11:57:45,715 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 11:57:53,207 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 11:57:53,209 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 11:57:56,323 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:57:58,532 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 11:58:09,942 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 11:58:20,627 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 11:58:20,628 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 11:58:27,264 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 11:58:27,265 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 11:58:27,514 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 11:58:31,767 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:58:34,599 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 11:58:40,897 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 11:58:40,898 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 11:58:43,944 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 11:58:46,336 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:58:46,341 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:58:56,605 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 11:59:04,538 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 11:59:04,538 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 11:59:06,868 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 11:59:12,676 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 11:59:12,676 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 11:59:12,706 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 11:59:18,364 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 11:59:18,365 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 11:59:20,859 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:59:23,023 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 11:59:24,619 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:59:33,340 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 11:59:33,345 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 11:59:38,584 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 11:59:41,395 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 11:59:45,606 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 11:59:45,606 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 11:59:50,021 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 11:59:50,477 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 11:59:58,604 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 11:59:58,607 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:00:03,398 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:00:03,941 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:00:03,945 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:00:10,393 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:00:10,393 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:00:12,529 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:00:14,305 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 12:00:18,823 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:00:28,539 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:00:36,223 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:00:36,223 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:00:42,209 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 12:00:48,464 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:00:48,465 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:00:48,637 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 12:00:54,609 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:00:54,609 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:00:59,195 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 12:01:07,011 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:01:21,351 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:01:30,285 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:01:30,286 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:01:41,505 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:01:44,310 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:01:44,310 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:01:55,769 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:01:59,160 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:02:16,486 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:02:20,613 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:02:32,233 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:02:32,233 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:02:38,880 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:02:39,241 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:02:39,242 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:02:49,787 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 12:02:50,179 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:02:50,190 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:02:59,373 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:02:59,374 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:03:04,788 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:03:09,826 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:03:22,545 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:03:22,549 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:03:28,182 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:03:33,217 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:03:33,218 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:03:38,975 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 12:03:52,684 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:04:02,096 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:04:02,096 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:04:05,169 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:04:08,627 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:04:16,399 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:04:16,407 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:04:22,197 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:04:30,924 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:04:40,187 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:04:46,782 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:04:53,766 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:04:53,766 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:04:58,191 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 12:05:04,455 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:05:04,456 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:05:04,518 - [ThreadPoolExecutor-0_1] - Finished align_card, method=opencv_contour
+2026-06-23 12:05:12,262 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:05:12,263 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:05:14,783 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:05:20,518 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:05:27,412 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:05:35,255 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:05:42,739 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:05:42,739 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:05:50,413 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:05:50,421 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:05:54,858 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 12:06:03,900 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:06:03,903 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:06:07,544 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 12:06:09,297 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:06:16,264 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:06:16,265 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:06:16,320 - [ThreadPoolExecutor-0_0] - Finished align_card, method=opencv_contour
+2026-06-23 12:06:27,308 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:06:27,308 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:06:28,903 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:06:31,983 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:06:41,796 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:06:41,804 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:06:46,905 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:06:46,905 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:06:51,786 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:06:59,709 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:07:08,625 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:07:08,626 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:07:13,099 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:07:15,616 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:07:28,948 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:07:28,950 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:07:36,000 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 12:07:39,117 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:07:39,124 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:07:50,413 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:07:58,700 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:08:08,277 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:08:08,280 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:08:15,817 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:08:15,818 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:08:15,884 - [ThreadPoolExecutor-0_1] - Finished align_card, method=opencv_contour
+2026-06-23 12:08:24,306 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:08:33,462 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:08:38,499 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:08:43,933 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:08:50,591 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:08:50,595 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:08:54,308 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 12:09:00,407 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:09:00,419 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:09:09,158 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:09:09,158 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:09:12,292 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:09:12,292 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:09:12,508 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 12:09:14,666 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:09:16,554 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:09:20,755 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:09:26,424 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:09:29,665 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:09:35,357 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:09:35,357 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:09:42,628 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:09:42,629 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:09:42,704 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 12:09:45,614 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:09:55,189 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:09:55,206 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:10:07,505 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:10:07,781 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=True rot=Không xoay
+2026-06-23 12:10:20,315 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:10:20,320 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=True rot=Xoay trái 90 độ
+2026-06-23 12:10:21,849 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:10:21,850 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:10:25,512 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:10:25,512 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:10:27,620 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:10:27,970 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 12:10:31,072 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:10:31,949 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:10:31,949 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:10:31,994 - [ThreadPoolExecutor-0_1] - Finished align_card, method=opencv_contour
+2026-06-23 12:10:35,508 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:10:44,710 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:10:53,273 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:10:58,834 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:10:58,834 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:10:58,862 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 12:11:06,560 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:11:06,566 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:11:14,168 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:11:14,169 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:11:14,210 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 12:11:16,489 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:11:23,394 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:11:31,209 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:11:31,212 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:11:34,115 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:11:47,679 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:11:53,618 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:12:04,517 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for Ấp Phú Xuân, Thạnh Hòa, Phụng Hiệp, Hậu Giang
+2026-06-23 12:12:04,540 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for Số Nhà 257. Đường 3 Tháng 2, Khóm 1, Ngã Năm, Ngã Năm, Cần Thơ
+2026-06-23 12:12:04,553 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for 389/3 Nguyễn Văn Cừ, An Hòa, Ninh Kiều, Cần Thơ
+2026-06-23 12:12:04,562 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for Thôn Trà Khê, Tân Lập, Vũ Thư, Thái Bình
+2026-06-23 12:12:04,825 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for 32/8/27, Nguyễn Thị Minh Khai, Tân An, Ninh Kiều, Cần Thơ
+2026-06-23 12:12:04,856 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for Ấp Mỹ Chánh, 2T, Hiệp Hưng, Phụng Hiệp, Hậu Giang
+2026-06-23 12:12:06,960 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for Số Nhà 562, Ấp Bình Trung 2, Nhơn Thạnh Trung, Tân An, Long An
+2026-06-23 12:12:07,074 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for 32 Đường Số 9 Tổ 10C Khu Vực 4, An Bình, Ninh Kiều, Cần Thơ
+2026-06-23 12:12:37,501 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for Kv Thới Trính Chiến, Thới An, Ô Môn, Cần Thơng
+2026-06-23 12:12:37,784 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for Số 27/12B, Mạc Đỉnh Chi, An Cư, Ninh Kiều, Cần Thơ
+2026-06-23 12:12:37,813 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for Nhơn Thọ 1A, Nhơn Ái, Phong Điền, Cần Thơ
+2026-06-23 12:12:38,064 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for Ấp Phước Trung, Thạnh Phú, Cờ Đỏ, Cần Thơ
+2026-06-23 12:13:05,267 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for Ấp Thới Hiệp B, Xuân Thắng, Thới Lai, Cần Thơ
+2026-06-23 12:13:05,292 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for 234A1, Tầm Vu, Hưng Lợi, Ninh Kiều, Cần Thơ
+2026-06-23 12:13:05,329 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for Tổ 18, Ấp Lợi An, Thanh Mỹ, Tháp Mười, Đồng Tháp
+2026-06-23 12:13:05,335 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for 406 đường 30/4, Hưng Lợi, Ninh Kiều, Cần Thơ
+2026-06-23 12:13:05,359 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for 48C Bà Triệu, Dale oferpiry, Tân An, Ninh Kiều, Cần Thơn
+2026-06-23 12:15:22,784 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:15:22,787 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:15:23,015 - [ThreadPoolExecutor-0_0] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-23 12:15:23,147 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:15:23,147 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:15:23,207 - [ThreadPoolExecutor-0_1] - Finished align_card, method=opencv_contour
+2026-06-23 12:15:23,392 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:15:23,392 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:15:23,583 - [ThreadPoolExecutor-0_2] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx reuses cached model
+2026-06-23 12:15:23,754 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:15:23,755 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:15:23,781 - [ThreadPoolExecutor-0_3] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx reuses cached model
+2026-06-23 12:15:24,892 - [ThreadPoolExecutor-0_1] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx reuses cached model
+2026-06-23 12:15:48,174 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:15:48,931 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:15:51,115 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:15:52,210 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 12:15:54,552 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:15:54,564 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:16:01,349 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:16:12,054 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:16:23,546 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:16:31,818 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:16:31,819 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:16:33,972 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 12:16:42,042 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:16:42,042 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:16:46,791 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:16:49,101 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:16:55,100 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:16:57,846 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:17:02,684 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:17:10,958 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:17:16,170 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:17:22,569 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:17:22,570 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:17:25,683 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:17:28,660 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:17:28,661 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:17:34,298 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 12:17:36,537 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:17:36,538 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:17:36,578 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 12:17:42,588 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:17:42,588 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:17:47,789 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:18:07,987 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:18:07,989 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:18:13,807 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:18:15,174 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:18:25,774 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:18:25,775 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:18:25,803 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 12:18:32,286 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:18:32,295 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:18:39,172 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:18:42,569 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:18:48,219 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:18:51,230 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:18:56,108 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:18:56,112 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:19:01,782 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:19:01,787 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:19:08,607 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:19:08,607 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:19:12,893 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:19:15,205 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:19:15,213 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:19:22,958 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:19:29,736 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:19:35,302 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:19:44,627 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:19:44,628 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:19:47,229 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:19:52,449 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:19:52,450 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:19:52,493 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 12:19:59,462 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:19:59,463 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:20:04,764 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 12:20:05,812 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:20:18,074 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:20:20,286 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:20:24,939 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:20:24,940 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:20:27,021 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:20:31,573 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 12:20:36,515 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:20:36,516 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:20:39,289 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:20:42,183 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:20:42,187 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:20:47,533 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:20:47,536 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:20:54,201 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:20:58,365 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:21:02,594 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:21:12,505 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:21:18,130 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:21:18,131 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:21:22,636 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 12:21:22,680 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:21:22,681 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:21:27,559 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:21:34,017 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:21:34,018 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:21:37,641 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:21:41,418 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:21:42,180 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:21:45,214 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:21:51,298 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:21:51,302 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:21:57,969 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:22:05,742 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:22:05,744 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:22:10,680 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:22:18,487 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:22:18,487 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:22:23,512 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 12:22:27,157 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:22:41,434 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:22:41,435 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:22:48,842 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 12:23:04,593 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 12:23:04,595 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 12:23:08,711 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:23:12,333 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 12:23:35,034 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:23:35,059 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:23:50,463 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:23:58,764 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:24:05,908 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:24:05,908 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:24:06,068 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 12:24:09,580 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:24:16,942 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:24:22,340 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 12:24:25,258 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:24:31,412 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 12:24:31,412 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 12:24:36,212 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 12:24:44,556 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 12:24:52,894 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=True rot=Không xoay
+2026-06-23 12:24:55,051 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:24:55,055 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=True rot=Xoay trái 90 độ
+2026-06-23 12:24:56,975 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 12:24:58,261 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:24:58,265 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=True rot=Xoay phải 90 độ
+2026-06-23 12:25:03,240 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:25:03,244 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 12:25:04,510 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:25:04,514 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=True rot=Xoay 180 độ
+2026-06-23 12:25:09,207 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 12:25:09,678 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 12:25:16,228 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for 48C Bà Triệu, Tân An, Ninh Kiều, Cần Thơ
+2026-06-23 12:25:16,234 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for Kv Thới Trính Chiến, Thới An, Ô Môn, Cần Thơ
+2026-06-23 12:25:16,240 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for Ấp Mỹ Chánh, 2T, Hiệp Hưng, Phụng Hiệp, Hậu Giang
+2026-06-23 12:59:58,492 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 12:59:58,495 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 12:59:58,733 - [ThreadPoolExecutor-0_1] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-23 12:59:59,138 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 12:59:59,138 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 12:59:59,181 - [ThreadPoolExecutor-0_0] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx reuses cached model
+2026-06-23 13:00:10,618 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:00:11,765 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:00:31,302 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:00:34,100 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:00:38,951 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:00:45,274 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:00:53,661 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:00:53,666 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:00:53,743 - [ThreadPoolExecutor-0_0] - Finished align_card, method=opencv_contour
+2026-06-23 13:01:04,215 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:01:04,215 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:01:04,253 - [ThreadPoolExecutor-0_1] - Finished align_card, method=opencv_contour
+2026-06-23 13:01:07,366 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:01:13,789 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:01:13,801 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:01:21,854 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:01:26,678 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:01:26,679 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:01:32,726 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:01:32,726 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:01:35,325 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:01:38,158 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:02:05,945 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:02:05,947 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:02:12,625 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:02:17,454 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:02:22,644 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:02:33,744 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:02:33,755 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:02:40,213 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:02:40,216 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:02:49,910 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:02:59,341 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:03:12,324 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:03:12,325 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:03:22,000 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:03:22,477 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:03:22,478 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:03:27,713 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:03:34,900 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:03:42,612 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:03:42,617 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:03:57,931 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:04:05,740 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:04:11,934 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:04:11,934 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:04:17,941 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:04:19,441 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:04:31,523 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:04:31,524 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:04:36,251 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:04:38,036 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:04:44,566 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:04:51,070 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:05:06,871 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:05:06,872 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:05:20,783 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:05:21,173 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:05:21,185 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:05:29,312 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:05:32,909 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:05:41,741 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:05:41,741 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:05:46,367 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:05:46,370 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:05:47,156 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:05:52,824 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:05:58,673 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:06:10,717 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:06:10,718 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:06:25,139 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:06:25,163 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:06:25,475 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:06:42,423 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:06:56,017 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:06:56,017 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:06:58,754 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:07:24,074 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:07:37,234 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:07:49,449 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:07:49,450 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:07:50,065 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:08:02,913 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:08:02,913 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:08:03,842 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=True rot=Không xoay
+2026-06-23 13:08:04,180 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:08:04,183 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=True rot=Xoay trái 90 độ
+2026-06-23 13:08:06,160 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:08:06,163 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=True rot=Xoay phải 90 độ
+2026-06-23 13:08:08,036 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:08:08,224 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:08:08,230 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=True rot=Xoay 180 độ
+2026-06-23 13:08:08,946 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:08:11,690 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:08:11,690 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:08:14,667 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:08:26,480 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:08:49,159 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:08:49,184 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:08:56,579 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:09:08,393 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:09:13,263 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:09:13,269 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:09:20,935 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:09:20,935 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:09:25,453 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:09:26,572 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:09:34,090 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:09:34,091 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:09:46,826 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:09:58,712 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:10:02,923 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:10:11,802 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:10:11,812 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:10:17,680 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:10:17,683 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:10:23,543 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:10:28,871 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:10:36,759 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:10:36,759 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:10:36,818 - [ThreadPoolExecutor-0_0] - Finished align_card, method=opencv_contour
+2026-06-23 13:10:50,366 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:10:50,368 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:10:50,470 - [ThreadPoolExecutor-0_1] - Finished align_card, method=opencv_contour
+2026-06-23 13:11:01,650 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:11:05,225 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:11:12,520 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:11:12,525 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:11:16,165 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:11:16,169 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:11:28,734 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:11:37,578 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:11:54,147 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:11:54,148 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:12:01,674 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:12:02,743 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:12:02,744 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:12:12,637 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:12:17,437 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:12:30,726 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:12:47,018 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:12:47,019 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:12:47,061 - [ThreadPoolExecutor-0_1] - Finished align_card, method=opencv_contour
+2026-06-23 13:12:56,878 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:13:06,207 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:13:06,208 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:13:11,049 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:13:15,036 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:13:29,688 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:13:54,388 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:14:02,023 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for 48C Bà Triệu, Tân An, Ninh Kiều, Cần Thơ
+2026-06-23 13:14:02,035 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for Kv Thới Trính Chiến, Thới An, Ô Môn, Cần Thơ
+2026-06-23 13:14:02,705 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for Ấp Mỹ Chánh, Hiệp Hưng, Phụng Hiệp, Hậu Giang
+2026-06-23 13:25:57,044 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 13:25:57,047 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 13:25:57,274 - [ThreadPoolExecutor-0_2] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-23 13:25:57,368 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 13:25:57,368 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 13:25:57,425 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 13:25:57,491 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:25:57,491 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:25:57,531 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:25:57,532 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:25:57,545 - [ThreadPoolExecutor-0_1] - Finished align_card, method=opencv_contour
+2026-06-23 13:25:57,548 - [ThreadPoolExecutor-0_0] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx reuses cached model
+2026-06-23 13:26:04,140 - [ThreadPoolExecutor-0_1] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx reuses cached model
+2026-06-23 13:26:30,258 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 13:26:31,849 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:26:56,386 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:27:12,082 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:27:12,083 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:27:21,079 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:27:39,308 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 13:27:39,309 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 13:27:39,370 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 13:27:54,973 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 13:27:54,999 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:28:26,844 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:28:52,845 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 13:29:31,375 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 13:30:01,727 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 13:30:01,729 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 13:30:07,778 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:30:10,496 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 13:30:16,387 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:30:36,477 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 13:30:36,478 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 13:30:36,612 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 13:30:44,044 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:31:04,828 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:31:38,802 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:31:38,860 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:31:47,592 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:31:47,594 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:31:48,071 - [ThreadPoolExecutor-0_0] - Finished align_card, method=opencv_contour
+2026-06-23 13:32:43,896 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 13:32:43,948 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:32:49,289 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:33:12,932 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 13:33:12,940 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 13:33:13,055 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 13:33:19,929 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 13:33:28,695 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:33:28,697 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:33:39,838 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:33:42,710 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:34:11,201 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 13:34:11,205 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 13:34:11,589 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 13:34:25,533 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:34:25,569 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:35:04,408 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 13:35:04,411 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 13:35:04,745 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 13:35:29,425 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:35:46,749 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 13:35:46,756 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 13:36:06,405 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 13:36:07,577 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:36:07,578 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:36:07,674 - [ThreadPoolExecutor-0_0] - Finished align_card, method=opencv_contour
+2026-06-23 13:36:33,142 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 13:36:33,145 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 13:36:50,604 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 13:36:50,672 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:37:11,070 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:37:17,956 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:37:17,966 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:37:48,984 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 13:37:48,993 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 13:37:58,514 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:37:58,725 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:38:07,960 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 13:38:16,519 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:38:59,822 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:39:21,853 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:39:21,856 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:39:36,757 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:39:41,181 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:39:41,181 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:39:48,839 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:39:52,010 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 13:39:52,012 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 13:40:06,638 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:40:07,262 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 13:40:19,085 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:40:42,834 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 13:41:23,306 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:41:23,335 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:41:38,651 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 13:41:38,669 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 13:41:38,758 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 13:41:52,925 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:42:41,045 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:42:41,046 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:42:41,119 - [ThreadPoolExecutor-0_1] - Finished align_card, method=opencv_contour
+2026-06-23 13:42:46,221 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:42:49,590 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:43:04,134 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 13:43:04,136 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 13:43:29,914 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 13:43:33,785 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:43:34,075 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:44:03,528 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 13:44:40,461 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:44:40,464 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:44:40,593 - [ThreadPoolExecutor-0_1] - Finished align_card, method=opencv_contour
+2026-06-23 13:45:04,251 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:45:22,039 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 13:45:22,040 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 13:45:22,135 - [ThreadPoolExecutor-0_2] - Finished align_card, method=opencv_contour
+2026-06-23 13:45:56,129 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:45:56,181 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:46:08,674 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:46:38,201 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:46:38,205 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:46:52,679 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:47:30,459 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 13:47:30,486 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 13:47:47,674 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:47:51,422 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 13:48:26,897 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 13:48:26,954 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:50:32,572 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 13:51:18,630 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:52:40,365 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 13:52:40,370 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 13:52:40,622 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 13:52:47,414 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:52:52,523 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:53:15,229 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:53:31,802 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 13:53:31,893 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:53:46,916 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 13:53:46,933 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 13:54:03,572 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 13:54:14,512 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:54:14,548 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:54:38,938 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 13:54:38,942 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 13:54:45,526 - [ThreadPoolExecutor-0_3] - Finished align_card, method=onnx_cluster
+2026-06-23 13:54:45,852 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 13:55:12,652 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 13:55:19,317 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 13:55:19,317 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 13:55:22,004 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 13:56:12,106 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 13:56:12,116 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 13:57:09,352 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 13:57:14,243 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 13:58:28,890 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:58:28,962 - [ThreadPoolExecutor-0_0] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 13:59:01,730 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=True rot=Không xoay
+2026-06-23 13:59:13,926 - [ThreadPoolExecutor-0_0] - Finished safe_extract_text
+2026-06-23 13:59:17,175 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=True rot=Không xoay
+2026-06-23 13:59:46,753 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 13:59:46,806 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 14:00:04,287 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 14:00:04,295 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 14:00:04,438 - [ThreadPoolExecutor-0_0] - Finished align_card, method=opencv_contour
+2026-06-23 14:00:09,618 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 14:00:12,105 - [ThreadPoolExecutor-0_2] - Started extract_ocr_data
+2026-06-23 14:00:12,105 - [ThreadPoolExecutor-0_2] - Calling align_card
+2026-06-23 14:00:23,278 - [ThreadPoolExecutor-0_2] - Finished align_card, method=onnx_cluster
+2026-06-23 14:00:28,704 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 14:00:28,715 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 14:00:44,321 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 14:01:26,892 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 14:01:40,866 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 14:01:40,867 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 14:01:47,698 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 14:01:58,517 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 14:02:14,651 - [ThreadPoolExecutor-0_3] - Started extract_ocr_data
+2026-06-23 14:02:14,656 - [ThreadPoolExecutor-0_3] - Calling align_card
+2026-06-23 14:02:14,715 - [ThreadPoolExecutor-0_3] - Finished align_card, method=opencv_contour
+2026-06-23 14:02:35,250 - [ThreadPoolExecutor-0_1] - Started extract_ocr_data
+2026-06-23 14:02:35,320 - [ThreadPoolExecutor-0_1] - Calling align_card
+2026-06-23 14:02:49,115 - [ThreadPoolExecutor-0_1] - Finished align_card, method=onnx_cluster
+2026-06-23 14:02:54,543 - [ThreadPoolExecutor-0_3] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 14:03:05,418 - [ThreadPoolExecutor-0_0] - Started extract_ocr_data
+2026-06-23 14:03:05,419 - [ThreadPoolExecutor-0_0] - Calling align_card
+2026-06-23 14:03:18,239 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 14:03:25,993 - [ThreadPoolExecutor-0_0] - Finished align_card, method=onnx_cluster
+2026-06-23 14:03:51,954 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 14:04:14,056 - [ThreadPoolExecutor-0_3] - Finished safe_extract_text
+2026-06-23 14:04:30,451 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 14:04:30,525 - [ThreadPoolExecutor-0_2] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 14:04:52,703 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 14:04:52,742 - [ThreadPoolExecutor-0_1] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 14:05:24,377 - [ThreadPoolExecutor-0_2] - Finished safe_extract_text
+2026-06-23 14:06:09,623 - [ThreadPoolExecutor-0_1] - Finished safe_extract_text
+2026-06-23 14:08:04,364 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for Ấp Phú Xuân, Thạnh Hòa, Phụng Hiệp, Hậu Giang
+2026-06-23 14:08:04,689 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for Số 27/12B, Mạc Đỉnh Chi, An Cư, Ninh Kiều, Cần Thơ
+2026-06-23 14:08:04,707 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for Ap 9, Thuận Hưng, H. Long Mỹ, Hậu Giang
+2026-06-23 14:08:04,723 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for 65/15, Tổ 15, Bình Phó A, Long Tuyền, Bình Thủy, Cần Thơ
+2026-06-23 14:08:06,169 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for Kv Thới Trinh Chinh, Thới An, Ô Môn, Cần Thơ
+2026-06-23 14:08:06,171 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for 234A1, Tầm Vu, Hưng Lợi, Ninh Kiều, Cần Thơ
+2026-06-23 14:08:06,261 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for Số Nhà 257. Đường 3 Tháng 2, Khóm 1, Ngã Năm, Ngã Năm, Cần Thơ
+2026-06-23 14:08:06,307 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for Nhơn Thọ 1A, Nhơn Ái, Phong Điền, Cần Thơ
+2026-06-23 14:08:06,381 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for Tổ 18, Ấp Lợi An, Thanh Mỹ, Tháp Mười, Đồng Tháp
+2026-06-23 14:08:06,422 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for Thôn Trà Khê, Tân Lập, Vũ Thư, Thái Bình
+2026-06-23 14:08:06,503 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for 48C Bà Triệu, Tân An, Ninh Kiều, Cần Thơ
+2026-06-23 14:08:38,656 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for 32 Đường Số 9 Tổ 10C Khu Vực 4, An Bình, Ninh Kiều, Cần Thơ
+2026-06-23 14:08:38,698 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for 389/3 Nguyễn Văn Cừ, An Hòa, Ninh Kiều, Cần Thơ
+2026-06-23 14:08:38,731 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for Ấp Thới Hiệp B, Xuân Thắng, Thới Lai, Cần Thơ
+2026-06-23 14:08:38,747 - [ThreadPoolExecutor-1_2] - Started fetch_single_address for 32/8/27, Nguyễn Thị Minh Khai, Tân An, Ninh Kiều, Cần Thơ
+2026-06-23 14:09:06,416 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for 406 đường 30/4, Hưng Lợi, Ninh Kiều, Cần Thơ
+2026-06-23 14:09:06,466 - [ThreadPoolExecutor-1_3] - Started fetch_single_address for Ấp Phước Trung, Thạnh Phú, Cờ Đỏ, Cần Thơ
+2026-06-23 14:09:06,471 - [ThreadPoolExecutor-1_0] - Started fetch_single_address for Số Nhà 562, Ấp Bình Trung 2, Nhơn Thạnh Trung, Tân An, Long An
+2026-06-23 14:09:06,494 - [ThreadPoolExecutor-1_1] - Started fetch_single_address for Ấp Mỹ Chánh, Hiệp Hưng, Phụng Hiệp, Hậu Giang

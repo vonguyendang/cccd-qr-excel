@@ -1,0 +1,19 @@
+
+==================================================
+Processing: 1.jpg
+[Status]          Fallback (Không tìm thấy anchor 'thường trú')
+
+==================================================
+Processing: 10.jpg
+[Status]          Fallback (Thiếu dấu phẩy và ít từ địa danh)
+
+==================================================
+Processing: 11.jpg
+[Status]          Fallback (Không tìm thấy anchor 'thường trú')
+
+==================================================
+Processing: 12.jpg
+[Status]          Fallback (Không tìm thấy anchor 'thường trú')
+
+==================================================
+Processing: 13.jpg

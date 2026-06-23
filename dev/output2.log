@@ -1,0 +1,23 @@
+╭─────────────────────────────────────────────────────────────╮
+│                                                             │
+│     🚀 PHẦN MỀM TRÍCH XUẤT DỮ LIỆU TỪ ẢNH CCCD RA EXCEL     │
+│                                                             │
+╰─────────────────────────────────────────────────────────────╯
+Đã tải thành công mô hình WeChat QRCode siêu cấp.
+Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không? 
+[y/n] (n): 
+Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng) không?
+[y/n] (y): Traceback (most recent call last):
+  File "/Users/dangvo/Projects/cccd-qr-excel/wizard/main.py", line 4105, in <module>
+    main()
+  File "/Users/dangvo/Projects/cccd-qr-excel/wizard/main.py", line 4019, in main
+    do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng) không?[/bold yellow]", default=True)
+  File "/Users/dangvo/Projects/cccd-qr-excel/.venv/lib/python3.10/site-packages/rich/prompt.py", line 149, in ask
+    return _prompt(default=default, stream=stream)
+  File "/Users/dangvo/Projects/cccd-qr-excel/.venv/lib/python3.10/site-packages/rich/prompt.py", line 292, in __call__
+    value = self.get_input(self.console, prompt, self.password, stream=stream)
+  File "/Users/dangvo/Projects/cccd-qr-excel/.venv/lib/python3.10/site-packages/rich/prompt.py", line 211, in get_input
+    return console.input(prompt, password=password, stream=stream)
+  File "/Users/dangvo/Projects/cccd-qr-excel/.venv/lib/python3.10/site-packages/rich/console.py", line 2189, in input
+    result = input()
+EOFError: EOF when reading a line

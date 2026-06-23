@@ -1,0 +1,24 @@
+╭─────────────────────────────────────────────────────────────╮
+│                                                             │
+│     🚀 PHẦN MỀM TRÍCH XUẤT DỮ LIỆU TỪ ẢNH CCCD RA EXCEL     │
+│                                                             │
+╰─────────────────────────────────────────────────────────────╯
+Đã tải thành công mô hình WeChat QRCode siêu cấp.
+Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không? 
+[y/n] (n): 
+Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng) không?
+[y/n] (y):   Đang quét dHash & MD5 để diệt ảnh trùng lặp... ━━━━━ 100% 0:00… ⏳ ETA: 0:00:…
+
+✅ Đã quét thư mục và chuẩn bị xử lý 1 file ảnh.
+⚠️ Các ảnh mới đều đã được đánh số ở lần chạy trước, bỏ qua bước sao lưu và đổi 
+tên.
+
+Nhập số luồng xử lý ảnh song song (Enter để mặc định là 4) (4): 
+Bạn có muốn bắt đầu xử lý ngay bây giờ không? [y/n] (y): 
+
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ 🚀 BẮT ĐẦU XỬ LÝ 1 ẢNH VỚI 4 LUỒNG...                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+⏳ Bắt đầu đưa vào AI: 158.jpg...
+  ⚠️ Không đọc được QR, đang thử quét OCR... (Có thể mất 30-60s/ảnh trên CPU, 
+vui lòng đợi)
