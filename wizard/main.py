@@ -2582,7 +2582,7 @@ def run_wizard(input_dir, normalize_address=True):
         if not c1_clean or not c2_clean: return False
         if len(c1_clean) == 12 and len(c2_clean) == 12:
             diffs = sum(1 for a, b in zip(c1_clean, c2_clean) if a != b)
-            return diffs <= 2
+            return diffs <= 3
         return c1_clean == c2_clean
 
     def _is_similar_name(n1, n2):
