@@ -2585,6 +2585,12 @@ def run_wizard(input_dir, normalize_address=True):
             return diffs <= 2
         return c1_clean == c2_clean
 
+    def _is_similar_name(n1, n2):
+        if not n1 or not n2: return False
+        import difflib
+        ratio = difflib.SequenceMatcher(None, n1, n2).ratio()
+        return ratio >= 0.80
+
     secondary_cccds = [cccd for cccd, rec in list(records.items()) if not rec['has_qr_data']]
     for sec_cccd in secondary_cccds:
         if sec_cccd not in records:
@@ -2604,7 +2610,7 @@ def run_wizard(input_dir, normalize_address=True):
             target_name = _norm_for_match(target_rec.get('Họ tên', ''))
             target_dob = target_rec.get('Ngày sinh', '')
             
-            if sec_name != target_name:
+            if not _is_similar_name(sec_name, target_name):
                 continue
                 
             match_dob = (sec_dob and target_dob and sec_dob == target_dob)
