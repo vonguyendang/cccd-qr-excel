@@ -2564,6 +2564,115 @@ def run_wizard(input_dir, normalize_address=True):
             if item.get('Ghi chú'):
                 record['Ghi chú'].append(item['Ghi chú'])
 
+    # ---------- GENERAL FUZZY MATCH: GỘP BẢN GHI OCR SAI LỆCH SỐ (CÙNG TÊN + TRÙNG DOB HOẶC CẬN CCCD) ----------
+    import unicodedata
+    import re
+
+    def _norm_for_match(text):
+        """Chuẩn hóa để so khớp: xóa dấu, in hoa, rút gọn khoảng trắng."""
+        if not text: return ''
+        text = text.upper().strip()
+        nfkd = unicodedata.normalize('NFKD', text)
+        return ' '.join(''.join(c for c in nfkd if not unicodedata.combining(c)).split())
+
+    def _is_similar_cccd(c1, c2):
+        if not c1 or not c2: return False
+        c1_clean = re.sub(r'\D', '', str(c1))
+        c2_clean = re.sub(r'\D', '', str(c2))
+        if not c1_clean or not c2_clean: return False
+        if len(c1_clean) == 12 and len(c2_clean) == 12:
+            diffs = sum(1 for a, b in zip(c1_clean, c2_clean) if a != b)
+            return diffs <= 2
+        return c1_clean == c2_clean
+
+    secondary_cccds = [cccd for cccd, rec in list(records.items()) if not rec['has_qr_data']]
+    for sec_cccd in secondary_cccds:
+        if sec_cccd not in records:
+            continue
+        sec_rec = records[sec_cccd]
+        sec_name = _norm_for_match(sec_rec.get('Họ tên', ''))
+        sec_dob = sec_rec.get('Ngày sinh', '')
+        
+        if not sec_name:
+            continue
+            
+        best_target_cccd = None
+        for target_cccd, target_rec in records.items():
+            if target_cccd == sec_cccd:
+                continue
+            
+            target_name = _norm_for_match(target_rec.get('Họ tên', ''))
+            target_dob = target_rec.get('Ngày sinh', '')
+            
+            if sec_name != target_name:
+                continue
+                
+            match_dob = (sec_dob and target_dob and sec_dob == target_dob)
+            match_cccd = _is_similar_cccd(sec_cccd, target_cccd)
+            
+            if match_dob or match_cccd:
+                if not best_target_cccd:
+                    best_target_cccd = target_cccd
+                else:
+                    curr_best = records[best_target_cccd]
+                    if target_rec['has_qr_data'] and not curr_best['has_qr_data']:
+                        best_target_cccd = target_cccd
+                        
+        if best_target_cccd:
+            target_rec = records[best_target_cccd]
+            console.print(f"   [bold green]→ [GENERAL FUZZY MATCH][/bold green] Ghép bản ghi OCR {sec_cccd} ({sec_rec.get('Họ tên')}) vào bản ghi {best_target_cccd} (Trùng tên và trùng DOB/cận CCCD).")
+            
+            # Gộp mặt trước
+            if not target_rec.get('Ảnh mặt trước CCCD/CC'):
+                if sec_rec.get('Ảnh mặt trước CCCD/CC'):
+                    target_rec['Ảnh mặt trước CCCD/CC'] = sec_rec['Ảnh mặt trước CCCD/CC']
+                    target_rec['Full Image Path Front'] = sec_rec.get('Full Image Path Front', '')
+                elif sec_rec.get('OCR Image Path Front'):
+                    target_rec['Ảnh mặt trước CCCD/CC'] = sec_rec['OCR Image Path Front']
+                    target_rec['Full Image Path Front'] = sec_rec.get('Full OCR Image Path Front', '')
+            else:
+                sec_front = sec_rec.get('Ảnh mặt trước CCCD/CC') or sec_rec.get('OCR Image Path Front')
+                if sec_front:
+                    existing = target_rec.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                    target_rec['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {sec_front}".strip(', ')
+                    
+            # Gộp mặt sau
+            if not target_rec.get('Ảnh mặt sau CCCD/CC'):
+                if sec_rec.get('Ảnh mặt sau CCCD/CC'):
+                    target_rec['Ảnh mặt sau CCCD/CC'] = sec_rec['Ảnh mặt sau CCCD/CC']
+                    target_rec['Full Image Path Back'] = sec_rec.get('Full Image Path Back', '')
+                elif sec_rec.get('OCR Image Path Back'):
+                    target_rec['Ảnh mặt sau CCCD/CC'] = sec_rec['OCR Image Path Back']
+                    target_rec['Full Image Path Back'] = sec_rec.get('Full OCR Image Path Back', '')
+            else:
+                sec_back = sec_rec.get('Ảnh mặt sau CCCD/CC') or sec_rec.get('OCR Image Path Back')
+                if sec_back:
+                    existing = target_rec.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                    target_rec['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {sec_back}".strip(', ')
+            
+            # Gộp Ảnh khác
+            sec_other = sec_rec.get('Ảnh khác (SMS/Chụp màn hình/...)') or sec_rec.get('OCR Image Path Unknown')
+            if sec_other:
+                existing = target_rec.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                target_rec['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {sec_other}".strip(', ')
+                
+            # Bổ sung thông tin văn bản còn thiếu
+            for k in ['CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD', 'Nơi cấp', 'Ngày hết hạn', 'Phân loại', 'QR Raw']:
+                if sec_rec.get(k) and not target_rec.get(k):
+                    target_rec[k] = sec_rec[k]
+                    
+            for flag in ['has_qr_data', 'has_ocr_data', 'has_cong_dan_front', 'has_address_front', 'has_address_back', 'has_cuc_truong_back', 'has_bo_cong_an_back']:
+                if sec_rec.get(flag):
+                    target_rec[flag] = True
+                    
+            if sec_rec.get('Ghi chú'):
+                if isinstance(sec_rec['Ghi chú'], list):
+                    target_rec['Ghi chú'].extend(sec_rec['Ghi chú'])
+                else:
+                    target_rec['Ghi chú'].append(str(sec_rec['Ghi chú']))
+                    
+            del records[sec_cccd]
+
     # ---------- FUZZY MATCH: GỘP MẶT SAU OCR VÀO ĐÚNG BẢN GHI (2/3 TRƯỜNG) ----------
     # Mặt sau quét bằng OCR có thể đọc sai CCCD (ví dụ: 086... → 080...)
     # Nếu 2/3 trong {CCCD, Họ tên không dấu, Ngày cấp} khớp với bản ghi đã có → ghép vào đó
