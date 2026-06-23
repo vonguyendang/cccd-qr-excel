@@ -4257,6 +4257,355 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                             row[orig_idx].value = address_map[orig_val]['final_cleaned_orig']
                             row[orig_idx].font = Font(color="FF0000")
 
+    # ---------- AUTOMATIC ROW MERGING FOR MODE 1 ----------
+    if mode == "1":
+        console.print("[cyan]🔄 Đang tự động gộp các dòng trùng lặp / mồ côi...[/cyan]")
+        import unicodedata
+        import re
+        import difflib
+
+        def _norm_for_match(text):
+            if not text: return ''
+            text = str(text).upper().strip()
+            nfkd = unicodedata.normalize('NFKD', text)
+            return ' '.join(''.join(c for c in nfkd if not unicodedata.combining(c)).split())
+
+        def _is_similar_cccd(c1, c2):
+            if not c1 or not c2: return False
+            c1_clean = re.sub(r'\D', '', str(c1))
+            c2_clean = re.sub(r'\D', '', str(c2))
+            if not c1_clean or not c2_clean: return False
+            if len(c1_clean) == 12 and len(c2_clean) == 12:
+                diffs = sum(1 for a, b in zip(c1_clean, c2_clean) if a != b)
+                return diffs <= 3
+            return c1_clean == c2_clean
+
+        def _is_similar_name(n1, n2):
+            if not n1 or not n2: return False
+            ratio = difflib.SequenceMatcher(None, n1, n2).ratio()
+            if ratio < 0.80:
+                return False
+            w1 = n1.split()[-1] if n1.split() else ''
+            w2 = n2.split()[-1] if n2.split() else ''
+            if not w1 or not w2:
+                return False
+            w_ratio = difflib.SequenceMatcher(None, w1, w2).ratio()
+            return w_ratio >= 0.50
+
+        def _is_similar_dob(d1, d2):
+            if not d1 or not d2: return False
+            d1_str = str(d1).strip()
+            d2_str = str(d2).strip()
+            if d1_str == d2_str: return True
+            p1 = d1_str.split('/')
+            p2 = d2_str.split('/')
+            if len(p1) == 3 and len(p2) == 3:
+                # So khớp cùng tháng/năm
+                if p1[1] == p2[1] and p1[2] == p2[2]:
+                    return True
+            return False
+
+        def _is_invalid_cccd_placeholder(cccd):
+            if not cccd: return True
+            cccd_clean = re.sub(r'\D', '', str(cccd))
+            if len(cccd_clean) != 12: return True
+            if cccd_clean.startswith('000'): return True
+            return False
+
+        def _is_red_font(cell):
+            if not cell or not cell.font or not cell.font.color:
+                return False
+            color = cell.font.color
+            rgb_str = str(color.rgb or color.value or '')
+            return rgb_str.endswith('FF0000') or rgb_str == 'FF0000'
+
+        # Đọc dữ liệu hiện tại từ ws thành list các dict
+        records_list = []
+        for r_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=False), start=2):
+            rec = {}
+            for name in headers:
+                idx = col_idx.get(name)
+                cell = row[idx] if idx is not None else None
+                rec[name] = cell.value if cell else None
+                rec[f'_red_{name}'] = _is_red_font(cell)
+            
+            # Bỏ qua dòng trống hoàn toàn
+            has_data = any(rec.get(h) is not None and str(rec.get(h)).strip() != "" for h in headers if h != 'STT')
+            if not has_data:
+                continue
+
+            qr_raw = str(rec.get('QR Raw') or '').strip()
+            rec['has_qr_data'] = bool(qr_raw and qr_raw != 'None' and qr_raw != '[Trống]')
+            
+            note_val = str(rec.get('Ghi chú') or '').strip()
+            rec['has_ocr_data'] = 'Lấy bằng OCR' in note_val
+            
+            raw_notes = rec.get('Ghi chú') or ""
+            rec['_notes_list'] = [n.strip() for n in str(raw_notes).split(';') if n.strip()]
+            
+            records_list.append(rec)
+
+        def _is_better_record(r1, r2):
+            if r1.get('has_qr_data') and not r2.get('has_qr_data'):
+                return True
+            if r2.get('has_qr_data') and not r1.get('has_qr_data'):
+                return False
+                
+            c1_invalid = _is_invalid_cccd_placeholder(r1.get('CCCD'))
+            c2_invalid = _is_invalid_cccd_placeholder(r2.get('CCCD'))
+            if not c1_invalid and c2_invalid:
+                return True
+            if not c2_invalid and c1_invalid:
+                return False
+                
+            fields_to_check = ['Họ tên', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD']
+            score1 = sum(1 for f in fields_to_check if r1.get(f) and str(r1.get(f)).strip() not in ['', 'None', 'Chưa xác định'])
+            score2 = sum(1 for f in fields_to_check if r2.get(f) and str(r2.get(f)).strip() not in ['', 'None', 'Chưa xác định'])
+            if score1 != score2:
+                return score1 > score2
+                
+            img_fields = ['Ảnh mặt trước CCCD/CC', 'Ảnh mặt sau CCCD/CC', 'Ảnh khác (SMS/Chụp màn hình/...)']
+            img_score1 = sum(1 for f in img_fields if r1.get(f) and str(r1.get(f)).strip() not in ['', 'None'])
+            img_score2 = sum(1 for f in img_fields if r2.get(f) and str(r2.get(f)).strip() not in ['', 'None'])
+            if img_score1 != img_score2:
+                return img_score1 > img_score2
+                
+            return True
+
+        def _should_merge(r1, r2, all_records):
+            gen1 = str(r1.get('Giới tính') or '').strip().lower()
+            gen2 = str(r2.get('Giới tính') or '').strip().lower()
+            if gen1 and gen2 and gen1 in ['nam', 'nữ'] and gen2 in ['nam', 'nữ'] and gen1 != gen2:
+                return False
+                
+            n1 = _norm_for_match(r1.get('Họ tên', ''))
+            n2 = _norm_for_match(r2.get('Họ tên', ''))
+            if not n1 or not n2:
+                return False
+                
+            if not _is_similar_name(n1, n2):
+                return False
+                
+            dob_match = _is_similar_dob(r1.get('Ngày sinh'), r2.get('Ngày sinh'))
+            issue_match = _is_similar_dob(r1.get('Ngày cấp CCCD'), r2.get('Ngày cấp CCCD'))
+            cccd_match = _is_similar_cccd(r1.get('CCCD'), r2.get('CCCD'))
+            
+            # Kiểm tra tính duy nhất của tên trong database
+            similar_count = 0
+            for r in all_records:
+                rn = _norm_for_match(r.get('Họ tên', ''))
+                if rn and _is_similar_name(n1, rn):
+                    similar_count += 1
+            is_unique_name = (similar_count == 2)
+            
+            if dob_match or issue_match or cccd_match or is_unique_name:
+                c1 = r1.get('CCCD')
+                c2 = r2.get('CCCD')
+                if not _is_invalid_cccd_placeholder(c1) and not _is_invalid_cccd_placeholder(c2):
+                    if not _is_similar_cccd(c1, c2):
+                        return False
+                if r1.get('has_qr_data') and r2.get('has_qr_data'):
+                    if not _is_similar_cccd(c1, c2):
+                        return False
+                return True
+                
+            return False
+
+        def merge_two_records(target, source):
+            for k in ['Họ tên', 'CCCD', 'CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Địa chỉ chuẩn hóa mới', 'Ngày cấp CCCD', 'Nơi cấp', 'Ngày hết hạn', 'Phân loại', 'QR Raw']:
+                target_val = str(target.get(k) or '').strip()
+                source_val = str(source.get(k) or '').strip()
+                
+                is_target_empty = not target_val or target_val.lower() in ['none', '[trống]', 'chưa xác định']
+                is_source_empty = not source_val or source_val.lower() in ['none', '[trống]', 'chưa xác định']
+                
+                if k == 'CCCD':
+                    if _is_invalid_cccd_placeholder(target.get('CCCD')) and not _is_invalid_cccd_placeholder(source.get('CCCD')):
+                        target['CCCD'] = source['CCCD']
+                        target['_red_CCCD'] = source.get('_red_CCCD', False) or target.get('_red_CCCD', False)
+                        continue
+                        
+                if is_target_empty and not is_source_empty:
+                    target[k] = source[k]
+                    target[f'_red_{k}'] = source.get(f'_red_{k}', False)
+                    
+            # Gộp ảnh
+            target_front = str(target.get('Ảnh mặt trước CCCD/CC') or '').strip()
+            source_front = str(source.get('Ảnh mặt trước CCCD/CC') or '').strip()
+            if not target_front or target_front.lower() == 'none':
+                target['Ảnh mặt trước CCCD/CC'] = source_front
+                target['_red_Ảnh mặt trước CCCD/CC'] = source.get('_red_Ảnh mặt trước CCCD/CC', False)
+            elif source_front and source_front.lower() != 'none' and target_front != source_front:
+                existing = str(target.get('Ảnh khác (SMS/Chụp màn hình/...)') or '').strip()
+                if existing and existing.lower() != 'none':
+                    target['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {source_front}"
+                else:
+                    target['Ảnh khác (SMS/Chụp màn hình/...)'] = source_front
+                    
+            target_back = str(target.get('Ảnh mặt sau CCCD/CC') or '').strip()
+            source_back = str(source.get('Ảnh mặt sau CCCD/CC') or '').strip()
+            if not target_back or target_back.lower() == 'none':
+                target['Ảnh mặt sau CCCD/CC'] = source_back
+                target['_red_Ảnh mặt sau CCCD/CC'] = source.get('_red_Ảnh mặt sau CCCD/CC', False)
+            elif source_back and source_back.lower() != 'none' and target_back != source_back:
+                existing = str(target.get('Ảnh khác (SMS/Chụp màn hình/...)') or '').strip()
+                if existing and existing.lower() != 'none':
+                    target['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {source_back}"
+                else:
+                    target['Ảnh khác (SMS/Chụp màn hình/...)'] = source_back
+
+            target_other = str(target.get('Ảnh khác (SMS/Chụp màn hình/...)') or '').strip()
+            source_other = str(source.get('Ảnh khác (SMS/Chụp màn hình/...)') or '').strip()
+            unique_others = []
+            if target_other and target_other.lower() != 'none':
+                for o in target_other.split(','):
+                    o_clean = o.strip()
+                    if o_clean and o_clean not in unique_others:
+                        unique_others.append(o_clean)
+            if source_other and source_other.lower() != 'none':
+                for o in source_other.split(','):
+                    o_clean = o.strip()
+                    if o_clean and o_clean not in unique_others:
+                        unique_others.append(o_clean)
+            target['Ảnh khác (SMS/Chụp màn hình/...)'] = ", ".join(unique_others)
+            
+            target_notes = target.get('_notes_list', [])
+            source_notes = source.get('_notes_list', [])
+            for n in source_notes:
+                if n not in target_notes:
+                    target_notes.append(n)
+            target['_notes_list'] = target_notes
+            target['Ghi chú'] = "; ".join(target_notes)
+            
+            for flag in ['has_qr_data', 'has_ocr_data']:
+                if source.get(flag):
+                    target[flag] = True
+
+        merged_any = True
+        while merged_any:
+            merged_any = False
+            n_rec = len(records_list)
+            pair_found = None
+            for i in range(n_rec):
+                for j in range(i + 1, n_rec):
+                    if _should_merge(records_list[i], records_list[j], records_list):
+                        pair_found = (i, j)
+                        break
+                if pair_found:
+                    break
+            if pair_found:
+                i, j = pair_found
+                rec1 = records_list[i]
+                rec2 = records_list[j]
+                if _is_better_record(rec1, rec2):
+                    target, source = rec1, rec2
+                    source_idx = j
+                else:
+                    target, source = rec2, rec1
+                    source_idx = i
+                
+                console.print(f"   [bold green]→ [Reprocess Merge][/bold green] Ghép bản ghi {source.get('CCCD')} ({source.get('Họ tên')}) vào bản ghi {target.get('CCCD')} ({target.get('Họ tên')})")
+                file_logs.append(f"[GỘP TÁI XỬ LÝ] Ghép bản ghi {source.get('CCCD')} ({source.get('Họ tên')}) vào bản ghi {target.get('CCCD')} ({target.get('Họ tên')})")
+                
+                merge_two_records(target, source)
+                records_list.pop(source_idx)
+                merged_any = True
+
+        # Regenerate renaming columns for merged records
+        for record in records_list:
+            hoten = record.get('Họ tên') or 'KhongTen'
+            if hoten and hoten != 'KhongTen':
+                hoten = hoten.title()
+                record['Họ tên'] = hoten
+                
+            cccd = record.get('CCCD') or ''
+            cmnd = record.get('CMND') or ''
+            hoten_clean = re.sub(r'[\\/*?:"<>|]', '', hoten)
+            cmnd_clean = str(cmnd or '').strip()
+            if cmnd_clean.lower() in ['', 'none', 'chưa xác định', 'không có']:
+                cmnd_str = ""
+            else:
+                cmnd_str = f"_{cmnd_clean}"
+                
+            front_img = record.get('Ảnh mặt trước CCCD/CC')
+            if front_img and str(front_img).strip() and str(front_img).strip().lower() != 'none':
+                ext = os.path.splitext(str(front_img).strip())[1]
+                record['Đổi tên Ảnh mặt trước CCCD/CC'] = f"{hoten_clean}_{cccd}{cmnd_str}_Mặt trước{ext}"
+            else:
+                record['Đổi tên Ảnh mặt trước CCCD/CC'] = ''
+                
+            back_img = record.get('Ảnh mặt sau CCCD/CC')
+            if back_img and str(back_img).strip() and str(back_img).strip().lower() != 'none':
+                ext = os.path.splitext(str(back_img).strip())[1]
+                record['Đổi tên Ảnh mặt sau CCCD/CC'] = f"{hoten_clean}_{cccd}{cmnd_str}_Mặt sau{ext}"
+            else:
+                record['Đổi tên Ảnh mặt sau CCCD/CC'] = ''
+
+            # Special logic for "Khác" category
+            if record.get('Phân loại') == 'Khác':
+                base_name = f"{hoten_clean}_{cccd}{cmnd_str}"
+                imgs = []
+                if record.get('Ảnh mặt trước CCCD/CC'): imgs.append(record['Ảnh mặt trước CCCD/CC'])
+                if record.get('Ảnh mặt sau CCCD/CC'): imgs.append(record['Ảnh mặt sau CCCD/CC'])
+                
+                anh_khac = record.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                anh_khac_list = []
+                if anh_khac: anh_khac_list.extend(str(anh_khac).split(', '))
+                for img in imgs:
+                    if img not in anh_khac_list:
+                        anh_khac_list.append(img)
+                
+                renamed_list = []
+                for i, p in enumerate(anh_khac_list):
+                    ext = os.path.splitext(p)[1]
+                    suffix = f"_Khác_{i+1}" if len(anh_khac_list) > 1 else "_Khác"
+                    renamed_list.append(f"{base_name}{suffix}{ext}")
+                
+                record['Ảnh khác (SMS/Chụp màn hình/...)'] = ", ".join(filter(None, anh_khac_list))
+                record['Đổi tên Ảnh khác'] = ", ".join(renamed_list)
+                record['Ảnh mặt trước CCCD/CC'] = ''
+                record['Ảnh mặt sau CCCD/CC'] = ''
+                record['Đổi tên Ảnh mặt trước CCCD/CC'] = ''
+                record['Đổi tên Ảnh mặt sau CCCD/CC'] = ''
+            else:
+                anh_khac = record.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                if anh_khac and str(anh_khac).strip() and str(anh_khac).strip().lower() != 'none':
+                    anh_khac_list = [p.strip() for p in str(anh_khac).split(', ') if p.strip()]
+                    renamed_list = []
+                    for i, p in enumerate(anh_khac_list):
+                        ext = os.path.splitext(p)[1]
+                        suffix = f"_Khác_{i+1}" if len(anh_khac_list) > 1 else "_Khác"
+                        renamed_list.append(f"{hoten_clean}_{cccd}{cmnd_str}{suffix}{ext}")
+                    record['Đổi tên Ảnh khác'] = ", ".join(renamed_list)
+                else:
+                    record['Đổi tên Ảnh khác'] = ''
+
+        # Clear worksheet content (retaining headers)
+        if ws.max_row > 1:
+            ws.delete_rows(2, ws.max_row - 1)
+            
+        # Write merged records back
+        for idx, record in enumerate(records_list):
+            row_data = []
+            for name in headers:
+                if name == 'STT':
+                    row_data.append(idx + 1)
+                else:
+                    row_data.append(record.get(name))
+            ws.append(row_data)
+            
+            current_row_idx = ws.max_row
+            note_val = str(record.get('Ghi chú') or '')
+            if "Lấy bằng OCR" in note_val or "Không đọc được" in note_val:
+                yellow_fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
+                for cell in ws[current_row_idx]:
+                    cell.fill = yellow_fill
+                    
+            for name in headers:
+                if record.get(f'_red_{name}'):
+                    col_num = col_idx.get(name) + 1
+                    ws.cell(row=current_row_idx, column=col_num).font = Font(color="FF0000")
+
     timestamp = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
     reprocess_out = excel_path.replace('.xlsx', f'_reprocessed_{timestamp}.xlsx')
     wb.save(reprocess_out)
