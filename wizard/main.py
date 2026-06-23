@@ -3159,12 +3159,21 @@ def run_wizard(input_dir, normalize_address=True):
         
         # 1. original.zip
         original_zip_path = os.path.join(exports_dir, 'original.zip')
+        input_zip_path = os.path.join(input_dir, 'original.zip')
         count_original = 0
-        with zipfile.ZipFile(original_zip_path, 'w') as zf:
-            for path in all_original_image_paths:
-                if os.path.exists(path):
-                    zf.write(path, os.path.basename(path))
-                    count_original += 1
+        if os.path.exists(input_zip_path):
+            shutil.copy2(input_zip_path, original_zip_path)
+            try:
+                with zipfile.ZipFile(original_zip_path, 'r') as zf:
+                    count_original = len(zf.namelist())
+            except Exception:
+                pass
+        else:
+            with zipfile.ZipFile(original_zip_path, 'w') as zf:
+                for path in all_original_image_paths:
+                    if os.path.exists(path):
+                        zf.write(path, os.path.basename(path))
+                        count_original += 1
         console.print(f" [green]✓[/green] Đã tạo [bold]original.zip[/bold] với {count_original} file.")
         
         # 2. rename.zip
