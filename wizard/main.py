@@ -2591,6 +2591,25 @@ def run_wizard(input_dir, normalize_address=True):
         ratio = difflib.SequenceMatcher(None, n1, n2).ratio()
         return ratio >= 0.80
 
+    def _is_similar_dob(d1, d2):
+        if not d1 or not d2: return False
+        d1 = d1.strip()
+        d2 = d2.strip()
+        if d1 == d2: return True
+        p1 = d1.split('/')
+        p2 = d2.split('/')
+        if len(p1) == 3 and len(p2) == 3:
+            if p1[1] == p2[1] and p1[2] == p2[2]:
+                return True
+        return False
+
+    def _is_invalid_cccd_placeholder(cccd):
+        if not cccd: return True
+        cccd_clean = re.sub(r'\D', '', str(cccd))
+        if len(cccd_clean) != 12: return True
+        if cccd_clean.startswith('000'): return True
+        return False
+
     secondary_cccds = [cccd for cccd, rec in list(records.items()) if not rec['has_qr_data']]
     for sec_cccd in secondary_cccds:
         if sec_cccd not in records:
@@ -2607,13 +2626,17 @@ def run_wizard(input_dir, normalize_address=True):
             if target_cccd == sec_cccd:
                 continue
             
+            # Không gộp số CCCD hợp lệ vào số CCCD rác/placeholder (ví dụ 000000000119)
+            if _is_invalid_cccd_placeholder(target_cccd) and not _is_invalid_cccd_placeholder(sec_cccd):
+                continue
+                
             target_name = _norm_for_match(target_rec.get('Họ tên', ''))
             target_dob = target_rec.get('Ngày sinh', '')
             
             if not _is_similar_name(sec_name, target_name):
                 continue
                 
-            match_dob = (sec_dob and target_dob and sec_dob == target_dob)
+            match_dob = (sec_dob and target_dob and _is_similar_dob(sec_dob, target_dob))
             match_cccd = _is_similar_cccd(sec_cccd, target_cccd)
             
             if match_dob or match_cccd:
@@ -2622,6 +2645,8 @@ def run_wizard(input_dir, normalize_address=True):
                 else:
                     curr_best = records[best_target_cccd]
                     if target_rec['has_qr_data'] and not curr_best['has_qr_data']:
+                        best_target_cccd = target_cccd
+                    elif _is_invalid_cccd_placeholder(best_target_cccd) and not _is_invalid_cccd_placeholder(target_cccd):
                         best_target_cccd = target_cccd
                         
         if best_target_cccd:
