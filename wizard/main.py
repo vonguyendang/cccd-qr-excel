@@ -4257,8 +4257,8 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                             row[orig_idx].value = address_map[orig_val]['final_cleaned_orig']
                             row[orig_idx].font = Font(color="FF0000")
 
-    # ---------- AUTOMATIC ROW MERGING FOR MODE 1 ----------
-    if mode == "1":
+    # ---------- AUTOMATIC ROW MERGING FOR REPROCESSING (MODE 1, 2, 3) ----------
+    if mode in ("1", "2", "3"):
         console.print("[cyan]🔄 Đang tự động gộp các dòng trùng lặp / mồ côi...[/cyan]")
         import unicodedata
         import re
