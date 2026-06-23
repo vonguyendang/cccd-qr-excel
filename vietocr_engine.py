@@ -34,7 +34,7 @@ def get_ocr_engine():
         _ocr_engine = OCR()
     return _ocr_engine
 
-def extract_text_from_image(img, return_orientation=False, fast_mode=False):
+def extract_text_from_image(img, return_orientation=False, fast_mode=False, return_boxes=False):
     """
     Trích xuất text tiếng Việt từ ảnh (numpy array hoặc PIL Image)
     Nếu fast_mode=True, chỉ giữ lại 5 box chữ to nhất để nhận diện hướng cho nhanh (x15 tốc độ)
@@ -53,6 +53,8 @@ def extract_text_from_image(img, return_orientation=False, fast_mode=False):
             bxs = engine(img_array, 0, max_boxes=max_boxes)
         
         if not bxs:
+            if return_boxes:
+                return ("", [], False) if return_orientation else ("", [])
             return ("", False) if return_orientation else ""
             
         lines = [item[1][0] for item in bxs]
@@ -70,9 +72,15 @@ def extract_text_from_image(img, return_orientation=False, fast_mode=False):
                     vertical_count += 1
             
             is_vertical = vertical_count > len(bxs) * 0.5 # Nếu quá nửa số dòng chữ là dọc
+            if return_boxes:
+                return text, bxs, is_vertical
             return text, is_vertical
             
+        if return_boxes:
+            return text, bxs
         return text
     except Exception as e:
         print(f"Lỗi khi chạy OCR: {e}")
+        if return_boxes:
+            return ("", [], False) if return_orientation else ("", [])
         return ("", False) if return_orientation else ""

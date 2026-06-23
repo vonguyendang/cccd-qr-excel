@@ -139,6 +139,13 @@
     "CIEU": "KIEU",
     "TRUECRE": "TRUC",
     "TRUEC": "TRUC",
+    "NGOCK": "NGO<",
+    "NGUYENCHUU": "NGUYEN<HUU",
+    "THOAKKICK": "THOAI<",
+    "1RUONGS": "TRUONG<",
+    "PHUNGCHING": "PHUNG<",
+    "BOCKTHL": "DAM<THI",
+    "CHUCS": "CHUC<",
     "EVINH": "VINH",
     "STRAN": " TRAN",
     "NGOCNUOI": "NGOC NUOI",
@@ -151,7 +158,9 @@
     "CANHCHATHUC": "ANH THU",
     "INK": "KIM",
     "TING": "TRINH",
-    "SYEN": "YEN"
+    "SYEN": "YEN",
+    "CHINE": "<",
+    "SKIN": "<"
   },
   "mrz_ignore_words": [
     "IDEN",
@@ -159,7 +168,6 @@
     "SONAL",
     "CANCUOC",
     "CONGDAN",
-    "TRUONG",
     "GIAMDOC",
     "INDEX",
     "FINGER",
@@ -182,7 +190,11 @@
     "WAY",
     "AND",
     "RESID",
-    "ORIGIN"
+    "ORIGIN",
+    "RATIVE",
+    "POLICED",
+    "VENT",
+    "FORACH"
   ],
   "name_keywords": [
     "họ và tên",

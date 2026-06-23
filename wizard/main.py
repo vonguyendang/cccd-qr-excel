@@ -372,6 +372,9 @@ def parse_ocr_text(text):
                     return data
 
                 text_upper = text.upper()
+                # Sửa lỗi kinh điển OCR trên CCCD: IDVNM0 bị đọc thành ADDNN1, I0VNM, 1DVNM
+                text_upper = re.sub(r'\bADDNN1', 'IDVNM0', text_upper)
+                text_upper = re.sub(r'\b[I1L]D?VNM[O0]?', 'IDVNM0', text_upper)
 
                 # ---------------------------------------------------------
                 # 1. NHẬN DIỆN MẶT THẺ (FRONT / BACK)
@@ -630,6 +633,12 @@ def parse_ocr_text(text):
                             name_part = name_part.split(',')[0].strip()
                             if (name_part.isupper() or name_part.istitle()) and len(name_part) > 3 and _is_valid_name(name_part):
                                 data['Họ tên'] = name_part
+                            # Nếu có name_part nhưng quá ngắn (VD: chỉ có mỗi chữ NGUYEN), thử ghép với dòng tiếp theo
+                            elif len(name_part) > 0 and i + 1 < len(lines):
+                                next_line = lines[i+1].replace('|', '').strip()
+                                combined_name = f"{name_part} {next_line}".strip()
+                                if _is_valid_name(combined_name) and _is_valid_name_starts_with_surname(combined_name):
+                                    data['Họ tên'] = combined_name
                         
                         # Nếu không có dấu 2 chấm, thử lấy dòng tiếp theo
                         if not data['Họ tên'] and i + 1 < len(lines):
@@ -1327,6 +1336,20 @@ def extract_ocr_data(image_path_or_cv2img):
             
             best_data['Raw Text'] = f"--- TOP TEXT (Ngày cấp) ---\n{raw_issue_text}\n\n--- BOTTOM TEXT (MRZ) ---\n{best_raw_mrz_text}"
             _last_timing['ocr_từng_field'] = time.time() - t_ocr_back
+
+            # --- TÍCH HỢP ADDRESS V1.5 (ZONAL OCR MẶT SAU THẺ MỚI) ---
+            try:
+                import debug_address_v15
+                if best_back_rotated_img is not None:
+                    _, addr_v15, status_v15, _ = debug_address_v15.extract_address_v15(best_back_rotated_img)
+                    if status_v15 == "Pass" and addr_v15:
+                        addr_v15 = re.sub(r'(?i)thành phố cần thơn\b', 'Thành Phố Cần Thơ', addr_v15)
+                        addr_v15 = re.sub(r'(?i)cần thơn\b', 'Cần Thơ', addr_v15)
+                        addr_v15 = re.sub(r'(?i)lào cần thơ\b', 'Lão, Cần Thơ', addr_v15)
+                        best_data['Nơi thường trú gốc'] = clean_address_string(addr_v15)
+                        best_note += " [Zonal Address V1.5 (Back)]"
+            except Exception as e:
+                LOG(f"Address V1.5 error on back side: {e}")
             
             return best_data, best_note, rotated_return
             
@@ -1393,6 +1416,8 @@ def extract_ocr_data(image_path_or_cv2img):
                     if kw in upper_text:
                         score += 20
                 
+                is_sms = any(kw in upper_text for kw in ["THUÊ BAO","TTTB","THUE BAO","TB", "MOBIFONE", "VINAPHONE", "VIETTEL", "TRẢ TRƯỚC", "TRA TRUOC", "TÀI KHOẢN", "TAI KHOAN", "GÓI CƯỚC", "GOI CUOC", "MẬT KHẨU", "QUÝ KHÁCH"])
+                
                 # Phân tích trật tự từ trên xuống dưới để phạt ảnh bị lộn ngược (180 độ)
                 if data_rot.get('OCR Side') == 'Back':
                     idx_ngay = min([upper_text.find(x) for x in ["NGÀY", "CỤC", "THÁNG"] if x in upper_text] + [99999])
@@ -1407,19 +1432,22 @@ def extract_ocr_data(image_path_or_cv2img):
                         if idx_top < idx_bot: score += 100   # Đúng chiều
                         else: score -= 100                   # Lộn ngược
                     elif idx_top == 99999 and idx_bot == 99999 and data_rot.get('CCCD'):
-                        # Tìm thấy dãy 12 số nhưng KHÔNG hề có từ khóa nào của thẻ CCCD mặt trước
-                        # Khả năng cực cao là AI bị ảo giác (đọc chữ lộn ngược của ảnh screenshot sinh ra số rác)
-                        # Trừ hẳn 300 điểm để triệt tiêu hoàn toàn điểm thưởng của CCCD(100) + Front(200)
-                        score -= 300
+                        # Nếu không có từ khóa mặt trước nhưng CÓ đủ 3 trường quan trọng -> Khả năng cao là SMS Screenshot
+                        if data_rot.get('Họ tên') and data_rot.get('Ngày sinh'):
+                            score += 100 # Thưởng thêm điểm cho SMS hợp lệ
+                        else:
+                            # Tìm thấy dãy 12 số nhưng KHÔNG hề có từ khóa nào của thẻ CCCD mặt trước và thiếu tên/ngày sinh
+                            # Khả năng cực cao là AI bị ảo giác (đọc chữ lộn ngược của ảnh screenshot sinh ra số rác)
+                            score -= 300
                         
                 if score > best_front_score:
                     best_front_score = score
                     best_front_data = data_rot
                     best_front_img = rotated
-                    best_front_note = f"Lấy bằng OCR ({rot_name})"
+                    best_front_note = f"Lấy bằng OCR ({rot_name})" + (" [SMS]" if is_sms else "")
                 
-                # Dừng sớm nếu điểm đã đủ cao (có CCCD + tên + nhận diện đúng mặt trước)
-                if best_front_score >= 300:
+                # Dừng sớm nếu điểm đã đủ cao (có CCCD + tên + nhận diện đúng mặt trước) HOẶC là SMS có đủ 3 trường
+                if best_front_score >= 250 or (data_rot.get('CCCD') and data_rot.get('Họ tên') and data_rot.get('Ngày sinh')) or is_sms:
                     break
             
             _last_timing['orientation_detection'] = (time.time() - t_front_orient) - t_front_ocr - t_front_parse
@@ -1462,7 +1490,9 @@ def extract_ocr_data(image_path_or_cv2img):
                         if kw in upper_text:
                             score += 20
                             
-                    # Phân tích trật tự từ trên xuống dưới để phạt ảnh bị lộn ngược (180 độ)
+                    is_sms = any(kw in upper_text for kw in ["THUÊ BAO","TTTB","THUE BAO","TB", "MOBIFONE", "VINAPHONE", "VIETTEL", "TRẢ TRƯỚC", "TRA TRUOC", "TÀI KHOẢN", "TAI KHOAN", "GÓI CƯỚC", "GOI CUOC", "MẬT KHẨU", "QUÝ KHÁCH"])
+                
+                # Phân tích trật tự từ trên xuống dưới để phạt ảnh bị lộn ngược (180 độ)
                     if data_rot.get('OCR Side') == 'Back':
                         idx_ngay = min([upper_text.find(x) for x in ["NGÀY", "CỤC", "THÁNG"] if x in upper_text] + [99999])
                         idx_mrz = min([upper_text.find(x) for x in ["VNM", "IDVNM"] if x in upper_text] + [99999])
@@ -1476,16 +1506,19 @@ def extract_ocr_data(image_path_or_cv2img):
                             if idx_top < idx_bot: score += 100
                             else: score -= 100
                         elif idx_top == 99999 and idx_bot == 99999 and data_rot.get('CCCD'):
-                            score -= 300
+                            if data_rot.get('Họ tên') and data_rot.get('Ngày sinh'):
+                                score += 100
+                            else:
+                                score -= 300
                             
                     if score > best_front_score:
                         best_front_score = score
                         best_front_data = data_rot
                         best_front_img = rotated
-                        best_front_note = f"Lấy bằng OCR toàn phần ({rot_name})"
+                        best_front_note = f"Lấy bằng OCR toàn phần ({rot_name})" + (" [SMS]" if is_sms else "")
                     
-                    # Dừng sớm nếu đủ điểm
-                    if best_front_score >= 300:
+                    # Dừng sớm nếu đủ điểm HOẶC là SMS
+                    if best_front_score >= 250 or (data_rot.get('CCCD') and data_rot.get('Họ tên') and data_rot.get('Ngày sinh')) or is_sms:
                         break
                     
             best_img = None
@@ -1500,9 +1533,13 @@ def extract_ocr_data(image_path_or_cv2img):
                     
             # (Phần xử lý tương phản và làm nét cho mặt trước giữ nguyên)
             def missing_critical(d):
+                # Nếu là ảnh SMS (không có các mốc CỘNG HÒA của thẻ) thì bỏ qua không cần cố tìm địa chỉ bằng mọi giá
+                if best_front_score > 50 and best_front_score < 290 and d.get('CCCD') and d.get('Họ tên'):
+                    return False
                 return not d.get('CCCD') or not d.get('Họ tên') or not d.get('Ngày sinh') or not d.get('Nơi thường trú gốc')
                 
-            if missing_critical(best_data) and best_img is not None:
+            is_sms_detected = "[SMS]" in best_note
+            if missing_critical(best_data) and best_img is not None and not is_sms_detected:
                 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
                 lab = cv2.cvtColor(best_img, cv2.COLOR_BGR2LAB)
                 l, a, b = cv2.split(lab)
@@ -1542,6 +1579,20 @@ def extract_ocr_data(image_path_or_cv2img):
                     
                     if merged_p3:
                         best_note += " + Làm nét"
+
+            # --- TÍCH HỢP ADDRESS V1.5 (ZONAL OCR) ---
+            try:
+                import debug_address_v15
+                if best_img is not None:
+                    _, addr_v15, status_v15, _ = debug_address_v15.extract_address_v15(best_img)
+                    if status_v15 == "Pass" and addr_v15:
+                        addr_v15 = re.sub(r'(?i)thành phố cần thơn\b', 'Thành Phố Cần Thơ', addr_v15)
+                        addr_v15 = re.sub(r'(?i)cần thơn\b', 'Cần Thơ', addr_v15)
+                        addr_v15 = re.sub(r'(?i)lào cần thơ\b', 'Lão, Cần Thơ', addr_v15)
+                        best_data['Nơi thường trú gốc'] = clean_address_string(addr_v15)
+                        best_note += " [Zonal Address V1.5]"
+            except Exception as e:
+                LOG(f"Address V1.5 error: {e}")
 
             max_score = 0
             if 'best_front_score' in locals() and best_front_score > 0:
@@ -2401,12 +2452,14 @@ def run_wizard(input_dir, normalize_address=True):
             records[cccd] = {
                 'index': len(records) + 1,
                 'Họ tên': '', 'CCCD': cccd, 'CMND': '', 'Giới tính': '',
-                'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': '',
+                'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': ''match ,
                 'Ngày cấp CCCD': '', 'Nơi cấp': '', 'Ngày hết hạn': '', 'Phân loại': '', 'Ghi chú': [], 'QR Raw': '',
                 'Ảnh mặt trước CCCD/CC': '',
                 'Ảnh mặt sau CCCD/CC': '',
                 'Đổi tên Ảnh mặt trước CCCD/CC': '',
                 'Đổi tên Ảnh mặt sau CCCD/CC': '',
+                'Ảnh khác (SMS/Chụp màn hình/...)': '',
+                'Đổi tên Ảnh khác': '',
                 'Full Image Path Front': '',
                 'Full Image Path Back': '',
                 'OCR Image Path Front': '',
@@ -2445,11 +2498,19 @@ def run_wizard(input_dir, normalize_address=True):
             # Determine card type and side
             fields = item['QR Raw'].split('|')
             if len(fields) == 7:
-                record['Ảnh mặt trước CCCD/CC'] = item['Image Path']
-                record['Full Image Path Front'] = item['Full Image Path']
+                if record['Ảnh mặt trước CCCD/CC']:
+                    existing = record.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                    record['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {item['Image Path']}".strip(', ')
+                else:
+                    record['Ảnh mặt trước CCCD/CC'] = item['Image Path']
+                    record['Full Image Path Front'] = item['Full Image Path']
             elif len(fields) >= 10:
-                record['Ảnh mặt sau CCCD/CC'] = item['Image Path']
-                record['Full Image Path Back'] = item['Full Image Path']
+                if record['Ảnh mặt sau CCCD/CC']:
+                    existing = record.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                    record['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {item['Image Path']}".strip(', ')
+                else:
+                    record['Ảnh mặt sau CCCD/CC'] = item['Image Path']
+                    record['Full Image Path Back'] = item['Full Image Path']
             
             if item.get('Ghi chú'):
                 record['Ghi chú'].append(item['Ghi chú'])
@@ -2469,19 +2530,31 @@ def run_wizard(input_dir, normalize_address=True):
                 
             raw_text = item.get('Raw Text Upper', '')
             if item.get('OCR Side') == 'Front':
-                record['OCR Image Path Front'] = item['Image Path']
-                record['Full OCR Image Path Front'] = item['Full Image Path']
+                if record.get('OCR Image Path Front') or record.get('Ảnh mặt trước CCCD/CC'):
+                    existing = record.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                    record['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {item['Image Path']}".strip(', ')
+                else:
+                    record['OCR Image Path Front'] = item['Image Path']
+                    record['Full OCR Image Path Front'] = item['Full Image Path']
                 if "CÔNG DÂN" in raw_text: record['has_cong_dan_front'] = True
                 if item.get('Nơi thường trú gốc'): record['has_address_front'] = True
             elif item.get('OCR Side') == 'Back':
-                record['OCR Image Path Back'] = item['Image Path']
-                record['Full OCR Image Path Back'] = item['Full Image Path']
+                if record.get('OCR Image Path Back') or record.get('Ảnh mặt sau CCCD/CC'):
+                    existing = record.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                    record['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {item['Image Path']}".strip(', ')
+                else:
+                    record['OCR Image Path Back'] = item['Image Path']
+                    record['Full OCR Image Path Back'] = item['Full Image Path']
                 if "CỤC TRƯỞNG" in raw_text: record['has_cuc_truong_back'] = True
                 if "BỘ CÔNG AN" in raw_text: record['has_bo_cong_an_back'] = True
                 if item.get('Nơi thường trú gốc'): record['has_address_back'] = True
             else:
-                record['OCR Image Path Unknown'] = item['Image Path']
-                record['Full OCR Image Path Unknown'] = item['Full Image Path']
+                if record.get('OCR Image Path Unknown'):
+                    existing = record.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                    record['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {item['Image Path']}".strip(', ')
+                else:
+                    record['OCR Image Path Unknown'] = item['Image Path']
+                    record['Full OCR Image Path Unknown'] = item['Full Image Path']
             
             if item.get('Ghi chú'):
                 record['Ghi chú'].append(item['Ghi chú'])
@@ -2577,6 +2650,62 @@ def run_wizard(input_dir, normalize_address=True):
             )
             del records[orphan_cccd]
 
+    # ---------- FUZZY MATCH: GỘP ẢNH KHÁC VÀO ĐÚNG BẢN GHI (2/3 TRƯỜNG) ----------
+    orphan_others = [
+        cccd for cccd, rec in records.items()
+        if (not rec['has_qr_data']
+            and not rec['has_cong_dan_front']
+            and not rec['has_address_front']
+            and not rec['has_cuc_truong_back']
+            and not rec['has_address_back']
+            and not rec['has_bo_cong_an_back'])
+    ]
+
+    for orphan_cccd in orphan_others:
+        orphan = records[orphan_cccd]
+        o_cccd = orphan.get('CCCD', '')
+        o_name = _norm_for_match(orphan.get('Họ tên', ''))
+        o_dob = orphan.get('Ngày sinh', '')
+
+        best_cccd = None
+        for r_cccd, r_rec in records.items():
+            if r_cccd == orphan_cccd:
+                continue
+            # Chỉ so với bản ghi đã có mặt trước hoặc QR
+            if not (r_rec['has_qr_data'] or r_rec.get('Full Image Path Front') or r_rec.get('OCR Image Path Front') or r_rec['has_cong_dan_front'] or r_rec['has_address_front']):
+                continue
+                
+            r_name = _norm_for_match(r_rec.get('Họ tên', ''))
+            r_dob = r_rec.get('Ngày sinh', '')
+
+            score = 0
+            if o_cccd and o_cccd == r_cccd: score += 1
+            if o_name and r_name and o_name == r_name: score += 1
+            if o_dob and r_dob and o_dob == r_dob: score += 1
+            
+            if score >= 2:
+                best_cccd = r_cccd
+                break
+
+        if best_cccd:
+            target = records[best_cccd]
+            img_path = orphan.get('OCR Image Path Unknown') or orphan.get('OCR Image Path Front') or orphan.get('OCR Image Path Back') or ''
+            
+            if img_path:
+                existing = target.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                target['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {img_path}".strip(', ')
+                
+            # Bổ sung thông tin còn thiếu từ OCR
+            for k in ['Họ tên', 'Ngày sinh', 'CMND', 'Giới tính']:
+                if orphan.get(k) and not target.get(k):
+                    target[k] = orphan[k]
+                    
+            console.print(
+                f"   [bold green]→ [FUZZY MATCH][/bold green] Ghép ảnh Khác (CCCD OCR: {orphan_cccd}) "
+                f"vào bản ghi {best_cccd} (khớp {score}/3 trường: tên/ngày sinh/cccd)."
+            )
+            del records[orphan_cccd]
+
     # Pass 3: Assign OCR images to empty slots and Rename logic
     for cccd, record in records.items():
         # Assign Front
@@ -2617,6 +2746,16 @@ def run_wizard(input_dir, normalize_address=True):
         if record['Ảnh mặt sau CCCD/CC']:
             ext = os.path.splitext(record['Ảnh mặt sau CCCD/CC'])[1]
             record['Đổi tên Ảnh mặt sau CCCD/CC'] = f"{hoten_clean}_{cccd}{cmnd_str}_Mặt sau{ext}"
+
+        anh_khac = record.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+        if anh_khac:
+            anh_khac_list = [p.strip() for p in str(anh_khac).split(', ') if p.strip()]
+            renamed_list = []
+            for i, p in enumerate(anh_khac_list):
+                ext = os.path.splitext(p)[1]
+                suffix = f"_Khác_{i+1}" if len(anh_khac_list) > 1 else "_Khác"
+                renamed_list.append(f"{hoten_clean}_{cccd}{cmnd_str}{suffix}{ext}")
+            record['Đổi tên Ảnh khác'] = ", ".join(renamed_list)
 
     processed_data = list(records.values())
     # Lấy danh sách địa chỉ duy nhất
@@ -2773,6 +2912,11 @@ def run_wizard(input_dir, normalize_address=True):
 
     if 'incremental_scan' in locals() and incremental_scan and old_records:
         processed_data = old_records + processed_data
+
+    # Chuẩn hoá "Họ tên" thành chữ in hoa chữ cái đầu (VD: NGUYỄN TRỌNG HỮU -> Nguyễn Trọng Hữu)
+    for row_data in processed_data:
+        if row_data.get('Họ tên'):
+            row_data['Họ tên'] = row_data['Họ tên'].title()
 
     # Xử lý logic gộp ảnh "Khác"
     for row_data in processed_data:
