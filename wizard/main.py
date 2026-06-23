@@ -533,6 +533,11 @@ def parse_ocr_text(text):
                             # Dọn dẹp padding thực tế
                             ls_clean = re.sub(r'[<]+$', '', ls)
                             
+                            # Áp dụng ocr_fixes trước khi split để tránh split nhầm vào trong từ lỗi (VD: NGOCK bị split tại CK)
+                            ocr_fixes = rules.get("mrz_name_ocr_fixes", {})
+                            for bad, good in ocr_fixes.items():
+                                ls_clean = ls_clean.replace(bad, good)
+                            
                             # Tách Họ và Đệm+Tên dựa trên 2 dấu << liên tiếp (OCR -> CC, CK, CE, CEC, KK, KS...)
                             # Bỏ EK ra khỏi danh sách cắt vì EK dễ cắt nhầm tên (VD: LEKK -> L và EK)
                             split_parts = re.split(r'CK|CEC|KCK|CC|CE|CS|KK|KS', ls_clean, maxsplit=1)
@@ -1069,7 +1074,7 @@ def extract_ocr_data(image_path_or_cv2img):
         import time
         
         # Benchmarking data
-        global _last_timing
+        global _last_timing, USE_OPENCV_ALIGN_FIRST
         _last_timing = {}
         t_start_all = time.time()
         
@@ -2452,7 +2457,7 @@ def run_wizard(input_dir, normalize_address=True):
             records[cccd] = {
                 'index': len(records) + 1,
                 'Họ tên': '', 'CCCD': cccd, 'CMND': '', 'Giới tính': '',
-                'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': ''match ,
+                'Ngày sinh': '', 'Nơi thường trú gốc': '', 'Địa chỉ chuẩn hóa mới': '',
                 'Ngày cấp CCCD': '', 'Nơi cấp': '', 'Ngày hết hạn': '', 'Phân loại': '', 'Ghi chú': [], 'QR Raw': '',
                 'Ảnh mặt trước CCCD/CC': '',
                 'Ảnh mặt sau CCCD/CC': '',
