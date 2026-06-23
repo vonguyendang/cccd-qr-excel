@@ -2621,33 +2621,42 @@ def run_wizard(input_dir, normalize_address=True):
         if not sec_name:
             continue
             
-        best_target_cccd = None
+        # Tìm tất cả các ứng cử viên trùng/cận tên trong database
+        candidates = []
         for target_cccd, target_rec in records.items():
             if target_cccd == sec_cccd:
                 continue
-            
             # Không gộp số CCCD hợp lệ vào số CCCD rác/placeholder (ví dụ 000000000119)
             if _is_invalid_cccd_placeholder(target_cccd) and not _is_invalid_cccd_placeholder(sec_cccd):
                 continue
                 
             target_name = _norm_for_match(target_rec.get('Họ tên', ''))
-            target_dob = target_rec.get('Ngày sinh', '')
-            
-            if not _is_similar_name(sec_name, target_name):
-                continue
+            if _is_similar_name(sec_name, target_name):
+                candidates.append(target_cccd)
                 
-            match_dob = (sec_dob and target_dob and _is_similar_dob(sec_dob, target_dob))
-            match_cccd = _is_similar_cccd(sec_cccd, target_cccd)
-            
-            if match_dob or match_cccd:
-                if not best_target_cccd:
-                    best_target_cccd = target_cccd
-                else:
-                    curr_best = records[best_target_cccd]
-                    if target_rec['has_qr_data'] and not curr_best['has_qr_data']:
+        best_target_cccd = None
+        
+        # Trường hợp 1: Nếu cả database chỉ có DUY NHẤT 1 người trùng tên, tự động gộp (vì không thể nhầm lẫn với ai)
+        if len(candidates) == 1:
+            best_target_cccd = candidates[0]
+        # Trường hợp 2: Nếu có nhiều người trùng tên, bắt buộc phải lọc kỹ hơn bằng DOB hoặc số CCCD
+        elif len(candidates) > 1:
+            for target_cccd in candidates:
+                target_rec = records[target_cccd]
+                target_dob = target_rec.get('Ngày sinh', '')
+                
+                match_dob = (sec_dob and target_dob and _is_similar_dob(sec_dob, target_dob))
+                match_cccd = _is_similar_cccd(sec_cccd, target_cccd)
+                
+                if match_dob or match_cccd:
+                    if not best_target_cccd:
                         best_target_cccd = target_cccd
-                    elif _is_invalid_cccd_placeholder(best_target_cccd) and not _is_invalid_cccd_placeholder(target_cccd):
-                        best_target_cccd = target_cccd
+                    else:
+                        curr_best = records[best_target_cccd]
+                        if target_rec['has_qr_data'] and not curr_best['has_qr_data']:
+                            best_target_cccd = target_cccd
+                        elif _is_invalid_cccd_placeholder(best_target_cccd) and not _is_invalid_cccd_placeholder(target_cccd):
+                            best_target_cccd = target_cccd
                         
         if best_target_cccd:
             target_rec = records[best_target_cccd]
