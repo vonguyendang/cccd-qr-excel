@@ -358,6 +358,7 @@ def extract_qr_data(image_path):
 
 
 def parse_ocr_text(text):
+                rules = load_ocr_rules()
                 data = {
                     'CCCD': '', 'CMND': '', 'Họ tên': '', 'Ngày sinh': '',
                     'Giới tính': '', 'Nơi thường trú gốc': '', 'Ngày cấp CCCD': '',
@@ -449,7 +450,7 @@ def parse_ocr_text(text):
                         data['CCCD'] = valid_cccds[0]
                         data['OCR Side'] = 'Front'
                         for line in text_upper.split('\n'):
-                            if any(kw in line for kw in ['SỐ', 'CƯỚC', 'SO GIAY TO', 'CAN CUOC', 'CCCD', 'ĐỊNH DANH', 'DINH DANH']):
+                            if any(kw in line for kw in rules.get("cccd_keywords", [])):
                                 m = re.search(r'(?<!\d)([\d\s]{12,25})(?!\d)', line.replace('O','0'))
                                 if m:
                                     val = re.sub(r'\s+', '', m.group(1))
@@ -484,24 +485,7 @@ def parse_ocr_text(text):
                     def _extract_mrz_name_words(s):
                         """Tách các từ tên thực sự từ chuỗi MRZ bằng thuật toán Greedy Match với từ điển."""
                         # Sửa các lỗi OCR kinh điển làm biến dạng từ
-                        ocr_fixes = {
-                            "HHONGE": "HONG",
-                            "CIEU": "KIEU",
-                            "TRUECRE": "TRUC",
-                            "TRUEC": "TRUC",
-                            "EVINH": "VINH",
-                            "STRAN": " TRAN",
-                            "NGOCNUOI": "NGOC NUOI",
-                            "HUYNE": "HUYNH",
-                            "THUYKHANG": "THUY HANG",
-                            "THUCTRANGCA": "THU TRANG",
-                            "THUCTRANG": "THU TRANG",
-                            "CHUYNH": "HUYNH",
-                            "CHUY": "THUY",
-                            "CANHCHATHUC": "ANH THU",
-                            "INK": "KIM",
-                            "TING": "TRINH"
-                        }
+                        ocr_fixes = rules.get("mrz_name_ocr_fixes", {})
                         for bad, good in ocr_fixes.items():
                             s = s.replace(bad, good)
                         # Loại bỏ re.sub(r'[CKEAS<]{3,}$', '', s) vì nó cắt nhầm chữ cuối của tên (VD: DUC -> DU, GIAC -> GIA)
@@ -528,8 +512,11 @@ def parse_ocr_text(text):
                         # OCR đôi khi sinh ra khoảng trắng giữa các chữ trong MRZ -> Xóa toàn bộ khoảng trắng
                         ls = line.replace(' ', '').strip()
                         
+                        # Xóa các ký tự rác (số, dấu câu) ở cuối đuôi do OCR đọc nhầm viền
+                        ls = re.sub(r'[^A-Z<]+$', '', ls)
+                        
                         # Chặn các dòng tiếng Anh hoặc tiếng Việt không dấu bị nhận diện nhầm
-                        if any(bad in ls for bad in ['IDEN', 'NATIO', 'SONAL', 'CANCUOC', 'CONGDAN', 'TRUONG', 'GIAMDOC', 'INDEX', 'FINGER', 'ADMIN', 'POLICE', 'POUCE', 'DIRECTOR', 'ORDER', 'DEPART', 'SOCIAL', 'MANAGE', 'GENERAL', 'MONTH', 'YEAR', 'RIGHT', 'LEFT', 'FEATURE', 'RECTOR', 'GENER', 'WAY', 'AND', 'RESID', 'ORIGIN']):
+                        if any(bad in ls for bad in rules.get("mrz_ignore_words", [])):
                             continue
                             
                         # MRZ Line 3 chứa tên, KHÔNG có số, KHÔNG có dấu tiếng Việt
@@ -635,7 +622,7 @@ def parse_ocr_text(text):
                     line_lower = line.lower()
     
                     # 1. Name
-                    if not data['Họ tên'] and any(kw in line_lower for kw in ["họ và tên", "họ chữ đệm và tên", "tên khai sinh", "full name", "ho ten", "kho và tên", "fui nam"]):
+                    if not data['Họ tên'] and any(kw in line_lower for kw in rules.get("name_keywords", [])):
                         if ":" in line:
                             name_part = line.split(":", 1)[1].strip()
                             name_part = name_part.rstrip('.')
@@ -664,26 +651,19 @@ def parse_ocr_text(text):
                                 break
                 
                     # --- BƯỚC 4.3: TRÍCH XUẤT ĐỊA CHỈ (NƠI THƯỜNG TRÚ/CƯ TRÚ) ---
-                    if "nơi thường trú" in line_lower or "nơi cư trú" in line_lower or "residence" in line_lower or "thuong tru" in line_lower or "trương vú" in line_lower:
+                    addr_kws = rules.get("address_keywords", [])
+                    if any(kw in line_lower for kw in addr_kws):
                         addr_parts = []
                         if ":" in line:
                             val = line.split(":", 1)[1].strip()
                         else:
-                            m = re.split(r'(?i)(nơi thường trú|nơi cư trú|place of residence|residence|thuong tru|trương vú)[^a-z0-9]*', line)
+                            addr_pattern = r'(?i)(' + '|'.join(addr_kws) + r')[^a-z0-9]*'
+                            m = re.split(addr_pattern, line)
                             val = m[-1].strip() if len(m) > 2 else ""
                             
                         # Loại bỏ các chuỗi nhiễu có thể bám ngay cùng dòng
-                        val = re.sub(r'(?i)(giới tính|quốc tịch|sex|nationality|(có )?gi[aáàảãạ] trị đ[ếêề]n\s*[:.,]*|expiry|date).*', '', val).strip()
-                        val = re.sub(
-                            r'(?i)\b(substates|date|dater|datero|eas|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
-                            r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
-                            r'indent|vi[eê][nǹ]|nam\s+linh|'
-                            r'place of residence|place of origin|place oforging|transervating|daleoroxic|dale\s*o|'
-                            r'deleofexpin|dele\s*atanting|overstreeter|residence|origin|raforping|expin|'
-                            r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
-                            r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b',
-                            '', val).strip()
-                        val = re.sub(r'(?i)(substates|raforping|expin|họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd|date)', '', val).strip()
+                        for reg in rules.get("address_clean_regexes_1", []):
+                            val = re.sub(reg, '', val).strip()
                         if len(val) >= 2:
                             addr_parts.append(val)
         
@@ -696,7 +676,6 @@ def parse_ocr_text(text):
                             commas_count = current_addr.count(',')
                             
                             # CÁC TỪ KHOÁ NGẮT (BREAK) - Rác ngoài thẻ hoặc Mặt sau
-                            rules = load_ocr_rules()
                             hard_stops = rules.get("hard_stops", [])
                             soft_stops = rules.get("soft_stops", [])
                             
@@ -723,34 +702,8 @@ def parse_ocr_text(text):
                                     continue
 
                             clean_line = next_line
-                            # Xóa cụm "giá trị đến" và mọi biến thể OCR (có/không dấu)
-                            # "gia tri đến", "giá trị đến", "gia tri den", v.v.
-                            clean_line = re.sub(
-                                r'(?i)(c[oó]\s+)?gi[aáàảãạ]\s*(tr[iịeê]*|m)?\s*(đ[ếeêề]n|den|đen|en)\s*[:.,]*',
-                                '', clean_line).strip()
-                            clean_line = re.sub(
-                                r'(?i)(expiry|h[eế]t\s*h[aạ]n|ferpiry|telefoxpir|date\s*ferpiry|date\s*ferp[a-z]*|'
-                                r'n[oơ]i\s*c[aấ]p|ng[aà]y\s*c[aấ]p|b[oộ]\s*c[oô]ng\s*an|c[uụ]c\s*c[aả]nh\s*s[aá]t|'
-                                r'gi[oớ]i\s*t[ií]nh|qu[oố]c\s*t[iị]ch|sex|nationality|'
-                                r'qu[eê]\s*qu[aá]n|khai\s*sinh|ng[aà]y\s*sinh|i\s*date|birth|data\s*ofespry)',
-                                '', clean_line).strip()
-                            
-                            # Xóa ngày tháng năm
-                            clean_line = re.sub(r'\b\d{2}/\d{2}/\d{4}\b', '', clean_line).strip()
-                                
-                            # CẮT BỎ CÁC TỪ TIẾNG ANH ẢO GIÁC DO OCR NHẬN DIỆN MỜ VÀ CÁC NHÃN
-                            clean_line = re.sub(
-                                r'(?i)\b(substates|date|dater|datero|eas|place\s*of\s*res[a-z]*|place\s*ofresic|i\s*place|pplace|ppace|place|'
-                                r'date\s*of\s*issue|ddate|ddate\s*issue|dddate|ddate\s*issue|date\s*issue|issue|'
-                                r'indent|vi[eê][nǹ]|nam\s+linh|no[aà]ch|string|'
-                                r'place of residence|place of origin|place oforging|transervating|daleoroxic|dale\s*o|'
-                                r'deleofexpin|dele\s*atanting|overstreeter|residence|origin|raforping|expin|'
-                                r'họ và tên 1 full name|số 1 noi|con minh gian|moroot|full name|họ và tên|'
-                                r'sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd)\b',
-                                '', clean_line).strip()
-                            clean_line = re.sub(r'(?i)(substates|raforping|expin|no[aà]ch|string|họ và tên 1 full name|số 1 noi|con minh gian|moroot|sedest|ingave|1tho|nams|cang 10/000020|notter|cachoro|stard|fui nam|kho và tên|of|cccd|date)', '', clean_line).strip()
-                            # Xóa các từ rác ngắn OCR đếm được (VD: "ngl", "ẫk", "ử", v.v.)
-                            clean_line = re.sub(r'(?i)\b(ngl|hận|ngi)\b', '', clean_line).strip()
+                            for reg in rules.get("address_clean_regexes_2", []):
+                                clean_line = re.sub(reg, '', clean_line).strip()
                             
                             # Loại bỏ chữ 'Có' rớt lại do cắt cụm 'Có giá trị đến' bị thiếu
                             # Xử lý các dạng: 'Có :', 'Có', 'Có ,' đứng 1 mình hoặc kẹp ở đầu/cuối chuỗi
