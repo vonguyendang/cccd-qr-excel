@@ -3703,7 +3703,7 @@ def clean_address_string(addr):
     clean_line = ', '.join(deduped)
 
     # 6. Fuzzy Matching từng đoạn qua dấu phẩy
-    segments = [s.strip() for s in clean_line.split(',') if s.strip()]
+    segments = [s.strip() for s in clean_line.split(',') if s.strip() and "pir" not in s.lower()]
     corrected_segments = []
     
     # Caching strategies for optimization
