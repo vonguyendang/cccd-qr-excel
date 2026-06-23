@@ -2589,7 +2589,15 @@ def run_wizard(input_dir, normalize_address=True):
         if not n1 or not n2: return False
         import difflib
         ratio = difflib.SequenceMatcher(None, n1, n2).ratio()
-        return ratio >= 0.80
+        if ratio < 0.80:
+            return False
+        # Kiểm tra sự tương đồng của tên gọi (từ cuối cùng của họ tên, ví dụ Anh vs Sâm)
+        w1 = n1.split()[-1] if n1.split() else ''
+        w2 = n2.split()[-1] if n2.split() else ''
+        if not w1 or not w2:
+            return False
+        w_ratio = difflib.SequenceMatcher(None, w1, w2).ratio()
+        return w_ratio >= 0.50
 
     def _is_similar_dob(d1, d2):
         if not d1 or not d2: return False
@@ -2628,6 +2636,12 @@ def run_wizard(input_dir, normalize_address=True):
                 continue
             # Không gộp số CCCD hợp lệ vào số CCCD rác/placeholder (ví dụ 000000000119)
             if _is_invalid_cccd_placeholder(target_cccd) and not _is_invalid_cccd_placeholder(sec_cccd):
+                continue
+                
+            # Ngăn gộp nếu giới tính khai báo khác nhau (tránh nhầm lẫn Nam/Nữ)
+            s_gen = sec_rec.get('Giới tính', '').strip().lower()
+            t_gen = target_rec.get('Giới tính', '').strip().lower()
+            if s_gen and t_gen and s_gen != t_gen:
                 continue
                 
             target_name = _norm_for_match(target_rec.get('Họ tên', ''))
