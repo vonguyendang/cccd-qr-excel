@@ -3787,6 +3787,7 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
     required_cols = ['Họ tên', 'CCCD', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD', 'Nơi cấp', 'Ngày hết hạn']
     img_front_col = col_idx.get('Ảnh mặt trước CCCD/CC')
     img_back_col = col_idx.get('Ảnh mặt sau CCCD/CC')
+    img_other_col = col_idx.get('Ảnh khác (SMS/Chụp màn hình/...)')
     
     if img_front_col is None or img_back_col is None:
         console.print("[bold red]❌ Không tìm thấy cột chứa tên file ảnh trong Excel.[/bold red]")
@@ -3800,13 +3801,21 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
     for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=False), start=2):
         front_name = row[img_front_col].value
         back_name = row[img_back_col].value
+        other_name = row[img_other_col].value if img_other_col is not None else None
+        
         if front_name: assigned_images.add(os.path.basename(str(front_name)))
         if back_name: assigned_images.add(os.path.basename(str(back_name)))
+        if other_name:
+            for part in str(other_name).split(','):
+                part_clean = os.path.basename(part.strip())
+                if part_clean:
+                    assigned_images.add(part_clean)
         
         row_info = {
             'row_idx': row_idx,
             'front_name': front_name,
             'back_name': back_name,
+            'other_name': other_name,
             'row_cells': row,
             'is_missing': False,
             'force_ocr_reprocess': False
@@ -3971,6 +3980,13 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                 p = img_map[row['back_name']]
                 if p in recovered_data: img_results[p] = recovered_data[p]
                 else: all_images_to_process.add(p)
+            if row.get('other_name'):
+                for part in str(row['other_name']).split(','):
+                    part_clean = os.path.basename(part.strip())
+                    if part_clean and part_clean in img_map:
+                        p = img_map[part_clean]
+                        if p in recovered_data: img_results[p] = recovered_data[p]
+                        else: all_images_to_process.add(p)
                 
         # Thêm ảnh unassigned vào danh sách xử lý
         for p in unassigned_images:
@@ -4032,6 +4048,17 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             front_data = img_results.get(front_path, {})
             back_data = img_results.get(back_path, {})
             
+            other_data = {}
+            if row_info.get('other_name'):
+                for part in str(row_info['other_name']).split(','):
+                    part_clean = os.path.basename(part.strip())
+                    if part_clean and part_clean in img_map:
+                        p = img_map[part_clean]
+                        if p in img_results:
+                            for k, v in img_results[p].items():
+                                if v and not other_data.get(k):
+                                    other_data[k] = v
+            
             # Merge logic
             for col_name in required_cols:
                 idx = col_idx.get(col_name)
@@ -4040,8 +4067,8 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                 existing_val = str(row_info['row_cells'][idx].value).strip() if row_info['row_cells'][idx].value else ""
                 is_empty = not existing_val or existing_val == "None" or existing_val == "[Trống]"
                 
-                # Cố lấy từ front_data hoặc back_data
-                new_val = front_data.get(col_name) or back_data.get(col_name)
+                # Cố lấy từ front_data, back_data hoặc other_data
+                new_val = front_data.get(col_name) or back_data.get(col_name) or other_data.get(col_name)
                 
                 # Giữ nguyên giá trị cũ nếu đã có, TRỪ KHI dòng này được đánh dấu force_ocr_reprocess và có data mới
                 if not is_empty and not row_info.get('force_ocr_reprocess'):
