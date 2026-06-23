@@ -2874,6 +2874,126 @@ def run_wizard(input_dir, normalize_address=True):
             )
             del records[orphan_cccd]
 
+    # ---------- FINAL CLEANUP MATCH: GỘP CÁC DÒNG MỒ CÔI (CHỈ CÓ 1 MẶT ẢNH) ----------
+    def _is_incomplete_orphan(rec):
+        has_front = bool(rec.get('Ảnh mặt trước CCCD/CC') or rec.get('OCR Image Path Front') or rec.get('Full Image Path Front') or rec.get('Full OCR Image Path Front'))
+        has_back = bool(rec.get('Ảnh mặt sau CCCD/CC') or rec.get('OCR Image Path Back') or rec.get('Full Image Path Back') or rec.get('Full OCR Image Path Back'))
+        has_other = bool(rec.get('Ảnh khác (SMS/Chụp màn hình/...)') or rec.get('OCR Image Path Unknown') or rec.get('Full OCR Image Path Unknown'))
+        return sum([has_front, has_back, has_other]) <= 1
+
+    incomplete_cccds = [cccd for cccd, rec in list(records.items()) if _is_incomplete_orphan(rec)]
+    for sec_cccd in incomplete_cccds:
+        if sec_cccd not in records:
+            continue
+        sec_rec = records[sec_cccd]
+        sec_name = _norm_for_match(sec_rec.get('Họ tên', ''))
+        sec_dob = sec_rec.get('Ngày sinh', '')
+        sec_issue = sec_rec.get('Ngày cấp CCCD', '')
+        
+        if not sec_name:
+            continue
+            
+        candidates = []
+        for target_cccd, target_rec in records.items():
+            if target_cccd == sec_cccd:
+                continue
+            # Không gộp số CCCD hợp lệ vào số CCCD rác/placeholder
+            if _is_invalid_cccd_placeholder(target_cccd) and not _is_invalid_cccd_placeholder(sec_cccd):
+                continue
+            # Không gộp bản ghi có QR vào bản ghi không có QR
+            if not target_rec['has_qr_data'] and sec_rec['has_qr_data']:
+                continue
+                
+            # Ngăn gộp nếu giới tính khai báo khác nhau
+            s_gen = sec_rec.get('Giới tính', '').strip().lower()
+            t_gen = target_rec.get('Giới tính', '').strip().lower()
+            if s_gen and t_gen and s_gen != t_gen:
+                continue
+                
+            target_name = _norm_for_match(target_rec.get('Họ tên', ''))
+            if _is_similar_name(sec_name, target_name):
+                candidates.append(target_cccd)
+                
+        best_target_cccd = None
+        # Trường hợp 1: Có duy nhất 1 ứng cử viên trùng/cận tên trong database
+        if len(candidates) == 1:
+            best_target_cccd = candidates[0]
+        # Trường hợp 2: Có nhiều ứng cử viên trùng tên, lọc bằng DOB, Ngày cấp, hoặc CCCD
+        elif len(candidates) > 1:
+            for target_cccd in candidates:
+                target_rec = records[target_cccd]
+                target_dob = target_rec.get('Ngày sinh', '')
+                target_issue = target_rec.get('Ngày cấp CCCD', '')
+                
+                match_dob = (sec_dob and target_dob and _is_similar_dob(sec_dob, target_dob))
+                match_issue = (sec_issue and target_issue and _is_similar_dob(sec_issue, target_issue))
+                match_cccd = _is_similar_cccd(sec_cccd, target_cccd)
+                
+                if match_dob or match_issue or match_cccd:
+                    if not best_target_cccd:
+                        best_target_cccd = target_cccd
+                    else:
+                        curr_best = records[best_target_cccd]
+                        if target_rec['has_qr_data'] and not curr_best['has_qr_data']:
+                            best_target_cccd = target_cccd
+                        elif _is_invalid_cccd_placeholder(best_target_cccd) and not _is_invalid_cccd_placeholder(target_cccd):
+                            best_target_cccd = target_cccd
+                            
+        if best_target_cccd:
+            target_rec = records[best_target_cccd]
+            console.print(f"   [bold green]→ [FINAL CLEANUP MATCH][/bold green] Ghép bản ghi mồ côi {sec_cccd} ({sec_rec.get('Họ tên')}) vào bản ghi {best_target_cccd} (Trùng tên & trùng DOB/Ngày cấp/Cận CCCD/Duy nhất).")
+            
+            # Gộp mặt trước
+            if not target_rec.get('Ảnh mặt trước CCCD/CC'):
+                if sec_rec.get('Ảnh mặt trước CCCD/CC'):
+                    target_rec['Ảnh mặt trước CCCD/CC'] = sec_rec['Ảnh mặt trước CCCD/CC']
+                    target_rec['Full Image Path Front'] = sec_rec.get('Full Image Path Front', '')
+                elif sec_rec.get('OCR Image Path Front'):
+                    target_rec['Ảnh mặt trước CCCD/CC'] = sec_rec['OCR Image Path Front']
+                    target_rec['Full Image Path Front'] = sec_rec.get('Full OCR Image Path Front', '')
+            else:
+                sec_front = sec_rec.get('Ảnh mặt trước CCCD/CC') or sec_rec.get('OCR Image Path Front')
+                if sec_front:
+                    existing = target_rec.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                    target_rec['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {sec_front}".strip(', ')
+                    
+            # Gộp mặt sau
+            if not target_rec.get('Ảnh mặt sau CCCD/CC'):
+                if sec_rec.get('Ảnh mặt sau CCCD/CC'):
+                    target_rec['Ảnh mặt sau CCCD/CC'] = sec_rec['Ảnh mặt sau CCCD/CC']
+                    target_rec['Full Image Path Back'] = sec_rec.get('Full Image Path Back', '')
+                elif sec_rec.get('OCR Image Path Back'):
+                    target_rec['Ảnh mặt sau CCCD/CC'] = sec_rec['OCR Image Path Back']
+                    target_rec['Full Image Path Back'] = sec_rec.get('Full OCR Image Path Back', '')
+            else:
+                sec_back = sec_rec.get('Ảnh mặt sau CCCD/CC') or sec_rec.get('OCR Image Path Back')
+                if sec_back:
+                    existing = target_rec.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                    target_rec['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {sec_back}".strip(', ')
+            
+            # Gộp Ảnh khác
+            sec_other = sec_rec.get('Ảnh khác (SMS/Chụp màn hình/...)') or sec_rec.get('OCR Image Path Unknown')
+            if sec_other:
+                existing = target_rec.get('Ảnh khác (SMS/Chụp màn hình/...)', '')
+                target_rec['Ảnh khác (SMS/Chụp màn hình/...)'] = f"{existing}, {sec_other}".strip(', ')
+                
+            # Bổ sung thông tin văn bản còn thiếu
+            for k in ['CMND', 'Giới tính', 'Ngày sinh', 'Nơi thường trú gốc', 'Ngày cấp CCCD', 'Nơi cấp', 'Ngày hết hạn', 'Phân loại', 'QR Raw']:
+                if sec_rec.get(k) and not target_rec.get(k):
+                    target_rec[k] = sec_rec[k]
+                    
+            for flag in ['has_qr_data', 'has_ocr_data', 'has_cong_dan_front', 'has_address_front', 'has_address_back', 'has_cuc_truong_back', 'has_bo_cong_an_back']:
+                if sec_rec.get(flag):
+                    target_rec[flag] = True
+                    
+            if sec_rec.get('Ghi chú'):
+                if isinstance(sec_rec['Ghi chú'], list):
+                    target_rec['Ghi chú'].extend(sec_rec['Ghi chú'])
+                else:
+                    target_rec['Ghi chú'].append(str(sec_rec['Ghi chú']))
+                    
+            del records[sec_cccd]
+
     # Pass 3: Assign OCR images to empty slots and Rename logic
     for cccd, record in records.items():
         # Assign Front
