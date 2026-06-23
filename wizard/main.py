@@ -978,7 +978,7 @@ def _align_card_onnx(img):
         
     return None, None
 
-def align_card(img, target_width=1000, target_height=630):
+def align_card(img, target_width=1000, target_height=630, use_opencv_align=None):
     import cv2
     import numpy as np
     original = img.copy()
@@ -987,7 +987,8 @@ def align_card(img, target_width=1000, target_height=630):
     rect = None
     method = ""
     
-    if USE_OPENCV_ALIGN_FIRST:
+    use_opencv = USE_OPENCV_ALIGN_FIRST if use_opencv_align is None else use_opencv_align
+    if use_opencv:
         rect, method = _align_card_opencv(img, target_width, target_height)
         
     if rect is None:
@@ -1048,7 +1049,7 @@ def align_card(img, target_width=1000, target_height=630):
     
     return warped, debug_img, method
 
-def extract_ocr_data(image_path_or_cv2img):
+def extract_ocr_data(image_path_or_cv2img, use_opencv_align=None):
     LOG('Started extract_ocr_data')
     """
     Hàm xử lý OCR (Trích xuất văn bản từ ảnh) bằng AI.
@@ -1074,7 +1075,7 @@ def extract_ocr_data(image_path_or_cv2img):
         import time
         
         # Benchmarking data
-        global _last_timing, USE_OPENCV_ALIGN_FIRST
+        use_opencv = USE_OPENCV_ALIGN_FIRST if use_opencv_align is None else use_opencv_align
         _last_timing = {}
         t_start_all = time.time()
         
@@ -1089,11 +1090,11 @@ def extract_ocr_data(image_path_or_cv2img):
                     if issubclass(warning.category, RuntimeWarning) and "invalid value encountered in divide" in str(warning.message):
                         has_glare_warning = True
                 return result
-
+ 
         # --- BƯỚC 1: XÁC ĐỊNH BIÊN VÀ LÀM PHẲNG THẺ ---
         t0 = time.time()
         LOG('Calling align_card')
-        card_img, debug_detect_img, align_method = align_card(img_to_ocr)
+        card_img, debug_detect_img, align_method = align_card(img_to_ocr, use_opencv_align=use_opencv)
         LOG(f'Finished align_card, method={align_method}')
         _last_timing['detect_and_align_card'] = time.time() - t0
         _last_timing['align_method'] = align_method
@@ -1618,15 +1619,11 @@ def extract_ocr_data(image_path_or_cv2img):
             
             if is_garbage or is_suspicious_crop:
                 # Nếu crop OpenCV fail dẫn đến không đọc được chữ, retry bằng ONNX
-                if USE_OPENCV_ALIGN_FIRST and align_method == "opencv_contour":
-                    USE_OPENCV_ALIGN_FIRST = False
-                    try:
-                        res_data, res_note, res_img = extract_ocr_data(img_to_ocr)
-                        if res_note:
-                            res_note = res_note + " (OpenCV crop fail, fallback to ONNX)"
-                        return res_data, res_note, res_img
-                    finally:
-                        USE_OPENCV_ALIGN_FIRST = True
+                if use_opencv and align_method == "opencv_contour":
+                    res_data, res_note, res_img = extract_ocr_data(img_to_ocr, use_opencv_align=False)
+                    if res_note:
+                        res_note = res_note + " (OpenCV crop fail, fallback to ONNX)"
+                    return res_data, res_note, res_img
                     
                 return best_data, "Ảnh mờ hoặc không thể nhận diện được", rotated_return
                 
