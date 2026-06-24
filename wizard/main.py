@@ -518,6 +518,9 @@ def parse_ocr_text(text):
                         # Xóa các ký tự rác (số, dấu câu) ở cuối đuôi do OCR đọc nhầm viền
                         ls = re.sub(r'[^A-Z<]+$', '', ls)
                         
+                        # Xóa các ký tự số, dấu câu rác ở đầu chuỗi (ví dụ: "36PHAN..." -> "PHAN...")
+                        ls = re.sub(r'^[^A-Z]+', '', ls)
+                        
                         # Chặn các dòng tiếng Anh hoặc tiếng Việt không dấu bị nhận diện nhầm
                         if any(bad in ls for bad in rules.get("mrz_ignore_words", [])):
                             continue
