@@ -3440,23 +3440,26 @@ def run_wizard(input_dir, normalize_address=True):
     with console.status("[bold green]Đang tạo các file nén zip phân loại ảnh...", spinner="dots"):
         import shutil
         
-        # 1. original.zip
+        # 1. original.zip (Chứa các file sau khi đã đánh số thứ tự)
         original_zip_path = os.path.join(exports_dir, 'original.zip')
-        input_zip_path = os.path.join(input_dir, 'original.zip')
         count_original = 0
-        if os.path.exists(input_zip_path):
-            shutil.copy2(input_zip_path, original_zip_path)
-            try:
-                with zipfile.ZipFile(original_zip_path, 'r') as zf:
-                    count_original = len(zf.namelist())
-            except Exception:
-                pass
-        else:
-            with zipfile.ZipFile(original_zip_path, 'w') as zf:
-                for path in all_original_image_paths:
-                    if os.path.exists(path):
-                        zf.write(path, os.path.basename(path))
-                        count_original += 1
+        
+        # Thu thập các file ảnh đã được đánh số thứ tự trong input_dir
+        renamed_files = []
+        if os.path.isdir(input_dir):
+            for f in os.listdir(input_dir):
+                fpath = os.path.join(input_dir, f)
+                if os.path.isfile(fpath):
+                    base, ext = os.path.splitext(f)
+                    if base.isdigit() and ext.lower() in ('.jpg', '.jpeg', '.png', '.heic', '.webp'):
+                        renamed_files.append((fpath, int(base)))
+            # Sắp xếp theo thứ tự số tăng dần
+            renamed_files.sort(key=lambda x: x[1])
+            
+        with zipfile.ZipFile(original_zip_path, 'w') as zf:
+            for path, _ in renamed_files:
+                zf.write(path, os.path.basename(path))
+                count_original += 1
         console.print(f" [green]✓[/green] Đã tạo [bold]original.zip[/bold] với {count_original} file.")
         
         # 2. rename.zip
