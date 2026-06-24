@@ -188,6 +188,19 @@ def init_models():
             print(f"Lỗi khởi tạo WeChat QRCode: {e}")
     else:
         print("Cảnh báo: Không tìm thấy file model WeChat QRCode. Khả năng quét ảnh mờ sẽ bị giảm.")
+def clean_path(path_str):
+    if not path_str:
+        return path_str
+    path_str = path_str.strip().strip('\'"')
+    if os.name != 'nt':
+        # Replace backslash-escaped characters commonly produced by terminal drag-and-drop on macOS/Linux
+        path_str = path_str.replace('\\ ', ' ')
+        # path_str = path_str.replace('\\(', '(')
+        # path_str = path_str.replace('\\)', ')')
+        # path_str = path_str.replace('\\&', '&')
+        # path_str = path_str.replace('\\;', ';')
+    return path_str
+
 def format_date(date_str):
     if not date_str or len(date_str) != 8:
         return date_str
@@ -1947,7 +1960,7 @@ def run_wizard(input_dir, normalize_address=True):
     file_logs = []
     
     # Xóa dấu nháy đơn/kép nếu người dùng kéo thả thư mục vào terminal có sinh ra
-    input_dir = input_dir.strip('\'"')
+    input_dir = clean_path(input_dir)
 
     if not input_dir or not os.path.isdir(input_dir):
         console.print(f"\n[bold red]❌ Lỗi:[/bold red] Thư mục '{input_dir}' không tồn tại hoặc đường dẫn không đúng.")
@@ -1996,7 +2009,7 @@ def run_wizard(input_dir, normalize_address=True):
     if latest_excel:
         incremental_scan = Confirm.ask(f"\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file {os.path.basename(latest_excel)}). Bạn muốn QUÉT NỐI TIẾP (chỉ quét ảnh mới ném vào) không? (Chọn No để quét lại từ đầu)[/bold yellow]", default=True)
     elif os.path.exists(os.path.join(input_dir, "original.zip")):
-        user_input = Prompt.ask("\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file original.zip) nhưng không tự động tìm thấy thư mục kết quả cũ.\n👉 Nếu bạn muốn QUÉT NỐI TIẾP, vui lòng kéo thả THƯ MỤC EXPORT cũ hoặc FILE EXCEL cũ vào đây (Nhấn Enter để tìm trong thư mục export mặc định của app, hoặc gõ 'n' để quét lại từ đầu)[/bold yellow]").strip().strip('\'"')
+        user_input = clean_path(Prompt.ask("\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file original.zip) nhưng không tự động tìm thấy thư mục kết quả cũ.\n👉 Nếu bạn muốn QUÉT NỐI TIẾP, vui lòng kéo thả THƯ MỤC EXPORT cũ hoặc FILE EXCEL cũ vào đây (Nhấn Enter để tìm trong thư mục export mặc định của app, hoặc gõ 'n' để quét lại từ đầu)[/bold yellow]"))
         
         if not user_input or user_input.lower() == 'y':
             user_input = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports')
@@ -3299,7 +3312,7 @@ def run_wizard(input_dir, normalize_address=True):
         clean_input_dir = os.path.normpath(input_dir)
         exports_dir = clean_input_dir + "_exports"
     elif export_option == "3":
-        custom_dir = Prompt.ask("[bold cyan]Nhập đường dẫn thư mục mong muốn lưu kết quả[/bold cyan]").strip().strip('\'"')
+        custom_dir = clean_path(Prompt.ask("[bold cyan]Nhập đường dẫn thư mục mong muốn lưu kết quả[/bold cyan]"))
         if not custom_dir:
             console.print("[yellow]Đường dẫn rỗng, quay về mặc định.[/yellow]")
             exports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports')
@@ -3759,7 +3772,7 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
         parent_dir = os.path.dirname(excel_dir)
         image_dir = parent_dir
         
-        user_img_dir = Prompt.ask(f"[bold cyan]Nhập đường dẫn thư mục chứa ảnh gốc (Ấn Enter nếu là: {image_dir})[/bold cyan]").strip().strip('\'"')
+        user_img_dir = clean_path(Prompt.ask(f"[bold cyan]Nhập đường dẫn thư mục chứa ảnh gốc (Ấn Enter nếu là: {image_dir})[/bold cyan]"))
         if user_img_dir:
             image_dir = user_img_dir
             
@@ -4913,7 +4926,7 @@ def main():
                         process_all_choice = Prompt.ask("Chọn (1/2)", default="1").strip()
                     process_all_rows = (process_all_choice == "1")
                 
-                excel_path = Prompt.ask("\n[bold cyan]Nhập đường dẫn file Excel cũ (hoặc gõ 'q' để quay lại menu)[/bold cyan]").strip().strip('\'"')
+                excel_path = clean_path(Prompt.ask("\n[bold cyan]Nhập đường dẫn file Excel cũ (hoặc gõ 'q' để quay lại menu)[/bold cyan]"))
                 if excel_path.lower() in ('q', 'quit', 'exit'):
                     continue
                 if not os.path.isfile(excel_path) or not excel_path.endswith('.xlsx'):
@@ -4930,7 +4943,7 @@ def main():
                 run_reprocess(excel_path, mode=reprocess_mode, process_all_rows=process_all_rows, normalize_address=do_normalize)
             else:
                 console.print("\n[yellow][Hướng dẫn][/yellow]: Kéo thả thư mục chứa ảnh vào cửa sổ này, hoặc copy đường dẫn thư mục và dán vào đây.")
-                input_dir = Prompt.ask("[bold cyan]Nhập đường dẫn thư mục chứa ảnh CCCD (hoặc gõ 'q' để quay lại menu)[/bold cyan]").strip().strip('\'"')
+                input_dir = clean_path(Prompt.ask("[bold cyan]Nhập đường dẫn thư mục chứa ảnh CCCD (hoặc gõ 'q' để quay lại menu)[/bold cyan]"))
                 
                 if input_dir.lower() in ('q', 'quit', 'exit'):
                     continue
