@@ -4155,8 +4155,8 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                             address_to_normalize.add(raw_addr)
 
     # Nơi chuẩn hóa địa chỉ
+    address_map = recovered_api.copy()
     if normalize_address and address_to_normalize:
-        address_map = recovered_api.copy()
         
         # Chỉ gọi API cho những địa chỉ chưa có kết quả (bao gồm cả thành công và thất bại)
         pending_addresses = [addr for addr in address_to_normalize if addr not in address_map]
