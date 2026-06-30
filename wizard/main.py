@@ -451,7 +451,7 @@ def parse_ocr_text(text):
                     text_numbers = text_upper.replace('O', '0')
                     # Tìm tất cả cụm số (có thể chứa khoảng trắng) dài 12-25 ký tự
                     # Regex này lấy luôn các số bị dính vào chữ cái ở đầu/cuối (như TTBB0088195038174)
-                    cccd_matches = re.findall(r'(?<!\d)([\d\s]{12,25})(?!\d)', text_numbers)
+                    cccd_matches = re.findall(r'(?<!\d)([\d \t\xa0]{12,25})(?!\d)', text_numbers)
                     valid_cccds = []
                     for match_str in cccd_matches:
                         val = re.sub(r'\s+', '', match_str)  # loại mọi whitespace
@@ -467,7 +467,7 @@ def parse_ocr_text(text):
                         data['OCR Side'] = 'Front'
                         for line in text_upper.split('\n'):
                             if any(kw in line for kw in rules.get("cccd_keywords", [])):
-                                m = re.search(r'(?<!\d)([\d\s]{12,25})(?!\d)', line.replace('O','0'))
+                                m = re.search(r'(?<!\d)([\d \t\xa0]{12,25})(?!\d)', line.replace('O','0'))
                                 if m:
                                     val = re.sub(r'\s+', '', m.group(1))
                                     if 12 <= len(val) <= 15:
