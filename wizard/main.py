@@ -140,6 +140,16 @@ _VN_SURNAMES = {
 
 _VN_NAME_SYLLABLES = set("AN ANH BA BAC BACH BAN BANG BAO BE BEN BICH BINH BO BON BUI CA CAM CAN CANH CAO CAT CHAU CHI CHIEN CHINH CHU CHUC CHUAN CHUNG CHUYEN CON CU CUC CUONG DA DAI DAN DANG DAO DAT DAU DE DIEM DIEN DIEP DIEU DINH DO DOAN DOANH DONG DU DUC DUNG DUONG DUY DUYEN EM GIA GIAC GIANG GIAO GIAP HA HAI HAN HANG HANH HAO HE HIEN HIEP HIEU HINH HO HOA HOAI HOAN HOANG HOI HONG HOP HUNG HUONG HUU HUY HUYEN HUYNH ICH KHA KHAI KHANG KHANH KHAO KHE KHOA KHOI KHONG KHUAT KHUE KHUU KHUYEN KIEN KIEU KIM KY LA LAI LAM LAN LANG LANH LAP LE LIEN LIEU LINH LO LOAN LOC LOI LONG LU LUA LUAN LUC LUONG LUU LY MAC MACH MAI MAN MANG MANH MAO MAU MINH MOC MONG MUOI MY NAM NGA NGAN NGANH NGHI NGHIA NGHIEM NGO NGOC NGOI NGON NGU NGUYEN NGUYET NHA NHAN NHAT NHI NHIEN NHO NHU NHUAN NHUNG NIEN NINH NOAN NONG NU NUOI NUONG OA OANH ONG PHA PHAI PHAM PHAN PHANG PHAT PHI PHIEN PHONG PHU PHUC PHUNG PHUONG QUACH QUAN QUANG QUE QUOC QUY QUYEN QUYET QUYNH RAO SA SAM SAN SANG SAU SEN SINH SOA SON SONG SUONG SY TA TAI TAM TAN TANG TANH TAO TAY THA THACH THAI THAM THAN THANG THANH THAO THAT THAY THE THI THIEN THIET THIEU THINH THOA THOAI THOM THU THUAN THUC THUONG THUY THUYEN THY TIEN TIEP TIN TINH TO TOA TOAI TOAN TON TONG TRA TRAM TRAN TRANG TRANH TRAO TRI TRIEU TRINH TRONG TRU TRUC TRUNG TRUONG TRUYEN TU TUAN TUAT TUE TUI TUNG TUY TUYEN TUYET UNG UYEN VAN VANG VI VIEN VIET VINH VO VONG VU VUONG VY XINH XUA XUAN Y YEN".lower().split()).union(_VN_SURNAMES)
 
+_VN_PROVINCE_CODES = {
+    '001', '002', '004', '006', '008', '010', '011', '012', '014', '015',
+    '017', '019', '020', '022', '024', '025', '026', '027', '030', '031',
+    '033', '034', '035', '036', '037', '038', '040', '042', '044', '045',
+    '046', '048', '049', '051', '052', '054', '056', '058', '060', '062',
+    '064', '066', '067', '068', '070', '072', '074', '075', '077', '079',
+    '080', '082', '083', '084', '086', '087', '089', '091', '092', '093',
+    '094', '095', '096'
+}
+
 def _is_valid_name(s):
     """Tên hợp lệ: 2-5 từ, bắt đầu bằng họ VN phổ biến, không số."""
     if not s or re.search(r'\d', s):
@@ -436,8 +446,22 @@ def parse_ocr_text(text):
                             after_prefix = re.sub(r'^(I?D?VNM|I?D?VNN)', '', block.strip())
                             # Chỉ giữ lại chữ số và dấu '<' (MRZ không có chữ O)
                             cleaned = re.sub(r'[^0-9<]', '', after_prefix)
-                            # Cần ít nhất 15 ký tự: 3 cuối (<<X) + 12 CCCD
-                            if len(cleaned) >= 15:
+                            
+                            # Cách 1: Bố cục thẻ gắn chip (ICAO Doc 9303 TD3)
+                            # IDVNM + 9 ký tự số giấy tờ + 1 số checksum + 12 số CCCD
+                            # Để chống dịch chuyển index (do OCR đọc thiếu/thừa số đầu dòng), quét chuỗi số của dòng đầu tiên
+                            # và tìm chuỗi 12 số bắt đầu bằng 0 và có mã tỉnh Việt Nam hợp lệ ở khu vực Optional Data (sau index 10).
+                            first_line_clean = re.sub(r'^(I?D?VNM|I?D?VNN)', '', line_stripped)
+                            first_line_digits = re.sub(r'[^0-9<]', '', first_line_clean)
+                            for offset in range(10, len(first_line_digits) - 11):
+                                candidate = first_line_digits[offset:offset+12]
+                                if len(candidate) == 12 and candidate.startswith('0') and candidate[:3] in _VN_PROVINCE_CODES:
+                                    data['CCCD'] = candidate
+                                    data['OCR Side'] = 'Back'
+                                    break
+                            
+                            # Cách 2: Bố cục fallback của thẻ cũ hoặc bị thiếu ký tự (như mất dấu < ở cuối)
+                            if not data['CCCD'] and len(cleaned) >= 15:
                                 candidate = cleaned[:-3][-12:]  # bỏ 3 cuối, lấy 12 cuối
                                 if len(candidate) == 12 and candidate.startswith('0'):
                                     data['CCCD'] = candidate
