@@ -1758,56 +1758,13 @@ def fetch_single_address(addr):
     
     payload = json.dumps({"address": clean_addr})
     
-    # Retry tối đa 100 lần đối với lỗi mạng/500
-    # Nếu API trả về thành công nhưng data = [] thì chuyển ngay sang backup
-    last_exception = None
-    
-    for attempt in range(30):
-        try:
-            response = _address_session.post(
-                'https://tienich.vnhub.com/api/wards',
-                data=payload,
-                headers=headers,
-                timeout=5
-            )
-            response.raise_for_status()
-            res_data = response.json()
-            
-            if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
-                converted_addr = res_data['data'][0]['address']
-                
-                # Tiêu diệt rác API VNHub (VD: trả về chữ "Substates")
-                converted_addr = re.sub(r'(?i)\bsubstates\b', '', converted_addr)
-                converted_addr = re.sub(r',\s*,', ',', converted_addr) # Xóa dấu phẩy thừa do xóa chữ
-                converted_addr = re.sub(r'\s+', ' ', converted_addr).strip(', ')
-                
-                return {
-                    "original": addr,
-                    "success": True,
-                    "converted": converted_addr,
-                    "_processing_time": time.time() - t0
-                }
-            
-            # Nếu API trả về data rỗng, có thể do Rate Limit ngầm từ VNHub
-            # Ngủ 2s rồi thử lại
-            if attempt < 29:
-                time.sleep(2)
-                continue
-            break
-            
-        except Exception as e:
-            last_exception = e
-            # Lỗi 500 hoặc mạng → thử lại sau 1s
-            if attempt < 29:
-                time.sleep(1)
-                continue
-            break  # hết 30 lần → dùng backup
-
     # -------------------------------------------------------
-    # BACKUP: Geovina.io.vn — chỉ chạy khi VNHub thất bại
-    # Response field cần lấy: data.full_new_address
+    # PRIMARY: Geovina.io.vn
     # -------------------------------------------------------
     import os as _os
+    last_exception = None
+    geovina_failed = False
+    
     while True:
         geovina_token = _os.environ.get(
             'GEOVINA_DEMO_TOKEN',
@@ -1864,23 +1821,79 @@ def fetch_single_address(addr):
                 if updated:
                     continue # Thử lại với token mới
                 else:
-                    return {"original": addr, "success": False, "error": geo_data.get('error', 'Token Geovina đã hết hạn và người dùng đã bỏ qua.'), "_processing_time": time.time() - t0}
+                    last_exception = "Token Geovina đã hết hạn và người dùng đã bỏ qua."
+                    geovina_failed = True
+                    break
 
             full_new = geo_data.get('data', {}).get('full_new_address', '')
             if geo_data.get('success') and full_new:
                 converted_addr = re.sub(r'\s+', ' ', full_new).strip(', ')
-                return {"original": addr, "success": True, "converted": converted_addr, "source": "geovina_backup", "_processing_time": time.time() - t0}
+                return {"original": addr, "success": True, "converted": converted_addr, "source": "geovina", "_processing_time": time.time() - t0}
 
-            return {"original": addr, "success": False, "error": geo_data.get('error', "Không tìm thấy địa chỉ tương ứng (VNHub + Geovina đều thất bại)"), "_processing_time": time.time() - t0}
+            last_exception = geo_data.get('error', "Không tìm thấy địa chỉ tương ứng trên Geovina")
+            geovina_failed = True
+            break
 
         except Exception as geo_err:
-            err_primary = str(last_exception) if last_exception else "data rỗng sau nhiều lần thử"
-            return {
-                "original": addr,
-                "success": False,
-                "error": f"Lỗi kết nối API sau nhiều lần thử VNHub ({err_primary}); Geovina backup cũng lỗi ({str(geo_err)})",
-                "_processing_time": time.time() - t0
-            }
+            last_exception = str(geo_err)
+            geovina_failed = True
+            break
+
+    # -------------------------------------------------------
+    # BACKUP: VNHub
+    # -------------------------------------------------------
+    vnhub_exception = None
+    for attempt in range(30):
+        try:
+            response = _address_session.post(
+                'https://tienich.vnhub.com/api/wards',
+                data=payload,
+                headers=headers,
+                timeout=5
+            )
+            response.raise_for_status()
+            res_data = response.json()
+            
+            if res_data.get('success') and res_data.get('data') and len(res_data['data']) > 0 and res_data['data'][0].get('address'):
+                converted_addr = res_data['data'][0]['address']
+                
+                # Tiêu diệt rác API VNHub (VD: trả về chữ "Substates")
+                converted_addr = re.sub(r'(?i)\bsubstates\b', '', converted_addr)
+                converted_addr = re.sub(r',\s*,', ',', converted_addr) # Xóa dấu phẩy thừa do xóa chữ
+                converted_addr = re.sub(r'\s+', ' ', converted_addr).strip(', ')
+                
+                return {
+                    "original": addr,
+                    "success": True,
+                    "converted": converted_addr,
+                    "source": "vnhub_backup",
+                    "_processing_time": time.time() - t0
+                }
+            
+            # Nếu API trả về data rỗng, có thể do Rate Limit ngầm từ VNHub
+            # Ngủ 2s rồi thử lại
+            if attempt < 29:
+                time.sleep(2)
+                continue
+            break
+            
+        except Exception as e:
+            vnhub_exception = e
+            # Lỗi 500 hoặc mạng → thử lại sau 1s
+            if attempt < 29:
+                time.sleep(1)
+                continue
+            break  # hết 30 lần
+            
+    err_primary = str(last_exception) if last_exception else "Geovina data rỗng"
+    err_backup = str(vnhub_exception) if vnhub_exception else "VNHub data rỗng"
+    
+    return {
+        "original": addr,
+        "success": False,
+        "error": f"Lỗi kết nối API: Geovina ({err_primary}); VNHub backup cũng lỗi ({err_backup})",
+        "_processing_time": time.time() - t0
+    }
 def call_address_api(address_list, max_workers=4):
     if not address_list:
         return []
