@@ -1901,11 +1901,15 @@ def get_unique_images(image_paths):
     import hashlib
     from PIL import Image
     import imagehash
+    import shutil
     
     unique_paths = []
-    seen_md5 = set()
-    seen_phash_dhash = set()
-    duplicates_count = 0
+    seen_md5 = {}
+    seen_phash_dhash = {}
+    duplicates = []
+    
+    if not image_paths:
+        return []
     
     # Sắp xếp danh sách file để ưu tiên giữ lại:
     # 1. Các file đã được đánh số (ưu tiên số nhỏ hơn)
@@ -1929,9 +1933,11 @@ def get_unique_images(image_paths):
         BarColumn(), TaskProgressColumn(), TimeElapsedColumn(), 
         TextColumn("⏳ ETA:"), TimeRemainingColumn(), console=console,
     ) as progress:
-        task = progress.add_task("[cyan]Đang quét dHash & MD5 để diệt ảnh trùng lặp...", total=len(image_paths))
+        task = progress.add_task("[cyan]Đang quét dHash & MD5 để lọc ảnh trùng lặp...", total=len(image_paths))
         for path in image_paths:
             is_duplicate = False
+            duplicate_of = None
+            reason = ""
             
             try:
                 # 1. Kiểm tra MD5 (trùng lặp byte-by-byte chính xác 100%)
@@ -1940,6 +1946,8 @@ def get_unique_images(image_paths):
                     
                 if file_md5 in seen_md5:
                     is_duplicate = True
+                    duplicate_of = seen_md5[file_md5]
+                    reason = "MD5 trùng lặp (giống hệt 100%)"
                 else:
                     # 2. Kiểm tra bằng imagehash (phash + dhash kích thước 16x16 = 512 bit)
                     # Chống false-positive cực tốt với CCCD
@@ -1951,27 +1959,59 @@ def get_unique_images(image_paths):
                             
                         if combined_hash in seen_phash_dhash:
                             is_duplicate = True
+                            duplicate_of = seen_phash_dhash[combined_hash]
+                            reason = "dHash & pHash trùng lặp (nội dung ảnh giống nhau)"
                         else:
-                            seen_phash_dhash.add(combined_hash)
+                            seen_phash_dhash[combined_hash] = path
                     except Exception:
                         pass # Bỏ qua nếu lỗi mở ảnh
                         
                 if is_duplicate:
-                    duplicates_count += 1
-                    try:
-                        os.remove(path)
-                    except Exception:
-                        pass
+                    duplicates.append({
+                        'duplicate': path,
+                        'original': duplicate_of,
+                        'reason': reason
+                    })
                 else:
-                    seen_md5.add(file_md5)
+                    seen_md5[file_md5] = path
                     unique_paths.append(path)
             except Exception:
                 unique_paths.append(path)
                 
             progress.advance(task)
             
-    if duplicates_count > 0:
-        console.print(f"[bold yellow]⚠️ Đã lọc bỏ và XÓA {duplicates_count} ảnh trùng lặp hoàn toàn về nội dung khỏi ổ cứng![/bold yellow]")
+    if duplicates:
+        first_img_dir = os.path.dirname(image_paths[0])
+        dup_dir = os.path.join(first_img_dir, "duplicated_images")
+        os.makedirs(dup_dir, exist_ok=True)
+        report_path = os.path.join(dup_dir, "duplicated_report.txt")
+        
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write("BÁO CÁO ẢNH TRÙNG LẶP\n")
+            f.write("="*50 + "\n\n")
+            
+            for dup in duplicates:
+                src_path = dup['duplicate']
+                filename = os.path.basename(src_path)
+                dest_path = os.path.join(dup_dir, filename)
+                
+                # Chống ghi đè nếu trùng tên file
+                if os.path.exists(dest_path):
+                    name, ext = os.path.splitext(filename)
+                    import time
+                    dest_path = os.path.join(dup_dir, f"{name}_{int(time.time()*1000)}{ext}")
+                    
+                try:
+                    shutil.move(src_path, dest_path)
+                    f.write(f"- Ảnh bị trùng: {filename}\n")
+                    f.write(f"  + Lý do: {dup['reason']}\n")
+                    orig_name = os.path.basename(dup['original']) if dup['original'] else 'Unknown'
+                    f.write(f"  + Trùng với ảnh gốc: {orig_name}\n")
+                    f.write(f"  + Đã di chuyển đến: {dest_path}\n\n")
+                except Exception as e:
+                    f.write(f"- Lỗi khi di chuyển ảnh {filename}: {e}\n\n")
+                    
+        console.print(f"[bold yellow]⚠️ Đã lọc ra {len(duplicates)} ảnh trùng lặp. Đã di chuyển vào thư mục '{dup_dir}' và tạo báo cáo.[/bold yellow]")
         
     return unique_paths
 
