@@ -4426,6 +4426,17 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                         if address_map[orig_val].get('final_cleaned_orig'):
                             row[orig_idx].value = address_map[orig_val]['final_cleaned_orig']
                             row[orig_idx].font = Font(color="FF0000")
+                            
+                        # Xóa câu thông báo lỗi kết nối API cũ khỏi Ghi chú nếu chuẩn hóa lại thành công
+                        if note_idx and row[note_idx].value:
+                            old_note = str(row[note_idx].value)
+                            if "Lỗi kết nối API" in old_note:
+                                import re
+                                new_note = re.sub(r'Lỗi kết nối API[^;]*(?:;|\s*$)', '', old_note)
+                                new_note = re.sub(r'^\s*;\s*', '', new_note)
+                                new_note = re.sub(r'\s*;\s*$', '', new_note)
+                                new_note = new_note.replace(';  ;', ';').replace('; ;', ';').strip()
+                                row[note_idx].value = new_note
 
     # ---------- AUTOMATIC ROW MERGING FOR REPROCESSING (MODE 1, 2, 3) ----------
     if mode in ("1", "2", "3"):
