@@ -2031,12 +2031,17 @@ def run_wizard(input_dir, normalize_address=True):
         latest_excel = max(all_old_excels, key=os.path.getmtime)
         
     if latest_excel:
-        incremental_scan = Confirm.ask(f"\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file {os.path.basename(latest_excel)}). Bạn muốn QUÉT NỐI TIẾP (chỉ quét ảnh mới ném vào) không? (Chọn No để quét lại từ đầu)[/bold yellow]", default=True)
+        if IN_COLAB:
+            incremental_scan = True
+        else:
+            incremental_scan = Confirm.ask(f"\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file {os.path.basename(latest_excel)}). Bạn muốn QUÉT NỐI TIẾP (chỉ quét ảnh mới ném vào) không? (Chọn No để quét lại từ đầu)[/bold yellow]", default=True)
     elif os.path.exists(os.path.join(input_dir, "original.zip")):
-        user_input = clean_path(Prompt.ask("\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file original.zip) nhưng không tự động tìm thấy thư mục kết quả cũ.\n👉 Nếu bạn muốn QUÉT NỐI TIẾP, vui lòng kéo thả THƯ MỤC EXPORT cũ hoặc FILE EXCEL cũ vào đây (Nhấn Enter để tìm trong thư mục export mặc định của app, hoặc gõ 'n' để quét lại từ đầu)[/bold yellow]"))
-        
-        if not user_input or user_input.lower() == 'y':
+        if IN_COLAB:
             user_input = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports')
+        else:
+            user_input = clean_path(Prompt.ask("\n[bold yellow]Phát hiện thư mục này đã từng được xử lý (có file original.zip) nhưng không tự động tìm thấy thư mục kết quả cũ.\n👉 Nếu bạn muốn QUÉT NỐI TIẾP, vui lòng kéo thả THƯ MỤC EXPORT cũ hoặc FILE EXCEL cũ vào đây (Nhấn Enter để tìm trong thư mục export mặc định của app, hoặc gõ 'n' để quét lại từ đầu)[/bold yellow]"))
+            if not user_input or user_input.lower() == 'y':
+                user_input = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports')
             
         if user_input and user_input.lower() != 'n':
             if os.path.isfile(user_input) and user_input.endswith('.xlsx'):
@@ -2287,7 +2292,10 @@ def run_wizard(input_dir, normalize_address=True):
             api_threads = 4
 
     # Wizard confirmation
-    confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu xử lý ngay bây giờ không?[/bold yellow]", default=True)
+    if IN_COLAB:
+        confirm = True
+    else:
+        confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu xử lý ngay bây giờ không?[/bold yellow]", default=True)
     if not confirm:
         console.print("[yellow]Đã hủy quá trình.[/yellow]")
         return
@@ -3330,7 +3338,10 @@ def run_wizard(input_dir, normalize_address=True):
     console.print("  [cyan]2[/cyan]. Lưu mặc định ở thư mục export của dự án (mặc định)")
     console.print("  [cyan]3[/cyan]. Nhập địa chỉ thư mục mong muốn")
     
-    export_option = Prompt.ask("[bold cyan]Nhập lựa chọn của bạn[/bold cyan]", choices=["1", "2", "3"], default="2")
+    if IN_COLAB:
+        export_option = "1"
+    else:
+        export_option = Prompt.ask("[bold cyan]Nhập lựa chọn của bạn[/bold cyan]", choices=["1", "2", "3"], default="2")
     
     if export_option == "1":
         clean_input_dir = os.path.normpath(input_dir)
@@ -3357,7 +3368,10 @@ def run_wizard(input_dir, normalize_address=True):
     timestamp = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
     default_filename = f"ket_qua_{timestamp}.xlsx"
     
-    custom_name = Prompt.ask(f"[bold cyan]Nhập tên file Excel muốn lưu[/bold cyan] (nhấn Enter để dùng tên mặc định [yellow]'{default_filename}'[/yellow])").strip()
+    if IN_COLAB:
+        custom_name = ""
+    else:
+        custom_name = Prompt.ask(f"[bold cyan]Nhập tên file Excel muốn lưu[/bold cyan] (nhấn Enter để dùng tên mặc định [yellow]'{default_filename}'[/yellow])").strip()
     if not custom_name:
         output_filename = os.path.join(exports_dir, default_filename)
     else:
@@ -3913,7 +3927,10 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             console.print("[yellow]Số luồng không hợp lệ, dùng mặc định 4[/yellow]")
             api_threads = 4
         
-    confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu TÁI XỬ LÝ ngay bây giờ không?[/bold yellow]", default=True)
+    if IN_COLAB:
+        confirm = True
+    else:
+        confirm = Confirm.ask("\n[bold yellow]Bạn có muốn bắt đầu TÁI XỬ LÝ ngay bây giờ không?[/bold yellow]", default=True)
     if not confirm:
         console.print("[yellow]Đã hủy quá trình.[/yellow]")
         return
@@ -4899,12 +4916,17 @@ def main():
             input_dir = args[1]
             first_run = False
             
-            DEBUG_MODE = Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=DEBUG_MODE)
-            do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng) không?[/bold yellow]", default=True)
+            if IN_COLAB:
+                do_normalize = True
+            else:
+                DEBUG_MODE = Confirm.ask("[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (ghi toàn bộ Raw OCR Text vào file log) không?[/bold yellow]", default=DEBUG_MODE)
+                do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng) không?[/bold yellow]", default=True)
             
             if input_dir.endswith('.xlsx') and os.path.isfile(input_dir):
                 if do_normalize: check_and_prompt_geovina_token()
                 run_reprocess(input_dir, normalize_address=do_normalize)
+                if IN_COLAB:
+                    break
                 if not Confirm.ask("\n[bold yellow]Bạn có muốn tiếp tục xử lý thư mục khác không?[/bold yellow]"):
                     console.print("\n[bold green]Cảm ơn bạn đã sử dụng phần mềm. Tạm biệt![/bold green]")
                     break
@@ -4912,6 +4934,8 @@ def main():
             else:
                 if do_normalize: check_and_prompt_geovina_token()
                 run_wizard(input_dir, normalize_address=do_normalize)
+                if IN_COLAB:
+                    break
         else:
             console.print("\n[bold cyan]--- VUI LÒNG CHỌN LUỒNG XỬ LÝ ---[/bold cyan]")
             console.print("[1] Quét mới / Quét nối tiếp (Xử lý một thư mục ảnh)")
