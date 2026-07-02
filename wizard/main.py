@@ -4554,6 +4554,11 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             return True
 
         def _should_merge(r1, r2, all_records):
+            note1 = str(r1.get('Ghi chú') or '')
+            note2 = str(r2.get('Ghi chú') or '')
+            if 'Đọc mã QR' in note1 and 'Đọc mã QR' in note2:
+                return False
+                
             gen1 = str(r1.get('Giới tính') or '').strip().lower()
             gen2 = str(r2.get('Giới tính') or '').strip().lower()
             if gen1 and gen2 and gen1 in ['nam', 'nữ'] and gen2 in ['nam', 'nữ'] and gen1 != gen2:
