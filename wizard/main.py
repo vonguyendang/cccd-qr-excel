@@ -4458,7 +4458,7 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             if not c1_clean or not c2_clean: return False
             if len(c1_clean) == 12 and len(c2_clean) == 12:
                 diffs = sum(1 for a, b in zip(c1_clean, c2_clean) if a != b)
-                return diffs <= 3
+                return diffs <= 1
             return c1_clean == c2_clean
 
         def _is_similar_name(n1, n2):
@@ -4471,7 +4471,7 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             if not w1 or not w2:
                 return False
             w_ratio = difflib.SequenceMatcher(None, w1, w2).ratio()
-            return w_ratio >= 0.50
+            return w_ratio >= 0.75
 
         def _is_similar_dob(d1, d2):
             if not d1 or not d2: return False
@@ -4582,11 +4582,21 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             if dob_match or issue_match or cccd_match or is_unique_name:
                 c1 = r1.get('CCCD')
                 c2 = r2.get('CCCD')
+                
+                # Nếu tên không giống nhau hoàn toàn, cần kiểm tra kỹ hơn
+                if n1 != n2:
+                    # Nếu CCCD khác nhau hoàn toàn hoặc sai khác > 1 số, không gộp
+                    if not _is_similar_cccd(c1, c2):
+                        return False
+                
                 if not _is_invalid_cccd_placeholder(c1) and not _is_invalid_cccd_placeholder(c2):
                     if not _is_similar_cccd(c1, c2):
                         return False
                 if r1.get('has_qr_data') and r2.get('has_qr_data'):
-                    if not _is_similar_cccd(c1, c2):
+                    # Nếu cả 2 đều có QR data, CCCD phải giống hệt nhau mới gộp
+                    c1_clean = re.sub(r'\D', '', str(c1))
+                    c2_clean = re.sub(r'\D', '', str(c2))
+                    if c1_clean != c2_clean:
                         return False
                 return True
                 
