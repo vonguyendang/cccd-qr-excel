@@ -1842,16 +1842,20 @@ def fetch_single_address(addr):
                 if geo_resp.status_code == 429:
                     time.sleep(2)
                     continue
-                geo_resp.raise_for_status()
+                if geo_resp.status_code not in (401, 402, 403):
+                    geo_resp.raise_for_status()
                 break
                 
-            geo_data = geo_resp.json()
+            try:
+                geo_data = geo_resp.json()
+            except Exception:
+                geo_data = {}
             
             is_token_error = False
-            if geo_resp.status_code in (401, 403):
+            if geo_resp.status_code in (401, 402, 403):
                 is_token_error = True
             elif not geo_data.get('success'):
-                err_text = geo_data.get('error', '').lower()
+                err_text = str(geo_data.get('error', '')).lower()
                 if "token" in err_text or "hết hạn" in err_text or "không hợp lệ" in err_text or "unauthorized" in err_text:
                     is_token_error = True
                     
