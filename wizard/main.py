@@ -1,6 +1,13 @@
 import os
 import warnings
 
+try:
+    import resource
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    if soft < 4096:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (min(hard, 8192), hard))
+except Exception:
+    pass
 # Giới hạn số luồng của OpenMP/MKL để tránh thread explosion khi chạy ThreadPoolExecutor
 # PHẢI ĐẶT TRƯỚC KHI IMPORT TORCH, CV2
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -1211,7 +1218,11 @@ def extract_ocr_data(image_path_or_cv2img, use_opencv_align=None):
             thresh_bottom = cv2.threshold(bordered, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
             
             custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<'
-            text_bottom = pytesseract.image_to_string(thresh_bottom, config=custom_config)
+            try:
+                text_bottom = pytesseract.image_to_string(thresh_bottom, config=custom_config)
+            except UnboundLocalError:
+                text_bottom = ""
+                LOG("Pytesseract failed with UnboundLocalError (likely too many open files / FD limit)")
             t_ocr_total += (time.time() - t_ocr_start)
             
             # Đánh giá điểm (Score)
