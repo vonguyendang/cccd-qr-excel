@@ -52,15 +52,16 @@ def main():
         
         name = remove_accents(name_val)
         note = str(note_val).strip() if pd.notna(note_val) else ""
+        note_unaccented = remove_accents(note)
         
         if not name:
             continue
             
         current_status = name_to_status.get(name)
         # Ưu tiên "Đọc mã QR" nếu có nhiều kết quả trùng tên
-        if note == "Đọc mã QR":
+        if note_unaccented == "doc ma qr":
             name_to_status[name] = "Đọc mã QR"
-        elif note == "QR không đọc được":
+        elif note_unaccented == "qr khong doc duoc":
             if current_status != "Đọc mã QR":
                 name_to_status[name] = "QR không đọc được"
                 

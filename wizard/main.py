@@ -4448,6 +4448,7 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
         def _norm_for_match(text):
             if not text: return ''
             text = str(text).upper().strip()
+            text = text.replace('Đ', 'D')
             nfkd = unicodedata.normalize('NFKD', text)
             return ' '.join(''.join(c for c in nfkd if not unicodedata.combining(c)).split())
 
@@ -4554,9 +4555,9 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             return True
 
         def _should_merge(r1, r2, all_records):
-            note1 = str(r1.get('Ghi chú') or '')
-            note2 = str(r2.get('Ghi chú') or '')
-            if 'Đọc mã QR' in note1 and 'Đọc mã QR' in note2:
+            note1 = _norm_for_match(str(r1.get('Ghi chú') or ''))
+            note2 = _norm_for_match(str(r2.get('Ghi chú') or ''))
+            if 'DOC MA QR' in note1 and 'DOC MA QR' in note2:
                 return False
                 
             gen1 = str(r1.get('Giới tính') or '').strip().lower()
