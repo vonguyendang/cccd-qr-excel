@@ -401,10 +401,22 @@ def parse_ocr_text(text):
 
                 # ---------------------------------------------------------
                 # 1. NHẬN DIỆN MẶT THẺ (FRONT / BACK)
-                if "<<" in text_upper or "IDVNM" in text_upper or "VNM" in text_upper or "ĐẶC ĐIỂM NHẬN DẠNG" in text_upper or "NGÓN TRỎ" in text_upper or "CỤC TRƯỞNG" in text_upper or "BỘ CÔNG AN" in text_upper:
+                front_kws = ["CĂN CƯỚC", "CẦN CƯỚC", "CÔNG DÂN", "ĐỘC LẬP", "TỰ DO", "HỌ VÀ TÊN"]
+                back_kws = ["IDVNM", "ĐẶC ĐIỂM NHẬN DẠNG", "NGÓN TRỎ", "CỤC TRƯỞNG", "BỘ CÔNG AN"]
+                
+                front_score = sum(1 for kw in front_kws if kw in text_upper)
+                back_score = sum(1 for kw in back_kws if kw in text_upper)
+                
+                # "<<" and "VNM" can be hallucinated on the front side, so only count if no front keywords
+                if front_score == 0:
+                    if "<<" in text_upper: back_score += 0.5
+                    if "VNM" in text_upper: back_score += 0.5
+                
+                if front_score > 0 and front_score >= back_score:
+                    data['OCR Side'] = 'Front'
+                elif back_score > 0:
                     data['OCR Side'] = 'Back'
-                # Các từ khóa đặc trưng của Mặt Trước
-                elif "CĂN CƯỚC" in text_upper or "CẦN CƯỚC" in text_upper or "CÔNG DÂN" in text_upper or "ĐỘC LẬP" in text_upper or "TỰ DO" in text_upper or "HỌ VÀ TÊN" in text_upper:
+                else:
                     data['OCR Side'] = 'Front'
 
                 # ---------------------------------------------------------
@@ -1205,9 +1217,9 @@ def extract_ocr_data(image_path_or_cv2img, use_opencv_align=None):
             # Đánh giá điểm (Score)
             upper_text = text_bottom.upper()
             score = 0
-            if 'IDVNM' in upper_text:
+            if any(kw in upper_text for kw in ['IDVNM', '1DVNM', 'I0VNM', 'IDVN', '1DVN', 'I0VN']):
                 score += 500
-            if 'VNM' in upper_text:
+            elif 'VNM' in upper_text:
                 score += 200
             
             # Khôi phục một phần dấu < bị nhận diện sai thành K hoặc khoảng trắng (CHỈ cho mrz_lines xuất ra)
@@ -1215,7 +1227,15 @@ def extract_ocr_data(image_path_or_cv2img, use_opencv_align=None):
             clean_mrz_text = re.sub(r'[^A-Z0-9<\n]', '', text_bottom_fixed)
             mrz_lines = [l.strip() for l in clean_mrz_text.split('\n') if len(l.strip()) >= 20]
             
-            if score > best_rot_score and score > 50:
+            if len(mrz_lines) >= 2:
+                score += 500
+            elif len(mrz_lines) == 1:
+                if mrz_lines[0].count('<') >= 5:
+                    score += 150
+                else:
+                    score += 50
+            
+            if score > best_rot_score and score >= 400:
                 is_back_side = True
                 best_rot_score = score
                 best_back_rotated_img = rotated
