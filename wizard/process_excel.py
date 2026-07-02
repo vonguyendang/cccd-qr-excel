@@ -59,11 +59,16 @@ def main():
             
         current_status = name_to_status.get(name)
         # Ưu tiên "Đọc mã QR" nếu có nhiều kết quả trùng tên
-        if note_unaccented == "doc ma qr":
+        if "doc ma qr" in note_unaccented:
             name_to_status[name] = "Đọc mã QR"
-        elif note_unaccented == "qr khong doc duoc":
+        elif "qr khong doc duoc" in note_unaccented:
             if current_status != "Đọc mã QR":
                 name_to_status[name] = "QR không đọc được"
+        else:
+            # Nếu có tên trong file export nhưng không có 2 ghi chú trên, vẫn đánh dấu là Chưa đầy đủ (hoặc một cờ nào đó tuỳ logic, tạm coi là Chưa đầy đủ nếu có tên)
+            if not current_status:
+                name_to_status[name] = "QR không đọc được" # Đã có hồ sơ nhưng ko có mã QR
+
                 
     print(f"Đã tải thông tin {len(name_to_status)} người duy nhất từ thư mục exports.")
     
