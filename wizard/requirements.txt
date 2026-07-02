@@ -20,3 +20,4 @@ zxing-cpp==3.0.0
 pytesseract
 pytesseract
 huggingface_hub
+imagehash

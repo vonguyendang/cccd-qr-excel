@@ -1900,9 +1900,11 @@ console = Console()
 def get_unique_images(image_paths):
     import hashlib
     from PIL import Image
+    import imagehash
+    
     unique_paths = []
     seen_md5 = set()
-    seen_dhash = []
+    seen_phash_dhash = set()
     duplicates_count = 0
     
     # Sắp xếp danh sách file để ưu tiên giữ lại:
@@ -1922,19 +1924,6 @@ def get_unique_images(image_paths):
             
     image_paths.sort(key=sort_key)
     
-    def get_dhash(img_path):
-        try:
-            with Image.open(img_path) as img:
-                img = img.convert('L').resize((9, 8), Image.Resampling.LANCZOS)
-                pixels = list(img.getdata())
-                diff = [pixels[r * 9 + c] > pixels[r * 9 + c + 1] for r in range(8) for c in range(8)]
-                return sum([2 ** i for (i, v) in enumerate(diff) if v])
-        except Exception:
-            return None
-
-    def hamming_distance(h1, h2):
-        return bin(h1 ^ h2).count('1')
-    
     with Progress(
         SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
         BarColumn(), TaskProgressColumn(), TimeElapsedColumn(), 
@@ -1942,21 +1931,31 @@ def get_unique_images(image_paths):
     ) as progress:
         task = progress.add_task("[cyan]Đang quét dHash & MD5 để diệt ảnh trùng lặp...", total=len(image_paths))
         for path in image_paths:
+            is_duplicate = False
+            
             try:
+                # 1. Kiểm tra MD5 (trùng lặp byte-by-byte chính xác 100%)
                 with open(path, 'rb') as f:
                     file_md5 = hashlib.md5(f.read()).hexdigest()
                     
                 if file_md5 in seen_md5:
                     is_duplicate = True
                 else:
-                    is_duplicate = False
-                    file_dhash = get_dhash(path)
-                    if file_dhash is not None:
-                        for old_dhash in seen_dhash:
-                            if hamming_distance(file_dhash, old_dhash) <= 2:
-                                is_duplicate = True
-                                break
-                                
+                    # 2. Kiểm tra bằng imagehash (phash + dhash kích thước 16x16 = 512 bit)
+                    # Chống false-positive cực tốt với CCCD
+                    try:
+                        with Image.open(path) as img:
+                            p_hash = str(imagehash.phash(img, hash_size=16))
+                            d_hash = str(imagehash.dhash(img, hash_size=16))
+                            combined_hash = f"{p_hash}_{d_hash}"
+                            
+                        if combined_hash in seen_phash_dhash:
+                            is_duplicate = True
+                        else:
+                            seen_phash_dhash.add(combined_hash)
+                    except Exception:
+                        pass # Bỏ qua nếu lỗi mở ảnh
+                        
                 if is_duplicate:
                     duplicates_count += 1
                     try:
@@ -1965,11 +1964,10 @@ def get_unique_images(image_paths):
                         pass
                 else:
                     seen_md5.add(file_md5)
-                    if file_dhash is not None:
-                        seen_dhash.append(file_dhash)
                     unique_paths.append(path)
             except Exception:
                 unique_paths.append(path)
+                
             progress.advance(task)
             
     if duplicates_count > 0:
