@@ -44,33 +44,56 @@ def main():
         print("Lỗi: Các file trong exports cần có cột 'Họ tên' và 'Ghi chú'")
         return
         
-    # Tạo mapping name -> status
-    name_to_status = {}
+    # Tạo mapping name -> data
+    name_to_data = {}
     for _, row in exports_df.iterrows():
         name_val = row['Họ tên']
-        note_val = row['Ghi chú']
+        note_val = row.get('Ghi chú')
+        cccd_val = row.get('CCCD')
+        cmnd_val = row.get('CMND')
         
         name = remove_accents(name_val)
         note = str(note_val).strip() if pd.notna(note_val) else ""
         note_unaccented = remove_accents(note)
+        cccd = str(cccd_val).strip() if pd.notna(cccd_val) else ""
+        cmnd = str(cmnd_val).strip() if pd.notna(cmnd_val) else ""
         
         if not name:
             continue
             
-        current_status = name_to_status.get(name)
+        current_data = name_to_data.get(name, {})
+        current_status = current_data.get("status")
+        
+        new_status = current_status
         # Ưu tiên "Đọc mã QR" nếu có nhiều kết quả trùng tên
         if "doc ma qr" in note_unaccented:
-            name_to_status[name] = "Đọc mã QR"
+            new_status = "Đọc mã QR"
         elif "qr khong doc duoc" in note_unaccented:
             if current_status != "Đọc mã QR":
-                name_to_status[name] = "QR không đọc được"
+                new_status = "QR không đọc được"
         else:
-            # Nếu có tên trong file export nhưng không có 2 ghi chú trên, vẫn đánh dấu là Chưa đầy đủ (hoặc một cờ nào đó tuỳ logic, tạm coi là Chưa đầy đủ nếu có tên)
+            # Nếu có tên trong file export nhưng không có 2 ghi chú trên, vẫn đánh dấu là Chưa đầy đủ
             if not current_status:
-                name_to_status[name] = "QR không đọc được" # Đã có hồ sơ nhưng ko có mã QR
-
+                new_status = "QR không đọc được"
                 
-    print(f"Đã tải thông tin {len(name_to_status)} người duy nhất từ thư mục exports.")
+        # Cập nhật CCCD, CMND (Ưu tiên lấy nếu chưa có, hoặc nếu mới chuyển lên trạng thái "Đọc mã QR")
+        new_cccd = current_data.get("cccd", "")
+        if cccd and cccd.lower() not in ['nan', 'none']:
+            if not new_cccd or new_status == "Đọc mã QR":
+                new_cccd = cccd
+                
+        new_cmnd = current_data.get("cmnd", "")
+        if cmnd and cmnd.lower() not in ['nan', 'none']:
+            if not new_cmnd or new_status == "Đọc mã QR":
+                new_cmnd = cmnd
+                
+        name_to_data[name] = {
+            "status": new_status,
+            "cccd": new_cccd,
+            "cmnd": new_cmnd
+        }
+                
+    print(f"Đã tải thông tin {len(name_to_data)} người duy nhất từ thư mục exports.")
     
     # 2. Xử lý file đích bằng openpyxl để giữ nguyên định dạng
     if not os.path.exists(target_file):
@@ -99,6 +122,10 @@ def main():
         return
     
     col_name = headers.get('HỌ VÀ TÊN')
+    col_name_no_accent = headers.get('HỌ VÀ TÊN KHÔNG DẤU')
+    col_cccd = headers.get('CCCD')
+    col_cmnd = headers.get('CMND')
+    
     col_full = headers.get('ĐÃ CÓ THÔNG TIN CCCD (Đầy đủ)')
     col_partial = headers.get('ĐÃ CÓ THÔNG TIN CCCD (Chưa đầy đủ)')
     col_none = headers.get('CHƯA CÓ THÔNG TIN CCCD')
@@ -132,7 +159,19 @@ def main():
             continue
             
         unaccented_target = remove_accents(target_name_cell)
-        status = name_to_status.get(unaccented_target)
+        
+        # Bổ sung Họ tên không dấu (In hoa)
+        if col_name_no_accent:
+            ws.cell(row=row, column=col_name_no_accent).value = unaccented_target.upper()
+            
+        data = name_to_data.get(unaccented_target, {})
+        status = data.get("status")
+        
+        # Bổ sung CCCD, CMND nếu tìm thấy
+        if col_cccd and data.get("cccd"):
+            ws.cell(row=row, column=col_cccd).value = data.get("cccd")
+        if col_cmnd and data.get("cmnd"):
+            ws.cell(row=row, column=col_cmnd).value = data.get("cmnd")
         
         if status == "Đọc mã QR":
             ws.cell(row=row, column=col_full).value = 'X'
