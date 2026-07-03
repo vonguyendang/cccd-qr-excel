@@ -3320,7 +3320,7 @@ def run_wizard(input_dir, normalize_address=True):
     ws.title = "Data"
 
     headers = [
-        "STT", "Họ tên", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
+        "STT", "Họ tên", "Họ tên không dấu", "CCCD", "CMND", "Giới tính", "Ngày sinh", 
         "Nơi thường trú gốc", "Địa chỉ chuẩn hóa mới", "Ngày cấp CCCD", "Nơi cấp", "Ngày hết hạn", "Phân loại", "Ghi chú", "QR Raw", 
         "Ảnh mặt trước CCCD/CC", "Ảnh mặt sau CCCD/CC", "Ảnh khác (SMS/Chụp màn hình/...)", "Đổi tên Ảnh mặt trước CCCD/CC", "Đổi tên Ảnh mặt sau CCCD/CC", "Đổi tên Ảnh khác"
     ]
@@ -3371,10 +3371,18 @@ def run_wizard(input_dir, normalize_address=True):
             row_data['Đổi tên Ảnh mặt trước CCCD/CC'] = ''
             row_data['Đổi tên Ảnh mặt sau CCCD/CC'] = ''
 
+    import unicodedata
+    def _unaccent_name(text):
+        if not text: return ''
+        text = str(text).upper().strip().replace('Đ', 'D')
+        nfkd = unicodedata.normalize('NFKD', text)
+        return ' '.join(''.join(c for c in nfkd if not unicodedata.combining(c)).split())
+
     for idx, row_data in enumerate(processed_data):
         row = [
             idx + 1,
             row_data['Họ tên'],
+            _unaccent_name(row_data['Họ tên']),
             row_data['CCCD'],
             row_data['CMND'],
             row_data['Giới tính'],
