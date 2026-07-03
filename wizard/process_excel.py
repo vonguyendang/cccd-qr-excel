@@ -165,6 +165,8 @@ def main():
     pink_fill = PatternFill(start_color="FFC0CB", end_color="FFC0CB", fill_type="solid")
     no_fill = PatternFill(fill_type=None)
     
+    last_col = max(headers.values()) if headers else ws.max_column
+    
     print("Đang đối chiếu dữ liệu...")
     matched_names = set()
     for row in range(header_row + 1, ws.max_row + 1):
@@ -204,19 +206,19 @@ def main():
             ws.cell(row=row, column=col_status).value = 'Thông tin đầy đủ'
             list_full.append(person_data)
             # Xóa màu của dòng
-            for col_idx in range(1, ws.max_column + 1):
+            for col_idx in range(1, last_col + 1):
                 ws.cell(row=row, column=col_idx).fill = no_fill
         elif status == "QR không đọc được":
             ws.cell(row=row, column=col_status).value = 'Thông tin chưa đầy đủ'
             list_partial.append(person_data)
             # Tô màu vàng cho dòng
-            for col_idx in range(1, ws.max_column + 1):
+            for col_idx in range(1, last_col + 1):
                 ws.cell(row=row, column=col_idx).fill = yellow_fill
         else:
             ws.cell(row=row, column=col_status).value = 'Chưa có thông tin'
             list_none.append(person_data)
             # Tô màu hồng cho dòng
-            for col_idx in range(1, ws.max_column + 1):
+            for col_idx in range(1, last_col + 1):
                 ws.cell(row=row, column=col_idx).fill = pink_fill
                 
     # Xoá các sheet cũ nếu có để tránh lỗi
