@@ -50,7 +50,12 @@ Ví dụ: Lấy *Họ tên, Ngày sinh* ở mặt trước đắp chung với *N
 - Cung cấp thêm 4 cột hình ảnh vào file Excel: "Ảnh mặt trước gốc", "Ảnh mặt sau gốc", và "Tên ảnh đã đổi".
 - Đặc biệt với phiên bản Terminal (CLI), toàn bộ hình ảnh sau khi quét sẽ được tự động đổi tên (theo format `{Họ tên}_{CCCD/CMND}`) và phân loại nén vào **5 file ZIP riêng biệt**: `original.zip` (Ảnh gốc), `rename.zip` (Ảnh đã đổi tên), `QR_scanned.zip` (Ảnh quét bằng QR), `OCR_scanned.zip` (Ảnh phải dùng AI để đọc), và `duplicate.zip` (Ảnh rác/trùng lặp).
 
-### 6. Multi-device Sync (Đồng bộ đa thiết bị)
+### 6. Gộp Dữ liệu vào File Excel Tự động (Đối soát)
+
+- Đi kèm script `process_excel.py` giúp tự động đối chiếu và gộp thông tin (CCCD, CMND) từ kết quả quét vào một file Excel danh sách tổng hợp có sẵn.
+- Tự động tô màu dòng, đánh dấu trạng thái (Đầy đủ, Chưa đầy đủ, Chưa có thông tin) cho hàng nghìn người chỉ trong vài giây.
+
+### 7. Multi-device Sync (Đồng bộ đa thiết bị)
 
 - Kết nối Web App qua WebSocket, cho phép nhiều người/thiết bị cùng quét chung vào 1 phòng theo thời gian thực.
 - Cơ chế "Backup Kép" (Dual Backup) tự động lưu trữ tiến trình ra file JSON. Có thể khôi phục lại dễ dàng và tự động dọn rác sau 10 ngày.

@@ -48,6 +48,24 @@ python3 main.py
 4. Quét xong, hệ thống sẽ tự động tạo một thư mục `exports/` nằm ngay bên trong thư mục `wizard/`. 
 5. Toàn bộ thành quả (bao gồm file Excel, 5 file ZIP phân loại hình ảnh, và file Log chi tiết tiến trình) sẽ xuất hiện tại thư mục `wizard/exports/`. Mở lên và tận hưởng thôi!
 
+## 📝 Bước 3: (Tuỳ chọn) Gộp dữ liệu vào File Excel có sẵn (`process_excel.py`)
+
+Công cụ cung cấp thêm một script bổ trợ `process_excel.py` giúp bạn tự động đối chiếu và cập nhật dữ liệu CCCD từ các file kết quả quét (nằm trong thư mục `exports`) vào một **file Excel danh sách tổng hợp có sẵn** của cơ quan/đơn vị bạn.
+
+**Cách sử dụng:**
+1. Mở file `process_excel.py` bằng trình soạn thảo mã nguồn (như VS Code, Notepad,...).
+2. Sửa dòng cấu hình `target_file` (khoảng dòng 19) thành đường dẫn trỏ tới file Excel đích của bạn.
+   > ⚠️ **Lưu ý:** File Excel đích bắt buộc phải có cột **'HỌ VÀ TÊN'** ở sheet đầu tiên (các cột khác như TRẠNG THÁI, CCCD, CMND sẽ tự động được tạo nếu chưa có).
+3. Tại thư mục `wizard`, chạy lệnh:
+   ```bash
+   python3 process_excel.py
+   ```
+4. Script sẽ quét toàn bộ các file trong thư mục `exports/`, so khớp tên (không dấu) với file Excel đích và tự động thực hiện:
+   - Đổi tên sheet đầu tiên thành **Tổng quan**.
+   - Bổ sung số **CCCD/CMND** và ghi nhận vào cột **TRẠNG THÁI** ("Thông tin đầy đủ", "Thông tin chưa đầy đủ", "Chưa có thông tin").
+   - Tô màu dòng tự động (tô màu vàng cho trường hợp thông tin chưa đầy đủ, tô màu hồng cho người chưa có thông tin).
+   - Tự động tạo thêm **4 sheet mới** (`Thống kê`, `Thông tin đầy đủ`, `Thông tin chưa đầy đủ`, `Chưa có thông tin`) chứa bảng danh sách và bảng thống kê chi tiết.
+
 ---
 
 ## Cách xử lý các lỗi thường gặp khi cài đặt
