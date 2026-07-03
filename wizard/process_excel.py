@@ -165,7 +165,7 @@ def main():
     pink_fill = PatternFill(start_color="FFC0CB", end_color="FFC0CB", fill_type="solid")
     no_fill = PatternFill(fill_type=None)
     
-    last_col = max(headers.values()) if headers else ws.max_column
+    last_col = col_status if col_status else (max(headers.values()) if headers else ws.max_column)
     
     print("Đang đối chiếu dữ liệu...")
     matched_names = set()
