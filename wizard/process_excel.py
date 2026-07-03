@@ -126,6 +126,21 @@ def main():
     col_cccd = headers.get('CCCD')
     col_cmnd = headers.get('CMND')
     
+    # Nếu không tìm thấy các cột mới, tự động chèn 3 cột sau cột HỌ VÀ TÊN
+    if not col_name_no_accent and not col_cccd and not col_cmnd:
+        print("Tự động bổ sung 3 cột (HỌ VÀ TÊN KHÔNG DẤU, CCCD, CMND) vào file Excel vì chưa tìm thấy.")
+        ws.insert_cols(col_name + 1, 3)
+        ws.cell(row=header_row, column=col_name + 1).value = 'HỌ VÀ TÊN KHÔNG DẤU'
+        ws.cell(row=header_row, column=col_name + 2).value = 'CCCD'
+        ws.cell(row=header_row, column=col_name + 3).value = 'CMND'
+        
+        # Cập nhật lại headers vì đã chèn cột
+        headers = {str(cell.value).strip(): idx for idx, cell in enumerate(ws[header_row], start=1) if cell.value}
+        
+        col_name_no_accent = headers.get('HỌ VÀ TÊN KHÔNG DẤU')
+        col_cccd = headers.get('CCCD')
+        col_cmnd = headers.get('CMND')
+    
     col_full = headers.get('ĐÃ CÓ THÔNG TIN CCCD (Đầy đủ)')
     col_partial = headers.get('ĐÃ CÓ THÔNG TIN CCCD (Chưa đầy đủ)')
     col_none = headers.get('CHƯA CÓ THÔNG TIN CCCD')
