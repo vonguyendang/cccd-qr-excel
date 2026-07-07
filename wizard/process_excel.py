@@ -62,6 +62,7 @@ def main():
         
     # Tạo mapping name -> data
     name_to_data = {}
+    duplicates_count = {}
     for _, row in exports_df.iterrows():
         name_val = row['Họ tên']
         note_val = row.get('Ghi chú')
@@ -78,6 +79,9 @@ def main():
             continue
             
         current_data = name_to_data.get(name, {})
+        if current_data:
+            duplicates_count[name_val] = duplicates_count.get(name_val, 0) + 1
+            
         current_status = current_data.get("status")
         
         new_status = current_status
@@ -109,8 +113,14 @@ def main():
             "cccd": new_cccd,
             "cmnd": new_cmnd
         }
-                
-    print(f"Đã tải thông tin {len(name_to_data)} người duy nhất từ thư mục exports.")
+    if duplicates_count:
+        print(f"\n[!] Phát hiện {sum(duplicates_count.values())} dòng bị quét lặp:")
+        for dup_name, count in duplicates_count.items():
+            print(f"   - {dup_name} (quét {count + 1} lần)")
+        print()
+        
+    print(f"Tổng số dữ liệu đọc được từ các file export: {len(exports_df)} dòng.")
+    print(f"Sau khi tự động gộp và lọc trùng lặp (người quét nhiều lần), còn lại thông tin của {len(name_to_data)} người duy nhất.")
     
     # 2. Xử lý file đích bằng openpyxl để giữ nguyên định dạng
     if not os.path.exists(target_file):
@@ -299,7 +309,8 @@ def main():
     
     total_target = len(list_full) + len(list_partial) + len(list_none)
     total_exports = len(name_to_data)
-    unmatched_exports = total_exports - len(matched_names)
+    unmatched_exports = added_count
+    matched_original = len(matched_names) - unmatched_exports
     
     ws_stat.append(['CHỈ TIÊU THỐNG KÊ', 'SỐ LƯỢNG', 'TỶ LỆ (%)'])
     ws_stat.append(['Tổng số người trong file danh sách', total_target, '100%'])
@@ -315,8 +326,8 @@ def main():
     ws_stat.append([])
     ws_stat.append(['THỐNG KÊ ĐỐI SOÁT', 'SỐ LƯỢNG', 'GHI CHÚ'])
     ws_stat.append(['Tổng số dữ liệu thu thập được (Từ exports)', total_exports, 'Số người quét được thực tế'])
-    ws_stat.append(['- Đã khớp với file danh sách', len(matched_names), ''])
-    ws_stat.append(['- Dữ liệu dư (Khách vãng lai/Không có tên)', unmatched_exports, 'Có quét nhưng không có tên trong file danh sách'])
+    ws_stat.append(['- Đã khớp với file danh sách gốc', matched_original, ''])
+    ws_stat.append(['- Dữ liệu dư (Khách vãng lai/Không có tên)', unmatched_exports, 'Đã được tự động thêm vào cuối file danh sách'])
     
     ws_stat.append([])
     ws_stat.append(['GHI CHÚ MÀU SẮC TRONG TẤT CẢ CÁC SHEET', 'Ý NGHĨA', ''])
