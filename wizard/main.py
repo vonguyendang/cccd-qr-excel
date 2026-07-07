@@ -4533,6 +4533,18 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             raw_notes = rec.get('Ghi chú') or ""
             rec['_notes_list'] = [n.strip() for n in str(raw_notes).split(';') if n.strip()]
             
+            # Ưu tiên lấy từ cột HỌ VÀ TÊN KHÔNG DẤU nếu có
+            pre_unaccented = ""
+            for possible_col in ['HỌ VÀ TÊN KHÔNG DẤU', 'Họ và tên không dấu', 'Họ tên không dấu']:
+                if possible_col in rec and rec.get(possible_col):
+                    val = str(rec.get(possible_col)).strip().upper()
+                    if val and val not in ['NONE', '[TRỐNG]']:
+                        pre_unaccented = val
+                        break
+            if not pre_unaccented:
+                pre_unaccented = _norm_for_match(rec.get('Họ tên', ''))
+            rec['_unaccented_name'] = pre_unaccented
+            
             records_list.append(rec)
 
         def _is_better_record(r1, r2):
@@ -4573,8 +4585,8 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             if gen1 and gen2 and gen1 in ['nam', 'nữ'] and gen2 in ['nam', 'nữ'] and gen1 != gen2:
                 return False
                 
-            n1 = _norm_for_match(r1.get('Họ tên', ''))
-            n2 = _norm_for_match(r2.get('Họ tên', ''))
+            n1 = r1.get('_unaccented_name', '')
+            n2 = r2.get('_unaccented_name', '')
             if not n1 or not n2:
                 return False
                 
@@ -4588,7 +4600,7 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             # Kiểm tra tính duy nhất của tên trong database
             similar_count = 0
             for r in all_records:
-                rn = _norm_for_match(r.get('Họ tên', ''))
+                rn = r.get('_unaccented_name', '')
                 if rn and _is_similar_name(n1, rn):
                     similar_count += 1
             is_unique_name = (similar_count == 2)
