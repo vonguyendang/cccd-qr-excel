@@ -4,6 +4,7 @@ import pandas as pd
 import unicodedata
 import openpyxl
 from openpyxl.styles import PatternFill, Font
+from datetime import datetime
 
 def remove_accents(input_str):
     if pd.isna(input_str) or input_str is None:
@@ -15,15 +16,30 @@ def remove_accents(input_str):
     return s
 
 def main():
-    exports_dir = 'exports'
-    target_file = '/Users/dangvo/DATA/THAOPHAM/bvnhidongtpct.xlsx'
+    current_time_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     
-    print("Bắt đầu xử lý...")
+    print("--- CHƯƠNG TRÌNH XỬ LÝ DỮ LIỆU QUÉT QR CCCD ---")
+    
+    target_file = input("1. Kéo thả hoặc dán đường dẫn file Excel danh sách gốc vào đây:\n>> ").strip().strip('"').strip("'").strip()
+    while not os.path.isfile(target_file):
+        print("Lỗi: Không tìm thấy file danh sách gốc. Vui lòng kiểm tra lại đường dẫn.")
+        target_file = input(">> ").strip().strip('"').strip("'").strip()
+        
+    export_path = input("\n2. Kéo thả hoặc dán đường dẫn file Excel export (hoặc thư mục chứa các file export) vào đây:\n>> ").strip().strip('"').strip("'").strip()
+    while not os.path.exists(export_path):
+        print("Lỗi: Không tìm thấy đường dẫn export. Vui lòng kiểm tra lại.")
+        export_path = input(">> ").strip().strip('"').strip("'").strip()
+        
+    print("\nBắt đầu xử lý...")
     
     # 1. Đọc và gộp dữ liệu từ thư mục exports
-    export_files = glob.glob(os.path.join(exports_dir, '*.xlsx'))
+    if os.path.isdir(export_path):
+        export_files = glob.glob(os.path.join(export_path, '*.xlsx'))
+    else:
+        export_files = [export_path]
+        
     if not export_files:
-        print(f"Không tìm thấy file excel nào trong thư mục '{exports_dir}'")
+        print(f"Không tìm thấy file excel nào tại '{export_path}'")
         return
     
     exports_df_list = []
@@ -88,6 +104,7 @@ def main():
                 new_cmnd = cmnd
                 
         name_to_data[name] = {
+            "original_name": name_val,
             "status": new_status,
             "cccd": new_cccd,
             "cmnd": new_cmnd
@@ -155,6 +172,46 @@ def main():
         print("Lỗi: File đích không có cột 'HỌ VÀ TÊN'")
         return
         
+    print("Đang kiểm tra và bổ sung tên mới từ exports...")
+    existing_names = set()
+    col_stt = headers.get('STT')
+    
+    real_max_row = header_row
+    last_stt_val = 0
+    
+    for row in range(header_row + 1, ws.max_row + 1):
+        target_name_cell = ws.cell(row=row, column=col_name).value
+        if target_name_cell:
+            existing_names.add(remove_accents(target_name_cell))
+            real_max_row = row
+            if col_stt:
+                stt_val = ws.cell(row=row, column=col_stt).value
+                try:
+                    if stt_val is not None:
+                        last_stt_val = int(stt_val)
+                except ValueError:
+                    pass
+            
+    red_font = Font(color="FF0000")
+    added_count = 0
+    added_names = set()
+    current_append_row = real_max_row + 1
+    for name, data in name_to_data.items():
+        if name not in existing_names:
+            added_names.add(name)
+            cell = ws.cell(row=current_append_row, column=col_name)
+            cell.value = data.get('original_name', name)
+            
+            if col_stt:
+                last_stt_val += 1
+                ws.cell(row=current_append_row, column=col_stt).value = last_stt_val
+                
+            current_append_row += 1
+            added_count += 1
+            
+    if added_count > 0:
+        print(f"Đã bổ sung {added_count} người mới vào danh sách gốc (chữ đỏ).")
+
     # Khởi tạo danh sách chứa dữ liệu
     list_full = []
     list_partial = []
@@ -195,11 +252,13 @@ def main():
         if col_cmnd and c_cmnd:
             ws.cell(row=row, column=col_cmnd).value = c_cmnd
             
+        is_added = unaccented_target in added_names
         person_data = [
             target_name_cell,
             unaccented_target.upper(),
             c_cccd,
-            c_cmnd
+            c_cmnd,
+            is_added
         ]
         
         if status == "Đọc mã QR":
@@ -221,6 +280,11 @@ def main():
             for col_idx in range(1, last_col + 1):
                 ws.cell(row=row, column=col_idx).fill = pink_fill
                 
+        # Bôi đỏ tất cả các cột nếu là dòng mới thêm
+        if is_added:
+            for col_idx in range(1, last_col + 1):
+                ws.cell(row=row, column=col_idx).font = red_font
+                
     # Xoá các sheet cũ nếu có để tránh lỗi
     for s_name in ['Thống kê', 'Thông tin đầy đủ', 'Thông tin chưa đầy đủ', 'Chưa có thông tin']:
         if s_name in wb.sheetnames:
@@ -229,6 +293,9 @@ def main():
     # Tạo sheet thống kê
     print("Đang tạo các sheet phân loại...")
     ws_stat = wb.create_sheet('Thống kê')
+    
+    ws_stat.append([f'BẢNG THỐNG KÊ CHI TIẾT ({current_time_str})'])
+    ws_stat.append([])
     
     total_target = len(list_full) + len(list_partial) + len(list_none)
     total_exports = len(name_to_data)
@@ -251,12 +318,37 @@ def main():
     ws_stat.append(['- Đã khớp với file danh sách', len(matched_names), ''])
     ws_stat.append(['- Dữ liệu dư (Khách vãng lai/Không có tên)', unmatched_exports, 'Có quét nhưng không có tên trong file danh sách'])
     
+    ws_stat.append([])
+    ws_stat.append(['GHI CHÚ MÀU SẮC TRONG TẤT CẢ CÁC SHEET', 'Ý NGHĨA', ''])
+    ws_stat.append(['Chữ màu đỏ', 'Người chưa có tên trong danh sách gốc, được tự động chèn thêm từ dữ liệu máy quét', ''])
+    ws_stat.append(['Nền màu trắng (Không tô màu)', 'Đã quét mã QR thành công (Thông tin đầy đủ)', ''])
+    ws_stat.append(['Nền tô màu vàng', 'Đã quét nhưng không đọc được mã QR (Thông tin chưa đầy đủ)', ''])
+    ws_stat.append(['Nền tô màu hồng', 'Chưa có thông tin quét (Chưa đến hoặc chưa quét được)', ''])
+    
+    ws_stat.append([])
+    ws_stat.append(['GHI CHÚ Ý NGHĨA CÁC SHEET (TRANG TÍNH)', 'Ý NGHĨA', ''])
+    ws_stat.append(['Sheet "Tổng quan"', 'Danh sách tổng hợp toàn bộ dữ liệu gốc và dữ liệu đã quét', ''])
+    ws_stat.append(['Sheet "Thông tin đầy đủ"', 'Danh sách rút trích những người đã quét mã QR thành công (Nền trắng)', ''])
+    ws_stat.append(['Sheet "Thông tin chưa đầy đủ"', 'Danh sách rút trích những người quét lỗi mã QR hoặc cần kiểm tra lại (Nền vàng)', ''])
+    ws_stat.append(['Sheet "Chưa có thông tin"', 'Danh sách những người có trong danh sách gốc nhưng chưa có thông tin quét (Nền hồng)', ''])
+    
     # Định dạng sheet thống kê
     from openpyxl.styles import Alignment
-    for cell in ws_stat[1]:
+    
+    ws_stat.merge_cells(start_row=1, start_column=1, end_row=1, end_column=3)
+    ws_stat.cell(row=1, column=1).font = Font(bold=True, size=14)
+    ws_stat.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
+    
+    for cell in ws_stat[3]:
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal='center')
-    for cell in ws_stat[6]:
+    for cell in ws_stat[9]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center')
+    for cell in ws_stat[14]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center')
+    for cell in ws_stat[20]:
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal='center')
         
@@ -266,18 +358,35 @@ def main():
         
     def write_list_sheet(sheet_name, data_list):
         ws_list = wb.create_sheet(sheet_name)
+        
+        ws_list.append([f'DANH SÁCH {sheet_name.upper()} ({current_time_str})'])
+        ws_list.append([])
+        
         headers_list = ['STT', 'HỌ VÀ TÊN', 'HỌ VÀ TÊN KHÔNG DẤU', 'CCCD', 'CMND']
         ws_list.append(headers_list)
-        for cell in ws_list[1]:
+        for cell in ws_list[3]:
             cell.font = Font(bold=True)
             
+        red_font = Font(color="FF0000")
         for idx, row_data in enumerate(data_list, start=1):
-            ws_list.append([idx] + row_data)
+            is_added = row_data[-1]
+            actual_data = row_data[:-1]
+            ws_list.append([idx] + actual_data)
+            
+            if is_added:
+                for col_idx in range(1, len(actual_data) + 2):
+                    ws_list.cell(row=idx + 3, column=col_idx).font = red_font
+                    
+        ws_list.merge_cells(start_row=1, start_column=1, end_row=1, end_column=5)
+        ws_list.cell(row=1, column=1).font = Font(bold=True, size=14)
+        from openpyxl.styles import Alignment
+        ws_list.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
             
         # Tự động chỉnh độ rộng cột
         for col in ws_list.columns:
             max_length = 0
-            column = col[0].column_letter
+            # Dùng col[-1] vì dòng đầu tiên bị merge nên col[0] có thể là MergedCell không có column_letter
+            column = col[-1].column_letter
             for cell in col:
                 try:
                     if len(str(cell.value)) > max_length:
