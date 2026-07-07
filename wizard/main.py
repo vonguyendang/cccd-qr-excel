@@ -4597,11 +4597,11 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
             issue_match = _is_similar_dob(r1.get('Ngày cấp CCCD'), r2.get('Ngày cấp CCCD'))
             cccd_match = _is_similar_cccd(r1.get('CCCD'), r2.get('CCCD'))
             
-            # Kiểm tra tính duy nhất của tên trong database
+            # Kiểm tra tính duy nhất của tên trong database (phải giống hệt 100% thì mới đếm)
             similar_count = 0
             for r in all_records:
                 rn = r.get('_unaccented_name', '')
-                if rn and _is_similar_name(n1, rn):
+                if rn == n1:
                     similar_count += 1
             is_unique_name = (similar_count == 2)
             
