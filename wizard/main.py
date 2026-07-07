@@ -4446,8 +4446,8 @@ def run_reprocess(excel_path, mode="1", process_all_rows=False, normalize_addres
                                 new_note = new_note.replace(';  ;', ';').replace('; ;', ';').strip()
                                 row[note_idx].value = new_note
 
-    # ---------- AUTOMATIC ROW MERGING FOR REPROCESSING (MODE 1, 2, 3) ----------
-    if mode in ("1", "2", "3"):
+    # ---------- AUTOMATIC ROW MERGING FOR REPROCESSING (MODE 1, 2, 3, 4) ----------
+    if mode in ("1", "2", "3", "4"):
         console.print("[cyan]🔄 Đang tự động gộp các dòng trùng lặp / mồ côi...[/cyan]")
         import unicodedata
         import re
@@ -5091,11 +5091,12 @@ def main():
                 console.print("[1] Tái bổ sung thông tin còn thiếu (Quét lại ảnh bằng AI OCR)")
                 console.print("[2] Làm đẹp địa chỉ gốc & Chuẩn hóa địa chỉ mới (Không quét OCR)")
                 console.print("[3] Chỉ cập nhật lại địa chỉ chuẩn hóa từ địa chỉ gốc (Không quét OCR)")
+                console.print("[4] Chỉ tự động gộp dòng trùng lặp (Không quét OCR, Không chuẩn hóa địa chỉ)")
                 
-                reprocess_mode = Prompt.ask("\n[bold yellow]Nhập lựa chọn của bạn (1/2/3)[/bold yellow]", default="1").strip()
-                while reprocess_mode not in ["1", "2", "3"]:
-                    console.print("[red]Lựa chọn không hợp lệ, vui lòng nhập 1, 2 hoặc 3.[/red]")
-                    reprocess_mode = Prompt.ask("\n[bold yellow]Nhập lựa chọn của bạn (1/2/3)[/bold yellow]", default="1").strip()
+                reprocess_mode = Prompt.ask("\n[bold yellow]Nhập lựa chọn của bạn (1/2/3/4)[/bold yellow]", default="1").strip()
+                while reprocess_mode not in ["1", "2", "3", "4"]:
+                    console.print("[red]Lựa chọn không hợp lệ, vui lòng nhập 1, 2, 3 hoặc 4.[/red]")
+                    reprocess_mode = Prompt.ask("\n[bold yellow]Nhập lựa chọn của bạn (1/2/3/4)[/bold yellow]", default="1").strip()
                 
                 process_all_rows = False
                 if reprocess_mode in ["2", "3"]:
@@ -5117,6 +5118,8 @@ def main():
                 DEBUG_MODE = Confirm.ask("\n[bold yellow]Bạn có muốn bật chế độ Gỡ lỗi (in chi tiết log quá trình xử lý) không?[/bold yellow]", default=DEBUG_MODE)
                 if reprocess_mode == "1":
                     do_normalize = Confirm.ask("\n[bold yellow]Bạn có muốn KIỂM TRA & CHUẨN HÓA ĐỊA CHỈ (quá trình này cần kết nối mạng) không?[/bold yellow]", default=True)
+                elif reprocess_mode == "4":
+                    do_normalize = False # Chế độ 4 không xử lý chuẩn hóa
                 else:
                     do_normalize = True # Bắt buộc phải chuẩn hóa trong mode 2, 3
                 
