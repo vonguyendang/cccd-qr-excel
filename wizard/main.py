@@ -71,6 +71,8 @@ import difflib
 OCR_RULES_CACHE = {}
 OCR_RULES_MTIME = 0
 VALID_LOCATIONS_CACHE = []
+VALID_LOCS_LOWER_MAP = None
+CLEAN_ADDRESS_SEGMENT_CACHE = None
 
 def load_ocr_rules():
     global OCR_RULES_CACHE, OCR_RULES_MTIME
@@ -701,7 +703,7 @@ def parse_ocr_text(text):
                             elif len(name_part) > 0 and i + 1 < len(lines):
                                 next_line = lines[i+1].replace('|', '').strip()
                                 combined_name = f"{name_part} {next_line}".strip()
-                                if _is_valid_name(combined_name) and _is_valid_name_starts_with_surname(combined_name):
+                                if _is_valid_name(combined_name):
                                     data['Họ tên'] = combined_name
                         
                         # Nếu không có dấu 2 chấm, thử lấy dòng tiếp theo
@@ -1416,7 +1418,7 @@ def extract_ocr_data(image_path_or_cv2img, use_opencv_align=None):
 
             # --- TÍCH HỢP ADDRESS V1.5 (ZONAL OCR MẶT SAU THẺ MỚI) ---
             try:
-                import debug_address_v15
+                from dev import debug_address_v15
                 if best_back_rotated_img is not None:
                     _, addr_v15, status_v15, _ = debug_address_v15.extract_address_v15(best_back_rotated_img)
                     if status_v15 == "Pass" and addr_v15:
@@ -1659,7 +1661,7 @@ def extract_ocr_data(image_path_or_cv2img, use_opencv_align=None):
 
             # --- TÍCH HỢP ADDRESS V1.5 (ZONAL OCR) ---
             try:
-                import debug_address_v15
+                from dev import debug_address_v15
                 if best_img is not None:
                     _, addr_v15, status_v15, _ = debug_address_v15.extract_address_v15(best_img)
                     if status_v15 == "Pass" and addr_v15:
