@@ -1,0 +1,64 @@
+2026-06-23 19:18:33,291 - [MainThread] - Started extract_ocr_data
+2026-06-23 19:18:52,782 - [MainThread] - Started extract_ocr_data
+2026-06-23 19:18:52,783 - [MainThread] - Calling align_card
+2026-06-23 19:18:53,099 - [MainThread] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-23 19:19:02,392 - [MainThread] - Finished align_card, method=failed
+2026-06-23 19:19:04,466 - [MainThread] - Calling safe_extract_text fast_mode=True rot=Không xoay
+2026-06-23 19:19:04,523 - [MainThread] - Finished safe_extract_text
+2026-06-23 19:19:04,523 - [MainThread] - Calling safe_extract_text fast_mode=True rot=Xoay trái 90 độ
+2026-06-23 19:19:04,581 - [MainThread] - Finished safe_extract_text
+2026-06-23 19:19:04,582 - [MainThread] - Calling safe_extract_text fast_mode=True rot=Xoay phải 90 độ
+2026-06-23 19:19:04,617 - [MainThread] - Finished safe_extract_text
+2026-06-23 19:19:04,618 - [MainThread] - Calling safe_extract_text fast_mode=True rot=Xoay 180 độ
+2026-06-23 19:19:04,664 - [MainThread] - Finished safe_extract_text
+2026-06-23 19:19:04,670 - [MainThread] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-23 19:19:04,715 - [MainThread] - Finished safe_extract_text
+2026-06-23 19:19:04,720 - [MainThread] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-23 19:19:04,755 - [MainThread] - Finished safe_extract_text
+2026-06-23 19:19:04,758 - [MainThread] - Address V1.5 error: No module named 'debug_address_v15'
+2026-06-30 10:07:54,503 - [MainThread] - Started extract_ocr_data
+2026-06-30 10:07:54,554 - [MainThread] - Calling align_card
+2026-06-30 10:07:54,629 - [MainThread] - Finished align_card, method=opencv_contour
+2026-06-30 10:08:06,763 - [MainThread] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-30 10:08:31,342 - [MainThread] - Address V1.5 error on back side: No module named 'debug_address_v15'
+2026-06-30 10:11:14,701 - [MainThread] - Started extract_ocr_data
+2026-06-30 10:11:14,743 - [MainThread] - Calling align_card
+2026-06-30 10:11:14,845 - [MainThread] - Finished align_card, method=opencv_contour
+2026-06-30 10:11:17,960 - [MainThread] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-30 10:11:54,030 - [MainThread] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-30 10:12:04,838 - [MainThread] - Finished safe_extract_text
+2026-06-30 10:12:04,846 - [MainThread] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-30 10:12:25,590 - [MainThread] - Finished safe_extract_text
+2026-06-30 10:12:25,598 - [MainThread] - Address V1.5 error: No module named 'debug_address_v15'
+2026-06-30 10:13:21,517 - [MainThread] - Started extract_ocr_data
+2026-06-30 10:13:21,568 - [MainThread] - Calling align_card
+2026-06-30 10:13:21,654 - [MainThread] - Finished align_card, method=opencv_contour
+2026-06-30 10:13:24,704 - [MainThread] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-30 10:14:02,383 - [MainThread] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-30 10:14:13,906 - [MainThread] - Finished safe_extract_text
+2026-06-30 10:14:13,911 - [MainThread] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-30 10:14:24,467 - [MainThread] - Finished safe_extract_text
+2026-06-30 10:14:24,477 - [MainThread] - Address V1.5 error: No module named 'debug_address_v15'
+2026-06-30 10:15:56,168 - [MainThread] - Started extract_ocr_data
+2026-06-30 10:15:56,251 - [MainThread] - Calling align_card
+2026-06-30 10:15:56,433 - [MainThread] - Finished align_card, method=opencv_contour
+2026-06-30 10:16:00,894 - [MainThread] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-30 10:16:38,438 - [MainThread] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-30 10:16:54,633 - [MainThread] - Finished safe_extract_text
+2026-06-30 10:16:54,648 - [MainThread] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-30 10:17:13,165 - [MainThread] - Finished safe_extract_text
+2026-06-30 10:17:13,176 - [MainThread] - Address V1.5 error: No module named 'debug_address_v15'
+2026-06-30 10:17:58,295 - [MainThread] - Started extract_ocr_data
+2026-06-30 10:17:58,358 - [MainThread] - Calling align_card
+2026-06-30 10:17:58,529 - [MainThread] - Finished align_card, method=opencv_contour
+2026-06-30 10:18:03,844 - [MainThread] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-30 10:19:02,396 - [MainThread] - Calling safe_extract_text fast_mode=False (contrast)
+2026-06-30 10:19:28,942 - [MainThread] - Finished safe_extract_text
+2026-06-30 10:19:28,965 - [MainThread] - Calling safe_extract_text fast_mode=False (sharpen)
+2026-06-30 10:19:50,634 - [MainThread] - Finished safe_extract_text
+2026-06-30 10:19:50,673 - [MainThread] - Address V1.5 error: No module named 'debug_address_v15'
+2026-06-30 10:21:25,424 - [MainThread] - Started extract_ocr_data
+2026-06-30 10:21:25,537 - [MainThread] - Calling align_card
+2026-06-30 10:21:25,707 - [MainThread] - Finished align_card, method=opencv_contour
+2026-06-30 10:21:28,910 - [MainThread] - load_model /Users/dangvo/Projects/cccd-qr-excel/deepdoc_vietocr/onnx/det.onnx uses CPU
+2026-06-30 10:21:52,820 - [MainThread] - Address V1.5 error: No module named 'debug_address_v15'
